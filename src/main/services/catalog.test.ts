@@ -1,5 +1,9 @@
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CATALOG_TTL_MS, Catalog } from './catalog'
+import { IndexCache } from './indexcache'
 import type { Package } from '../../shared/types'
 
 const pkg = (full: string, deps: string[] = []): Package => ({
@@ -23,6 +27,17 @@ function stubFetch(packages: Package[]) {
   }) as unknown as Response)
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
+}
+
+function failingFetch() {
+  const fetchMock = vi.fn(async () => { throw new Error('offline') })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
+const tempCache = () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tidepool-cc-'))
+  return { dir, cache: new IndexCache(dir) }
 }
 
 afterEach(() => vi.unstubAllGlobals())
@@ -59,7 +74,7 @@ describe('Catalog', () => {
     // Without this, opening the UI fires several overlapping index downloads.
     const fetchMock = stubFetch([pkg('Owner-Mod')])
     const catalog = new Catalog()
-    await Promise.all([catalog.browse({}, 'x'), catalog.browse({}, 'x'), catalog.stats('x')])
+    await Promise.all([catalog.browse({}, 'x'), catalog.browse({}, 'x'), catalog.status('x')])
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
@@ -100,6 +115,51 @@ describe('Catalog', () => {
   it('returns null for an unknown package', async () => {
     stubFetch([pkg('Owner-Mod')])
     expect(await new Catalog().detail('Nope-Missing', 'x')).toBeNull()
+  })
+
+  it('serves a fresh disk cache without hitting the network at all', async () => {
+    // Without this every launch re-downloads the whole index.
+    const { dir, cache } = tempCache()
+    const fetchMock = stubFetch([pkg('Owner-Mod')])
+    await new Catalog(() => 1000, cache).browse({}, 'x')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    const second = stubFetch([pkg('Owner-Mod')])
+    await new Catalog(() => 1000, cache).browse({}, 'x')
+    expect(second).not.toHaveBeenCalled()
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('refetches when the disk cache has aged out', async () => {
+    const { dir, cache } = tempCache()
+    stubFetch([pkg('Owner-Mod')])
+    await new Catalog(() => 0, cache).browse({}, 'x')
+
+    const later = stubFetch([pkg('Owner-Mod')])
+    await new Catalog(() => CATALOG_TTL_MS + 1, cache).browse({}, 'x')
+    expect(later).toHaveBeenCalledTimes(1)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('falls back to a stale cache when the network is down', async () => {
+    // An out-of-date list beats an error page.
+    const { dir, cache } = tempCache()
+    stubFetch([pkg('Owner-Mod')])
+    await new Catalog(() => 0, cache).browse({}, 'x')
+
+    failingFetch()
+    const offline = new Catalog(() => CATALOG_TTL_MS * 10, cache)
+    const status = await offline.status('x')
+    expect(status.stale).toBe(true)
+    expect(status.packages).toBe(1)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('still throws when the network is down and nothing is cached', async () => {
+    const { dir, cache } = tempCache()
+    failingFetch()
+    await expect(new Catalog(() => 0, cache).browse({}, 'x')).rejects.toThrow(/offline/)
+    rmSync(dir, { recursive: true, force: true })
   })
 
   it('resolves dependencies against the loaded index', async () => {

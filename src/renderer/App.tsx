@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { relativeDate } from './format'
 import { GameBar } from './GameBar'
 import { InstalledPanel } from './InstalledPanel'
 import { ModBrowser } from './ModBrowser'
@@ -20,6 +21,12 @@ export function App() {
   const [community, setCommunity] = useState('lethal-company')
   const [refreshing, setRefreshing] = useState(false)
   const [tab, setTab] = useState<'browse' | 'installed'>('browse')
+  const [status, setStatus] = useState<{ packages: number; fetchedAt: number; stale: boolean } | null>(null)
+
+  const readStatus = useCallback(async () => {
+    const res = await window.tidepool.catalogStatus(community)
+    setStatus(res.ok ? res.data : null)
+  }, [community])
   const { profiles, current, setCurrentId, refresh } = useProfiles()
 
   // Remember the community across restarts.
@@ -28,9 +35,12 @@ export function App() {
   }, [])
   useEffect(() => { void window.tidepool.writeSettings({ community }) }, [community])
 
+  useEffect(() => { void readStatus() }, [readStatus])
+
   const refreshCatalog = async () => {
     setRefreshing(true)
     await window.tidepool.refresh(community)
+    await readStatus()
     setRefreshing(false)
     setCommunity((c) => c) // force the browser to re-query
   }
@@ -62,6 +72,11 @@ export function App() {
               <option key={c.slug} value={c.slug}>{c.label}</option>
             ))}
           </select>
+          {status?.stale && (
+            <span className="status status--off" title="Thunderstore is unreachable — showing the last cached list">
+              Offline · cached {relativeDate(new Date(status.fetchedAt).toISOString())}
+            </span>
+          )}
           <button className="button--ghost" onClick={() => void refreshCatalog()} disabled={refreshing}>
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>

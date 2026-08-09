@@ -1,5 +1,5 @@
 /**
- * In-memory package catalog for one community.
+ * In-memory package catalog for one community, backed by an on-disk cache.
  *
  * Holds the full index (needed to walk pinned dependency versions) but only ever
  * hands the renderer a page of summaries. Measured against lethal-company the
@@ -18,8 +18,9 @@ import type {
 import { browse, toSummary } from '../../shared/browse'
 import { compareVersions, indexPackages, latestVersion, resolve } from '../../shared/deps'
 import { DEFAULT_COMMUNITY, fetchPackages } from './thunderstore'
+import { IndexCache } from './indexcache'
 
-/** How long a fetched index stays fresh before we go back to Thunderstore. */
+/** How long an index stays fresh before we go back to Thunderstore. */
 export const CATALOG_TTL_MS = 15 * 60 * 1000
 
 export interface PackageDetail {
@@ -28,45 +29,80 @@ export interface PackageDetail {
   latest: PackageVersion | null
 }
 
+export interface CatalogStatus {
+  community: string
+  packages: number
+  fetchedAt: number
+  /** True when served from cache after the network failed. */
+  stale: boolean
+}
+
 interface Snapshot {
   community: string
   packages: Package[]
   byName: Map<string, Package>
   summaries: PackageSummary[]
   fetchedAt: number
+  stale: boolean
 }
 
 export class Catalog {
   private snapshot: Snapshot | null = null
   private inflight: Promise<Snapshot> | null = null
 
-  constructor(private readonly now: () => number = () => Date.now()) {}
+  constructor(
+    private readonly now: () => number = () => Date.now(),
+    private readonly cache: IndexCache | null = null,
+  ) {}
+
+  private build(community: string, packages: Package[], fetchedAt: number, stale: boolean): Snapshot {
+    const snapshot: Snapshot = {
+      community,
+      packages,
+      byName: indexPackages(packages),
+      summaries: packages.map(toSummary),
+      fetchedAt,
+      stale,
+    }
+    this.snapshot = snapshot
+    return snapshot
+  }
 
   private fresh(community: string): boolean {
     return (
       this.snapshot !== null &&
       this.snapshot.community === community &&
+      !this.snapshot.stale &&
       this.now() - this.snapshot.fetchedAt < CATALOG_TTL_MS
     )
   }
 
-  /** Load the index, reusing a fresh one and coalescing concurrent callers. */
+  /**
+   * Load the index: memory, then disk, then network.
+   *
+   * If the network fails but a cached copy exists, that copy is served and
+   * flagged stale — an out-of-date list beats an error page.
+   */
   async load(community: string = DEFAULT_COMMUNITY, force = false): Promise<Snapshot> {
     if (!force && this.fresh(community) && this.snapshot) return this.snapshot
     // Without this, opening the browser fires several overlapping 311 MB fetches.
     if (this.inflight) return this.inflight
 
     this.inflight = (async () => {
-      const packages = await fetchPackages({ community })
-      const snapshot: Snapshot = {
-        community,
-        packages,
-        byName: indexPackages(packages),
-        summaries: packages.map(toSummary),
-        fetchedAt: this.now(),
+      const cached = this.cache?.read(community) ?? null
+      if (!force && cached && this.now() - cached.fetchedAt < CATALOG_TTL_MS) {
+        return this.build(community, cached.packages, cached.fetchedAt, false)
       }
-      this.snapshot = snapshot
-      return snapshot
+
+      try {
+        const packages = await fetchPackages({ community })
+        const fetchedAt = this.now()
+        this.cache?.write(community, packages, fetchedAt)
+        return this.build(community, packages, fetchedAt, false)
+      } catch (error) {
+        if (cached) return this.build(community, cached.packages, cached.fetchedAt, true)
+        throw error
+      }
     })()
 
     try {
@@ -97,11 +133,6 @@ export class Catalog {
     }
   }
 
-  async resolve(refs: string[], community?: string): Promise<Resolution> {
-    const snapshot = await this.load(community)
-    return resolve(refs, snapshot.byName)
-  }
-
   /** Look up one exact published version, as pinned by a dependency ref. */
   async versionFor(ref: DependencyRef, community?: string): Promise<PackageVersion | null> {
     const snapshot = await this.load(community)
@@ -110,13 +141,13 @@ export class Catalog {
     return pkg.versions.find((v) => v.version_number === ref.version) ?? null
   }
 
-  /** Stats for the UI footer — also the cheapest way to see the index loaded. */
-  async stats(community?: string) {
+  async resolve(refs: string[], community?: string): Promise<Resolution> {
     const snapshot = await this.load(community)
-    return {
-      community: snapshot.community,
-      packages: snapshot.packages.length,
-      fetchedAt: snapshot.fetchedAt,
-    }
+    return resolve(refs, snapshot.byName)
+  }
+
+  async status(community?: string): Promise<CatalogStatus> {
+    const s = await this.load(community)
+    return { community: s.community, packages: s.packages.length, fetchedAt: s.fetchedAt, stale: s.stale }
   }
 }

@@ -14,6 +14,7 @@ const api = {
   detail: (fullName: string, community?: string) =>
     ipcRenderer.invoke(CHANNELS.detail, fullName, community),
   refresh: (community?: string) => ipcRenderer.invoke(CHANNELS.refresh, community),
+  catalogStatus: (community?: string) => ipcRenderer.invoke(CHANNELS.catalogStatus, community),
   resolveMods: (refs: string[], community?: string) =>
     ipcRenderer.invoke(CHANNELS.resolveMods, refs, community),
   listProfiles: () => ipcRenderer.invoke(CHANNELS.listProfiles),

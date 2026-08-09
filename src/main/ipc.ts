@@ -1,5 +1,6 @@
 /** IPC surface exposed to the renderer. Keep this the only channel list. */
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { join } from 'node:path'
 import { findGameInstall } from './services/steam'
 import { inspectGameFolder } from './services/gamefolder'
 import { canLaunchDirectly, launchGame, steamRunUrl } from './services/launcher'
@@ -10,6 +11,7 @@ import { CommunityNotFoundError, ThunderstoreUnavailableError } from './services
 import { ProfileStore } from './services/profiles'
 import { buildLaunchPlan, steamLaunchOptions } from './services/launch'
 import { Catalog } from './services/catalog'
+import { IndexCache } from './services/indexcache'
 import { Installer } from './services/installer'
 import type {
   BrowseQuery,
@@ -43,6 +45,7 @@ export const CHANNELS = {
   launchViaSteam: 'launch:steam',
   setModEnabled: 'mods:set-enabled',
   checkUpdates: 'mods:check-updates',
+  catalogStatus: 'catalog:status',
 } as const
 
 /** Map thrown errors onto the discriminated union the UI switches on. */
@@ -64,7 +67,7 @@ async function attempt<T>(fn: () => Promise<T>) {
 
 export function registerIpc(profileRoot: string, cacheDir: string, settingsFile: string): void {
   const profiles = new ProfileStore(profileRoot)
-  const catalog = new Catalog()
+  const catalog = new Catalog(() => Date.now(), new IndexCache(join(cacheDir, 'index')))
   const installer = new Installer(catalog, profiles, cacheDir)
   const settings = new SettingsStore(settingsFile)
 
@@ -164,6 +167,9 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
   )
   ipcMain.handle(CHANNELS.detail, (_e, fullName: string, community?: string) =>
     attempt(() => catalog.detail(fullName, community)),
+  )
+  ipcMain.handle(CHANNELS.catalogStatus, (_e, community?: string) =>
+    attempt(() => catalog.status(community)),
   )
   ipcMain.handle(CHANNELS.refresh, (_e, community?: string) =>
     attempt(() => catalog.load(community, true).then((s) => ({ packages: s.packages.length }))),

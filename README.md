@@ -146,6 +146,24 @@ Browse -> install -> launch is complete.
 - **Profiles** support create, rename, duplicate and delete. Renaming changes the label only: the id
   is the folder name that Doorstop is pointed at, so moving it would break a running game.
 
+### Catalog caching and offline use
+
+The index is cached to disk, gzipped, and consulted before the network. Without it every launch
+re-downloaded the whole index — slow for the user and rude to Thunderstore. Measured against
+lethal-company's real 50,364-package index:
+
+| | Time | Notes |
+| --- | --- | --- |
+| Cold start (network) | 12.8 s | |
+| Warm start (disk) | 1.7 s | **7.7x faster** |
+| Cache size | 33.2 MB | vs 311 MB uncompressed — the JSON is repetitive and compresses ~9x |
+
+If the network fails and a cached copy exists, that copy is served and flagged stale, and the UI shows
+an "Offline · cached 2h ago" chip. An out-of-date list beats an error page. With no cache and no
+network it still throws, because there is genuinely nothing to show. Cache files are written
+write-then-rename so a crash can't leave a truncated file, and are keyed by a hash of the community
+slug so an odd slug can't escape the cache directory.
+
 ### Running the game
 
 Three routes, because they trade off differently:
