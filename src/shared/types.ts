@@ -94,6 +94,33 @@ export interface InstalledMod {
   version: string
   enabled: boolean
   installedAt: string
+  /**
+   * Profile-relative paths this mod wrote.
+   *
+   * Recorded at install time so uninstall removes exactly what was added,
+   * rather than guessing from the package name.
+   */
+  files: string[]
+  /** True when pulled in as someone else's dependency rather than chosen. */
+  viaDependency?: boolean
+}
+
+export type InstallPhase = 'resolving' | 'downloading' | 'extracting' | 'done' | 'failed'
+
+export interface InstallProgress {
+  phase: InstallPhase
+  /** "Owner-Name" currently being worked on, if any. */
+  current: string | null
+  completed: number
+  total: number
+  message?: string
+}
+
+export interface InstallResult {
+  installed: InstalledMod[]
+  skipped: string[]
+  missing: string[]
+  conflicts: VersionConflict[]
 }
 
 export interface Profile {

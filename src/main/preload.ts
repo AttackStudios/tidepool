@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { CHANNELS } from './ipc'
-import type { BrowseQuery } from '../shared/types'
+import type { BrowseQuery, InstallProgress } from '../shared/types'
 
 /**
  * The renderer gets this narrow API and nothing else — no node integration, no
@@ -22,6 +22,16 @@ const api = {
   deleteProfile: (id: string) => ipcRenderer.invoke(CHANNELS.deleteProfile, id),
   launchOptions: (profileId: string) => ipcRenderer.invoke(CHANNELS.launchOptions, profileId),
   openExternal: (url: string) => ipcRenderer.invoke(CHANNELS.openExternal, url),
+  install: (profileId: string, refs: string[], community?: string) =>
+    ipcRenderer.invoke(CHANNELS.install, profileId, refs, community),
+  uninstall: (profileId: string, fullName: string) =>
+    ipcRenderer.invoke(CHANNELS.uninstall, profileId, fullName),
+  /** Subscribe to install progress. Returns an unsubscribe function. */
+  onInstallProgress: (handler: (progress: InstallProgress) => void) => {
+    const listener = (_e: unknown, progress: InstallProgress) => handler(progress)
+    ipcRenderer.on(CHANNELS.installProgress, listener)
+    return () => { ipcRenderer.removeListener(CHANNELS.installProgress, listener) }
+  },
 }
 
 contextBridge.exposeInMainWorld('tidepool', api)

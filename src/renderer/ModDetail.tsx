@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { PackageVersion, Resolution, Result } from '../shared/types'
+import type { PackageVersion, Profile, Resolution, Result } from '../shared/types'
 import { compactNumber, relativeDate } from './format'
+import { InstallButton } from './InstallButton'
 
 interface Detail {
   summary: import('../shared/types').PackageSummary
@@ -8,7 +9,17 @@ interface Detail {
   latest: PackageVersion | null
 }
 
-export function ModDetail({ fullName, community }: { fullName: string; community?: string }) {
+export function ModDetail({
+  fullName,
+  community,
+  profile,
+  onChanged,
+}: {
+  fullName: string
+  community: string
+  profile: Profile | null
+  onChanged: () => void
+}) {
   const [detail, setDetail] = useState<Detail | null | undefined>(undefined)
   const [resolution, setResolution] = useState<Resolution | null>(null)
 
@@ -92,19 +103,24 @@ export function ModDetail({ fullName, community }: { fullName: string; community
         )}
       </section>
 
-      <div className="detail__actions">
-        <button disabled title="Installing needs the game, which ships 25 Aug 2026">
-          Install
-        </button>
-        {summary.packageUrl && (
+      <InstallButton
+        fullName={summary.fullName}
+        versionRef={latest?.full_name ?? null}
+        community={community}
+        profile={profile}
+        onChanged={onChanged}
+      />
+
+      {summary.packageUrl && (
+        <div className="detail__actions">
           <button
             className="button--ghost"
             onClick={() => void window.tidepool.openExternal(summary.packageUrl!)}
           >
             View on Thunderstore
           </button>
-        )}
-      </div>
+        </div>
+      )}
       {latest && (
         <p className="muted detail__foot">
           {(latest.file_size / 1024 / 1024).toFixed(2)} MB download

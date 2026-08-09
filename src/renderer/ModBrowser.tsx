@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { BrowsePage, Result, SortKey } from '../shared/types'
+import type { BrowsePage, Profile, Result, SortKey } from '../shared/types'
 import { ModCard } from './ModCard'
 import { ModDetail } from './ModDetail'
 import { useDebounced } from './useDebounced'
@@ -18,7 +18,15 @@ type State =
   | { status: 'no-community'; message: string }
   | { status: 'error'; message: string }
 
-export function ModBrowser({ community }: { community: string }) {
+export function ModBrowser({
+  community,
+  profile,
+  onChanged,
+}: {
+  community: string
+  profile: Profile | null
+  onChanged: () => void
+}) {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortKey | null>(null)
   const [category, setCategory] = useState<string | null>(null)
@@ -128,6 +136,7 @@ export function ModBrowser({ community }: { community: string }) {
                     key={mod.fullName}
                     mod={mod}
                     selected={mod.fullName === selected}
+                    installed={profile?.mods.some((m) => m.fullName === mod.fullName) ?? false}
                     onSelect={setSelected}
                   />
                 ))}
@@ -147,7 +156,14 @@ export function ModBrowser({ community }: { community: string }) {
             )}
           </div>
 
-          {selected && <ModDetail fullName={selected} community={community} />}
+          {selected && (
+            <ModDetail
+              fullName={selected}
+              community={community}
+              profile={profile}
+              onChanged={onChanged}
+            />
+          )}
         </div>
       )}
     </div>

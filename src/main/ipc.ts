@@ -5,7 +5,8 @@ import { CommunityNotFoundError, ThunderstoreUnavailableError } from './services
 import { ProfileStore } from './services/profiles'
 import { buildLaunchPlan, steamLaunchOptions } from './services/launch'
 import { Catalog } from './services/catalog'
-import type { BrowseQuery, Failure } from '../shared/types'
+import { Installer } from './services/installer'
+import type { BrowseQuery, Failure, InstallProgress } from '../shared/types'
 
 export const CHANNELS = {
   detectGame: 'game:detect',
@@ -19,6 +20,9 @@ export const CHANNELS = {
   deleteProfile: 'profiles:delete',
   launchOptions: 'launch:options',
   openExternal: 'shell:open',
+  install: 'mods:install',
+  uninstall: 'mods:uninstall',
+  installProgress: 'mods:install-progress',
 } as const
 
 /** Map thrown errors onto the discriminated union the UI switches on. */
@@ -38,9 +42,10 @@ async function attempt<T>(fn: () => Promise<T>) {
   }
 }
 
-export function registerIpc(profileRoot: string): void {
+export function registerIpc(profileRoot: string, cacheDir: string): void {
   const profiles = new ProfileStore(profileRoot)
   const catalog = new Catalog()
+  const installer = new Installer(catalog, profiles, cacheDir)
 
   ipcMain.handle(CHANNELS.detectGame, () => {
     const install = findGameInstall()
@@ -72,6 +77,24 @@ export function registerIpc(profileRoot: string): void {
     const plan = buildLaunchPlan(profiles.dir(profileId))
     return { plan, steam: steamLaunchOptions(plan) }
   })
+
+  ipcMain.handle(
+    CHANNELS.install,
+    (event, profileId: string, refs: string[], community?: string) =>
+      attempt(() =>
+        installer.install(profileId, refs, community, (progress: InstallProgress) => {
+          // Streamed rather than returned so the UI can show per-package state
+          // during what may be a multi-minute download.
+          if (!event.sender.isDestroyed()) {
+            event.sender.send(CHANNELS.installProgress, progress)
+          }
+        }),
+      ),
+  )
+
+  ipcMain.handle(CHANNELS.uninstall, (_e, profileId: string, fullName: string) =>
+    attempt(async () => installer.uninstall(profileId, fullName)),
+  )
 
   ipcMain.handle(CHANNELS.openExternal, (_e, url: string) => {
     // Only ever open http(s) — the renderer must not be able to launch anything else.

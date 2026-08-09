@@ -15,7 +15,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "npm run build && electron .",
-    "dist:win": "npm run build && electron-builder --win --publish never"
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "icons": "python3 tools/make-icon.py",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist": "npm run build && electron-builder --mac --win --publish never"
   },
   "dependencies": {
     "adm-zip": "^0.5.16"
@@ -37,7 +40,66 @@
   "build": {
     "appId": "gg.tidepool.manager",
     "productName": "TidePool",
-    "files": ["dist/**/*", "package.json"],
-    "win": { "target": ["nsis", "zip"] }
+    "copyright": "Copyright \u00a9 2026 AttackStudios",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.utilities",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "TidePool-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "TidePool ${version}"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "TidePool-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TidePool",
+      "uninstallDisplayName": "TidePool Mod Manager",
+      "artifactName": "TidePool-Setup-${version}.${ext}"
+    }
   }
 }

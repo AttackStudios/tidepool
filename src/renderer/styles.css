@@ -144,3 +144,28 @@ button:disabled { background: var(--surface-3); color: var(--ink-3); cursor: not
 .deps__self { border-left: 2px solid var(--accent); }
 
 .empty { padding: 40px 24px; max-width: 52ch; }
+
+/* ---------- profile field ---------- */
+.field { display: flex; align-items: center; gap: 6px; }
+.field__label { font-size: 0.72rem; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* ---------- install progress ---------- */
+.progress { margin-top: 12px; }
+.progress__bar {
+  height: 5px; background: var(--surface-3); border-radius: 100px; overflow: hidden;
+}
+.progress__bar span {
+  display: block; height: 100%; background: var(--accent);
+  transition: width 180ms ease-out; min-width: 4%;
+}
+.progress__label { font-size: 0.76rem; margin: 6px 0 0; }
+
+.tag--ok { background: rgba(53, 198, 216, 0.16); color: var(--accent); }
+.button--danger { background: transparent; color: var(--error); border: 1px solid var(--error); }
+.button--danger:hover:not(:disabled) { background: rgba(232, 112, 94, 0.12); filter: none; }
+
+/* macOS hidden-inset title bar leaves the traffic lights over the topbar. */
+@supports (-webkit-backdrop-filter: none) {
+  .topbar { padding-left: 84px; -webkit-app-region: drag; }
+  .topbar button, .topbar select, .topbar input { -webkit-app-region: no-drag; }
+}

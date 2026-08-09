@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { GameInstall } from '../shared/types'
 import { ModBrowser } from './ModBrowser'
+import { useProfiles } from './useProfiles'
 
 /**
  * The surf-sandbox community will not exist until mods are published for it, so
@@ -16,8 +17,14 @@ const COMMUNITIES = [
 export function App() {
   const [game, setGame] = useState<GameInstall | null | undefined>(undefined)
   const [community, setCommunity] = useState('lethal-company')
+  const { profiles, current, currentId, setCurrentId, refresh, create } = useProfiles()
 
   useEffect(() => { void window.tidepool.detectGame().then(setGame) }, [])
+
+  const newProfile = async () => {
+    const name = `Profile ${profiles.length + 1}`
+    await create(name)
+  }
 
   return (
     <div className="app">
@@ -36,6 +43,23 @@ export function App() {
             {game === null && 'Game not installed'}
             {game && `Game found · ${game.backend ?? 'backend unknown'}`}
           </span>
+
+          <label className="field">
+            <span className="field__label">Profile</span>
+            <select
+              value={currentId ?? ''}
+              onChange={(e) => setCurrentId(e.target.value)}
+              aria-label="Active profile"
+            >
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.mods.length})
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="button--ghost" onClick={() => void newProfile()}>New</button>
+
           <select
             value={community}
             onChange={(e) => setCommunity(e.target.value)}
@@ -48,7 +72,7 @@ export function App() {
         </div>
       </header>
 
-      <ModBrowser community={community} />
+      <ModBrowser community={community} profile={current} onChanged={() => void refresh()} />
     </div>
   )
 }

@@ -9,6 +9,7 @@
 import type {
   BrowsePage,
   BrowseQuery,
+  DependencyRef,
   Package,
   PackageSummary,
   PackageVersion,
@@ -95,6 +96,14 @@ export class Catalog {
   async resolve(refs: string[], community?: string): Promise<Resolution> {
     const snapshot = await this.load(community)
     return resolve(refs, snapshot.byName)
+  }
+
+  /** Look up one exact published version, as pinned by a dependency ref. */
+  async versionFor(ref: DependencyRef, community?: string): Promise<PackageVersion | null> {
+    const snapshot = await this.load(community)
+    const pkg = snapshot.byName.get(ref.fullName)
+    if (!pkg) return null
+    return pkg.versions.find((v) => v.version_number === ref.version) ?? null
   }
 
   /** Stats for the UI footer — also the cheapest way to see the index loaded. */

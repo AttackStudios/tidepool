@@ -109,6 +109,47 @@ merely name it in a description.
 A community selector in the title bar points the browser at a real community, since `surf-sandbox`
 will not exist until mods are published for it. That is what makes the entire UI exercisable today.
 
+### Install pipeline
+
+Installing is download-and-unpack into a profile folder, which needs no game at all — only *launching*
+does. So the entire pipeline is already proven end to end against live Thunderstore packages.
+
+A real run installing `Evaisa-LethalLib-1.2.0` pulled its whole transitive chain in the right order:
+
+```
+BepInEx-BepInExPack -> Evaisa-HookGenPatcher -> MonoDetour-MonoDetour
+  -> MonoDetour-MonoDetour_BepInEx_5 -> Evaisa-LethalLib
+```
+
+Five packages, 2.8 s, 35 files, 21 non-empty DLLs — including `BepInEx/core/BepInEx.Preloader.dll`,
+which is exactly the path the Doorstop launch arguments point at, so the install and launch layers agree.
+Uninstalling LethalLib then removed exactly its own 3 files and left the four dependencies intact.
+
+Each installed mod records the profile-relative paths it wrote, so uninstall removes precisely what was
+added rather than guessing from the package name, and upgrading clears the previous version's files
+first — otherwise a stale DLL sits in `plugins/` and gets loaded alongside the new one.
+
+### Packaging
+
+```sh
+npm run icons      # regenerate build/icon.{png,ico,icns} from tools/make-icon.py
+npm run dist:win   # NSIS installer + portable zip
+npm run dist:mac   # dmg + zip, arm64 and x64
+```
+
+Icons are generated from code rather than committed as opaque binaries. Both targets build from macOS —
+electron-builder fetches wine automatically for the Windows NSIS step. Verified output:
+
+| Artifact | Size | Notes |
+| --- | --- | --- |
+| `TidePool-Setup-0.0.1.exe` | 78 MB | NSIS, choose install dir, desktop + start menu shortcuts |
+| `TidePool-0.0.1-x64.zip` | 106 MB | Portable Windows |
+| `TidePool-0.0.1-arm64.dmg` | 94 MB | macOS Apple Silicon |
+| `TidePool-0.0.1-x64.dmg` | 99 MB | macOS Intel |
+
+Neither build is code-signed yet, so Windows SmartScreen and macOS Gatekeeper will both warn on first
+run. That needs paid certificates and is worth sorting before the public release, not before.
+
 ### What needs the game
 
 Backend detection (Mono vs IL2CPP), the actual BepInEx pack, and anything touching Surf Sandbox's

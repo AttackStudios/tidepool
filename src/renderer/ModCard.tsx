@@ -4,10 +4,12 @@ import { compactNumber, relativeDate } from './format'
 export function ModCard({
   mod,
   selected,
+  installed,
   onSelect,
 }: {
   mod: PackageSummary
   selected: boolean
+  installed: boolean
   onSelect: (fullName: string) => void
 }) {
   return (
@@ -27,6 +29,7 @@ export function ModCard({
           <div className="card__title">
             <span className="card__name">{mod.name}</span>
             <span className="card__version">{mod.latestVersion}</span>
+            {installed && <span className="tag tag--ok">installed</span>}
             {mod.isDeprecated && <span className="tag tag--warn">deprecated</span>}
             {mod.isPinned && <span className="tag">pinned</span>}
           </div>
