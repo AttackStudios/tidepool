@@ -129,6 +129,23 @@ Each installed mod records the profile-relative paths it wrote, so uninstall rem
 added rather than guessing from the package name, and upgrading clears the previous version's files
 first — otherwise a stale DLL sits in `plugins/` and gets loaded alongside the new one.
 
+### Core loop
+
+Browse -> install -> launch is complete.
+
+- **Game detection reads Steam's app manifest** rather than guessing a folder name. `installdir` is
+  chosen by the developer and can't be derived from the store page, so for an unreleased game any
+  hardcoded guess would simply be wrong.
+- **The executable is derived from Unity's own convention** — a build always contains `<Name>_Data`
+  beside `<Name>.exe` — so TidePool works without knowing what Surf Sandbox's executable is called.
+- **A manual folder picker** is the fallback when detection misses, validated against the same
+  `_Data` convention so you can't point it at nonsense. Without this, a wrong guess on day one would
+  brick the app with no workaround.
+- **Launching** spawns the game detached with the Doorstop arguments on Windows. Elsewhere it says so
+  plainly and offers the Steam launch options instead, which work through Proton and Wine too.
+- **Profiles** support create, rename, duplicate and delete. Renaming changes the label only: the id
+  is the folder name that Doorstop is pointed at, so moving it would break a running game.
+
 ### Packaging
 
 ```sh

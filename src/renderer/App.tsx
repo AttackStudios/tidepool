@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { GameInstall } from '../shared/types'
+import { GameBar } from './GameBar'
 import { ModBrowser } from './ModBrowser'
+import { ProfileControls } from './ProfileControls'
 import { useProfiles } from './useProfiles'
 
 /**
@@ -15,15 +16,21 @@ const COMMUNITIES = [
 ]
 
 export function App() {
-  const [game, setGame] = useState<GameInstall | null | undefined>(undefined)
   const [community, setCommunity] = useState('lethal-company')
-  const { profiles, current, currentId, setCurrentId, refresh, create } = useProfiles()
+  const [refreshing, setRefreshing] = useState(false)
+  const { profiles, current, setCurrentId, refresh } = useProfiles()
 
-  useEffect(() => { void window.tidepool.detectGame().then(setGame) }, [])
+  // Remember the community across restarts.
+  useEffect(() => {
+    void window.tidepool.readSettings().then((s) => { if (s.community) setCommunity(s.community) })
+  }, [])
+  useEffect(() => { void window.tidepool.writeSettings({ community }) }, [community])
 
-  const newProfile = async () => {
-    const name = `Profile ${profiles.length + 1}`
-    await create(name)
+  const refreshCatalog = async () => {
+    setRefreshing(true)
+    await window.tidepool.refresh(community)
+    setRefreshing(false)
+    setCommunity((c) => c) // force the browser to re-query
   }
 
   return (
@@ -38,28 +45,12 @@ export function App() {
         </div>
 
         <div className="topbar__right">
-          <span className={`status status--${game === undefined ? 'wait' : game ? 'ok' : 'off'}`}>
-            {game === undefined && 'Looking for game…'}
-            {game === null && 'Game not installed'}
-            {game && `Game found · ${game.backend ?? 'backend unknown'}`}
-          </span>
-
-          <label className="field">
-            <span className="field__label">Profile</span>
-            <select
-              value={currentId ?? ''}
-              onChange={(e) => setCurrentId(e.target.value)}
-              aria-label="Active profile"
-            >
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.mods.length})
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="button--ghost" onClick={() => void newProfile()}>New</button>
-
+          <ProfileControls
+            profiles={profiles}
+            current={current}
+            onSelect={setCurrentId}
+            onChanged={() => void refresh()}
+          />
           <select
             value={community}
             onChange={(e) => setCommunity(e.target.value)}
@@ -69,8 +60,13 @@ export function App() {
               <option key={c.slug} value={c.slug}>{c.label}</option>
             ))}
           </select>
+          <button className="button--ghost" onClick={() => void refreshCatalog()} disabled={refreshing}>
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
         </div>
       </header>
+
+      <GameBar profile={current} />
 
       <ModBrowser community={community} profile={current} onChanged={() => void refresh()} />
     </div>

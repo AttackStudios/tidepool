@@ -2,9 +2,9 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { GameInstall } from '../../shared/types'
+import { inspectGameFolder } from './gamefolder'
 
 export const SURF_SANDBOX_APP_ID = '4480760'
-export const SURF_SANDBOX_FOLDER = 'Surf Sandbox'
 
 /**
  * Pull library paths out of Steam's libraryfolders.vdf.
@@ -22,6 +22,18 @@ export function parseLibraryFolders(vdf: string): string[] {
     if (path) paths.push(path.replace(/\\\\/g, '\\'))
   }
   return paths
+}
+
+/**
+ * Read the folder name Steam installed an app into.
+ *
+ * This is why we parse the app manifest rather than guessing: the folder name
+ * is chosen by the developer and is not derivable from the store page. For an
+ * unreleased game a guess would simply be wrong.
+ */
+export function parseInstallDir(acf: string): string | null {
+  const match = /"installdir"\s+"([^"]+)"/.exec(acf)
+  return match?.[1] ?? null
 }
 
 /** Candidate Steam roots for the current platform. */
@@ -46,6 +58,7 @@ export function steamRoots(platform: NodeJS.Platform, home: string): string[] {
 export function findGameInstall(
   platform: NodeJS.Platform = process.platform,
   home: string = process.env.HOME ?? process.env.USERPROFILE ?? '',
+  appId: string = SURF_SANDBOX_APP_ID,
 ): GameInstall | null {
   for (const root of steamRoots(platform, home)) {
     const vdfPath = join(root, 'steamapps', 'libraryfolders.vdf')
@@ -59,26 +72,21 @@ export function findGameInstall(
     }
 
     for (const library of [root, ...libraries]) {
-      const candidate = join(library, 'steamapps', 'common', SURF_SANDBOX_FOLDER)
-      if (existsSync(candidate)) return { root: candidate, source: 'steam', backend: null }
+      const manifest = join(library, 'steamapps', `appmanifest_${appId}.acf`)
+      if (!existsSync(manifest)) continue
+
+      let installDir: string | null
+      try {
+        installDir = parseInstallDir(readFileSync(manifest, 'utf8'))
+      } catch {
+        continue
+      }
+      if (!installDir) continue
+
+      const candidate = join(library, 'steamapps', 'common', installDir)
+      const folder = inspectGameFolder(candidate)
+      if (folder) return { root: candidate, source: 'steam', backend: folder.backend }
     }
-  }
-  return null
-}
-
-/**
- * Determine the Unity scripting backend from what's on disk.
- *
- * This is the single most important thing to learn on release day: Mono
- * decompiles to readable C#, IL2CPP needs Il2CppDumper first.
- */
-export function detectBackend(gameRoot: string): 'mono' | 'il2cpp' | null {
-  if (existsSync(join(gameRoot, 'GameAssembly.dll'))) return 'il2cpp'
-
-  // The data folder name follows the executable name, which we don't know yet,
-  // so check the known candidates rather than hardcoding one.
-  for (const data of ['Surf Sandbox_Data', 'SurfSandbox_Data']) {
-    if (existsSync(join(gameRoot, data, 'Managed', 'Assembly-CSharp.dll'))) return 'mono'
   }
   return null
 }

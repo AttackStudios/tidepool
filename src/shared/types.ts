@@ -136,6 +136,17 @@ export interface GameInstall {
   source: 'steam' | 'manual'
   /** Unity scripting backend, once known. Null until the game ships. */
   backend: 'mono' | 'il2cpp' | null
+  /** Executable file name, derived from the `<Name>_Data` folder beside it. */
+  executable?: string | null
+  dataDir?: string | null
+}
+
+export interface LaunchInfo {
+  /** Steam launch options string for the user to paste. */
+  steam: string
+  /** Whether TidePool can start the game itself on this platform. */
+  canLaunch: boolean
+  profileDir: string
 }
 
 /** Outcome of resolving a set of requested mods against an index. */
@@ -161,3 +172,9 @@ export type Failure =
   | { ok: false; reason: 'error'; message: string }
 
 export type Result<T> = { ok: true; data: T } | Failure
+
+export interface Settings {
+  gamePath: string | null
+  community: string
+  lastProfileId: string | null
+}

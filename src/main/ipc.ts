@@ -1,18 +1,26 @@
 /** IPC surface exposed to the renderer. Keep this the only channel list. */
-import { ipcMain, shell } from 'electron'
-import { findGameInstall, detectBackend } from './services/steam'
+import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { findGameInstall } from './services/steam'
+import { inspectGameFolder } from './services/gamefolder'
+import { canLaunchDirectly, launchGame } from './services/launcher'
+import { SettingsStore } from './services/settings'
 import { CommunityNotFoundError, ThunderstoreUnavailableError } from './services/thunderstore'
 import { ProfileStore } from './services/profiles'
 import { buildLaunchPlan, steamLaunchOptions } from './services/launch'
 import { Catalog } from './services/catalog'
 import { Installer } from './services/installer'
-import type { BrowseQuery, Failure, InstallProgress } from '../shared/types'
+import type {
+  BrowseQuery,
+  Failure,
+  GameInstall,
+  InstallProgress,
+  Settings,
+} from '../shared/types'
 
 export const CHANNELS = {
   detectGame: 'game:detect',
   browse: 'catalog:browse',
   detail: 'catalog:detail',
-  stats: 'catalog:stats',
   refresh: 'catalog:refresh',
   resolveMods: 'mods:resolve',
   listProfiles: 'profiles:list',
@@ -23,6 +31,13 @@ export const CHANNELS = {
   install: 'mods:install',
   uninstall: 'mods:uninstall',
   installProgress: 'mods:install-progress',
+  pickGameFolder: 'game:pick',
+  clearGameFolder: 'game:clear',
+  renameProfile: 'profiles:rename',
+  duplicateProfile: 'profiles:duplicate',
+  launchGame: 'launch:start',
+  readSettings: 'settings:read',
+  writeSettings: 'settings:write',
 } as const
 
 /** Map thrown errors onto the discriminated union the UI switches on. */
@@ -42,25 +57,88 @@ async function attempt<T>(fn: () => Promise<T>) {
   }
 }
 
-export function registerIpc(profileRoot: string, cacheDir: string): void {
+export function registerIpc(profileRoot: string, cacheDir: string, settingsFile: string): void {
   const profiles = new ProfileStore(profileRoot)
   const catalog = new Catalog()
   const installer = new Installer(catalog, profiles, cacheDir)
+  const settings = new SettingsStore(settingsFile)
 
-  ipcMain.handle(CHANNELS.detectGame, () => {
-    const install = findGameInstall()
-    if (!install) return null
-    return { ...install, backend: detectBackend(install.root) }
+  /** Manual override wins, because it exists precisely for when detection is wrong. */
+  const resolveGame = (): GameInstall | null => {
+    const manual = settings.read().gamePath
+    if (manual) {
+      const folder = inspectGameFolder(manual)
+      if (folder) {
+        return {
+          root: folder.root, source: 'manual', backend: folder.backend,
+          executable: folder.executable, dataDir: folder.dataDir,
+        }
+      }
+    }
+    const found = findGameInstall()
+    if (!found) return null
+    const folder = inspectGameFolder(found.root)
+    return {
+      ...found,
+      backend: folder?.backend ?? null,
+      executable: folder?.executable ?? null,
+      dataDir: folder?.dataDir ?? null,
+    }
+  }
+
+  ipcMain.handle(CHANNELS.detectGame, () => resolveGame())
+
+  ipcMain.handle(CHANNELS.pickGameFolder, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const picked = await (win
+      ? dialog.showOpenDialog(win, { properties: ['openDirectory'] })
+      : dialog.showOpenDialog({ properties: ['openDirectory'] }))
+    const chosen = picked.filePaths[0]
+    if (picked.canceled || !chosen) return { ok: true as const, data: resolveGame() }
+
+    const folder = inspectGameFolder(chosen)
+    if (!folder) {
+      return {
+        ok: false as const,
+        reason: 'error' as const,
+        message:
+          "That folder doesn't look like a Unity game — it has no `<Name>_Data` folder inside. " +
+          'Pick the folder containing the game executable.',
+      }
+    }
+    settings.write({ gamePath: chosen })
+    return { ok: true as const, data: resolveGame() }
   })
+
+  ipcMain.handle(CHANNELS.clearGameFolder, () => {
+    settings.write({ gamePath: null })
+    return resolveGame()
+  })
+
+  ipcMain.handle(CHANNELS.readSettings, () => settings.read())
+  ipcMain.handle(CHANNELS.writeSettings, (_e, patch: Partial<Settings>) => settings.write(patch))
+
+  ipcMain.handle(CHANNELS.renameProfile, (_e, id: string, name: string) =>
+    profiles.rename(id, name),
+  )
+  ipcMain.handle(CHANNELS.duplicateProfile, (_e, id: string, name?: string) =>
+    profiles.duplicate(id, name),
+  )
+
+  ipcMain.handle(CHANNELS.launchGame, (_e, profileId: string) =>
+    attempt(async () => {
+      const game = resolveGame()
+      if (!game) throw new Error('No game folder set. Use "Locate game" to pick it.')
+      const plan = buildLaunchPlan(profiles.dir(profileId))
+      return launchGame(game.root, plan)
+    }),
+  )
 
   ipcMain.handle(CHANNELS.browse, (_e, query: BrowseQuery, community?: string) =>
     attempt(() => catalog.browse(query, community)),
   )
   ipcMain.handle(CHANNELS.detail, (_e, fullName: string, community?: string) =>
     attempt(() => catalog.detail(fullName, community)),
-  )
-  ipcMain.handle(CHANNELS.stats, (_e, community?: string) =>
-    attempt(() => catalog.stats(community)),
   )
   ipcMain.handle(CHANNELS.refresh, (_e, community?: string) =>
     attempt(() => catalog.load(community, true).then((s) => ({ packages: s.packages.length }))),
@@ -75,7 +153,11 @@ export function registerIpc(profileRoot: string, cacheDir: string): void {
 
   ipcMain.handle(CHANNELS.launchOptions, (_e, profileId: string) => {
     const plan = buildLaunchPlan(profiles.dir(profileId))
-    return { plan, steam: steamLaunchOptions(plan) }
+    return {
+      steam: steamLaunchOptions(plan),
+      canLaunch: canLaunchDirectly(),
+      profileDir: profiles.dir(profileId),
+    }
   })
 
   ipcMain.handle(

@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { CHANNELS } from './ipc'
-import type { BrowseQuery, InstallProgress } from '../shared/types'
+import type { BrowseQuery, InstallProgress, Settings } from '../shared/types'
 
 /**
  * The renderer gets this narrow API and nothing else — no node integration, no
@@ -13,7 +13,6 @@ const api = {
     ipcRenderer.invoke(CHANNELS.browse, query, community),
   detail: (fullName: string, community?: string) =>
     ipcRenderer.invoke(CHANNELS.detail, fullName, community),
-  stats: (community?: string) => ipcRenderer.invoke(CHANNELS.stats, community),
   refresh: (community?: string) => ipcRenderer.invoke(CHANNELS.refresh, community),
   resolveMods: (refs: string[], community?: string) =>
     ipcRenderer.invoke(CHANNELS.resolveMods, refs, community),
@@ -26,6 +25,14 @@ const api = {
     ipcRenderer.invoke(CHANNELS.install, profileId, refs, community),
   uninstall: (profileId: string, fullName: string) =>
     ipcRenderer.invoke(CHANNELS.uninstall, profileId, fullName),
+  pickGameFolder: () => ipcRenderer.invoke(CHANNELS.pickGameFolder),
+  clearGameFolder: () => ipcRenderer.invoke(CHANNELS.clearGameFolder),
+  renameProfile: (id: string, name: string) => ipcRenderer.invoke(CHANNELS.renameProfile, id, name),
+  duplicateProfile: (id: string, name?: string) =>
+    ipcRenderer.invoke(CHANNELS.duplicateProfile, id, name),
+  launchGame: (profileId: string) => ipcRenderer.invoke(CHANNELS.launchGame, profileId),
+  readSettings: () => ipcRenderer.invoke(CHANNELS.readSettings),
+  writeSettings: (patch: Partial<Settings>) => ipcRenderer.invoke(CHANNELS.writeSettings, patch),
   /** Subscribe to install progress. Returns an unsubscribe function. */
   onInstallProgress: (handler: (progress: InstallProgress) => void) => {
     const listener = (_e: unknown, progress: InstallProgress) => handler(progress)

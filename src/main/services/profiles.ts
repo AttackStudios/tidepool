@@ -6,7 +6,15 @@
  * game" safe, and it is why the launcher passes Doorstop a path rather than
  * copying files around.
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 import type { InstalledMod, Profile } from '../../shared/types'
 
@@ -72,6 +80,27 @@ export class ProfileStore {
       JSON.stringify(profile, null, 2),
       'utf8',
     )
+  }
+
+  rename(id: string, name: string): Profile | null {
+    const profile = this.read(id)
+    if (!profile) return null
+    // The id is the folder name and Doorstop is pointed at it, so renaming
+    // changes the label only — moving the folder would break a running game.
+    const updated = { ...profile, name }
+    this.write(updated)
+    return updated
+  }
+
+  /** Copy a profile's mod list and files into a new profile. */
+  duplicate(id: string, name?: string): Profile | null {
+    const source = this.read(id)
+    if (!source) return null
+    const copy = this.create(name ?? `${source.name} copy`)
+    cpSync(this.dir(id), this.dir(copy.id), { recursive: true })
+    const restored = { ...source, id: copy.id, name: copy.name }
+    this.write(restored)
+    return restored
   }
 
   delete(id: string): void {

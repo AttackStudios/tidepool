@@ -91,7 +91,11 @@ void app.whenReady().then(() => {
   })
   applyMacIdentity()
   buildMenu()
-  registerIpc(join(app.getPath('userData'), 'profiles'), join(app.getPath('userData'), 'cache'))
+  registerIpc(
+    join(app.getPath('userData'), 'profiles'),
+    join(app.getPath('userData'), 'cache'),
+    join(app.getPath('userData'), 'settings.json'),
+  )
   createWindow()
 
   app.on('activate', () => {
