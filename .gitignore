@@ -1,0 +1,33 @@
+# --- build output ---
+bin/
+obj/
+dist/
+build/
+out/
+*.user
+*.suo
+
+# --- node ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-store/
+
+# --- game / modding artifacts ---
+# never commit decompiled game code or copyrighted game assets
+decompiled/
+game/
+*.dll
+!lib/**/*.dll
+BepInEx/
+il2cpp_data/
+*.assets
+*.resS
+
+# --- os / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vs/
+.vscode/*
+!.vscode/extensions.json

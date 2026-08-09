@@ -1,0 +1,529 @@
+<title>WaterWay — Surf Sandbox Day One Modding Plan</title>
+<style>
+:root{
+  --ground:#EEF3F4; --surface:#FFFFFF; --surface-2:#E3EBED; --surface-3:#D8E4E7;
+  --ink:#0B2028; --ink-2:#4A6570; --ink-3:#7E959D;
+  --rule:#CBD9DD; --rule-2:#B4C8CE;
+  --accent:#067A8A; --accent-2:#0FB0C4; --accent-soft:#DCEFF2;
+  --signal:#C24A22; --signal-soft:#F8E4DC;
+  --ok:#2E7A5B; --warn:#A96B10; --crit:#B33A2B;
+  --shadow:0 1px 2px rgba(11,32,40,.06), 0 8px 24px -12px rgba(11,32,40,.18);
+  --display:"Avenir Next","Avenir","Segoe UI",system-ui,sans-serif;
+  --body:"Charter","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#07171D; --surface:#0D2129; --surface-2:#132D36; --surface-3:#1A3A45;
+    --ink:#E4EFF1; --ink-2:#9DB4BC; --ink-3:#6B858E;
+    --rule:#1E3B45; --rule-2:#2A4E5A;
+    --accent:#35C6D8; --accent-2:#6FE0EC; --accent-soft:#10333C;
+    --signal:#F2764A; --signal-soft:#33190F;
+    --ok:#4FBF8B; --warn:#DFA043; --crit:#E8705E;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#07171D; --surface:#0D2129; --surface-2:#132D36; --surface-3:#1A3A45;
+  --ink:#E4EFF1; --ink-2:#9DB4BC; --ink-3:#6B858E;
+  --rule:#1E3B45; --rule-2:#2A4E5A;
+  --accent:#35C6D8; --accent-2:#6FE0EC; --accent-soft:#10333C;
+  --signal:#F2764A; --signal-soft:#33190F;
+  --ok:#4FBF8B; --warn:#DFA043; --crit:#E8705E;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:var(--body); font-size:17px; line-height:1.62;
+  -webkit-font-smoothing:antialiased; margin:0;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:0 28px 120px}
+
+/* ---------- header ---------- */
+.masthead{padding:56px 0 0; position:relative}
+.eyebrow{
+  font-family:var(--mono); font-size:.7rem; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--accent); display:flex; gap:14px; align-items:center; flex-wrap:wrap;
+}
+.eyebrow::after{content:""; flex:1; height:1px; background:var(--rule); min-width:20px}
+h1{
+  font-family:var(--display); font-weight:800; letter-spacing:-.028em; text-wrap:balance;
+  font-size:clamp(2.3rem,6vw,3.5rem); line-height:1.03; margin:18px 0 0;
+}
+.dek{
+  font-size:1.12rem; color:var(--ink-2); max-width:62ch; margin:16px 0 0; text-wrap:pretty;
+}
+#swell{display:block; width:100%; height:60px; margin:26px 0 0; opacity:.9}
+
+/* ---------- buoy strip ---------- */
+.buoy{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:1px; background:var(--rule); border:1px solid var(--rule);
+  border-radius:3px; overflow:hidden; margin:6px 0 0;
+}
+.buoy div{background:var(--surface); padding:13px 16px; display:flex; flex-direction:column; gap:3px}
+.buoy dt{font-family:var(--mono); font-size:.65rem; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3)}
+.buoy dd{margin:0; font-family:var(--display); font-weight:600; font-size:1.02rem; letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums}
+.buoy .hot{color:var(--signal)}
+
+/* ---------- generic sections ---------- */
+section{margin:64px 0 0}
+h2{
+  font-family:var(--display); font-weight:800; letter-spacing:-.022em;
+  font-size:1.85rem; line-height:1.14; margin:0 0 6px; text-wrap:balance;
+}
+h3{font-family:var(--display); font-weight:700; font-size:1.12rem; letter-spacing:-.01em; margin:30px 0 8px}
+.sub{color:var(--ink-2); font-size:1.02rem; margin:0 0 22px; max-width:66ch}
+p{margin:0 0 15px; max-width:68ch; text-wrap:pretty}
+a{color:var(--accent); text-underline-offset:2px; text-decoration-thickness:1px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent-2); outline-offset:3px; border-radius:2px}
+strong{font-weight:600; color:var(--ink)}
+code{font-family:var(--mono); font-size:.86em; background:var(--surface-2); padding:.1em .38em;
+  border-radius:3px; color:var(--ink)}
+
+/* ---------- thesis callout ---------- */
+.thesis{
+  background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--signal);
+  border-radius:3px; padding:24px 26px; box-shadow:var(--shadow); margin:0 0 8px;
+}
+.thesis .tag{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--signal); display:block; margin:0 0 9px;
+}
+.thesis p:last-child{margin-bottom:0}
+
+/* ---------- tide-rail timeline ---------- */
+.rail{border-left:1px solid var(--rule-2); margin:26px 0 0; padding:0 0 0 30px; position:relative}
+.phase{position:relative; padding:0 0 40px}
+.phase:last-child{padding-bottom:0}
+.phase::before{
+  content:""; position:absolute; left:-35px; top:7px; width:11px; height:11px; border-radius:50%;
+  background:var(--ground); border:2px solid var(--accent);
+}
+.phase.now::before{background:var(--accent); box-shadow:0 0 0 4px var(--accent-soft)}
+.phase.launch::before{background:var(--signal); border-color:var(--signal); box-shadow:0 0 0 4px var(--signal-soft)}
+.when{
+  font-family:var(--mono); font-size:.7rem; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--ink-3); display:block; margin:0 0 4px;
+}
+.phase.launch .when{color:var(--signal)}
+.phase h3{margin:0 0 6px; font-size:1.3rem}
+
+/* ---------- checklists ---------- */
+ul.check{list-style:none; padding:0; margin:14px 0 0; display:flex; flex-direction:column; gap:9px}
+ul.check li{
+  position:relative; padding-left:26px; max-width:66ch; font-size:.98rem;
+}
+ul.check li::before{
+  content:""; position:absolute; left:0; top:.46em; width:11px; height:11px;
+  border:1px solid var(--rule-2); border-radius:2px; background:var(--surface);
+}
+ul.check li .lab{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--accent); margin-right:7px;
+}
+ul.plain{padding-left:20px; margin:12px 0 0; display:flex; flex-direction:column; gap:8px}
+ul.plain li{max-width:64ch; font-size:.98rem}
+
+/* ---------- hour cards ---------- */
+.hours{display:flex; flex-direction:column; gap:1px; background:var(--rule);
+  border:1px solid var(--rule); border-radius:3px; overflow:hidden; margin:18px 0 0}
+.hour{background:var(--surface); padding:16px 20px; display:grid;
+  grid-template-columns:78px 1fr; gap:18px; align-items:start}
+.hour .t{font-family:var(--mono); font-size:.74rem; letter-spacing:.06em; color:var(--accent);
+  font-variant-numeric:tabular-nums; padding-top:2px}
+.hour .b strong{display:block; font-family:var(--display); font-weight:700; font-size:1rem; margin:0 0 3px}
+.hour .b p{margin:0; font-size:.94rem; color:var(--ink-2); max-width:60ch}
+
+/* ---------- table ---------- */
+.tablewrap{overflow-x:auto; margin:20px 0 0; border:1px solid var(--rule);
+  border-radius:3px; background:var(--surface)}
+table{border-collapse:collapse; width:100%; min-width:660px; font-size:.92rem}
+th,td{text-align:left; padding:12px 16px; border-bottom:1px solid var(--rule); vertical-align:top}
+thead th{
+  font-family:var(--mono); font-size:.64rem; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--ink-3); font-weight:400; background:var(--surface-2); white-space:nowrap;
+}
+tbody tr:last-child td{border-bottom:none}
+td strong{font-family:var(--display); font-weight:700}
+td .note{display:block; color:var(--ink-2); font-size:.86rem; margin-top:2px; max-width:34ch}
+.pill{
+  display:inline-block; font-family:var(--mono); font-size:.63rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:3px 8px; border-radius:2px; white-space:nowrap;
+}
+.p-open{background:var(--accent-soft); color:var(--accent)}
+.p-gate{background:var(--signal-soft); color:var(--signal)}
+.p-later{background:var(--surface-3); color:var(--ink-2)}
+.rank{font-family:var(--mono); font-size:.78rem; color:var(--ink-3); font-variant-numeric:tabular-nums}
+
+/* ---------- decision fork ---------- */
+.fork{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin:20px 0 0}
+.branch{background:var(--surface); border:1px solid var(--rule); border-radius:3px;
+  padding:20px 22px; box-shadow:var(--shadow)}
+.branch .k{font-family:var(--mono); font-size:.66rem; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--ink-3); display:block; margin:0 0 8px}
+.branch h4{font-family:var(--display); font-weight:800; font-size:1.15rem; margin:0 0 4px; letter-spacing:-.015em}
+.branch .verdict{font-family:var(--mono); font-size:.72rem; letter-spacing:.08em; margin:0 0 10px}
+.branch.easy .verdict{color:var(--ok)}
+.branch.hard .verdict{color:var(--warn)}
+.branch.pick .verdict{color:var(--accent)}
+.branch.pick{border-color:var(--accent); border-width:1px; box-shadow:0 0 0 1px var(--accent), var(--shadow)}
+.branch.meh .verdict{color:var(--ink-3)}
+.branch p{font-size:.94rem; color:var(--ink-2); margin:0}
+
+/* ---------- risk rows ---------- */
+.risks{display:flex; flex-direction:column; gap:1px; background:var(--rule);
+  border:1px solid var(--rule); border-radius:3px; overflow:hidden; margin:20px 0 0}
+.risk{background:var(--surface); padding:15px 20px; display:grid;
+  grid-template-columns:88px 1fr; gap:18px; align-items:start}
+.risk .sev{font-family:var(--mono); font-size:.63rem; letter-spacing:.11em; text-transform:uppercase; padding-top:3px}
+.risk.hi .sev{color:var(--crit)} .risk.md .sev{color:var(--warn)} .risk.lo .sev{color:var(--ok)}
+.risk .b strong{display:block; font-family:var(--display); font-weight:700; font-size:.98rem; margin:0 0 3px}
+.risk .b p{margin:0; font-size:.92rem; color:var(--ink-2); max-width:62ch}
+
+footer{margin:72px 0 0; padding:24px 0 0; border-top:1px solid var(--rule);
+  font-family:var(--mono); font-size:.72rem; color:var(--ink-3); letter-spacing:.04em}
+
+@media (max-width:640px){
+  body{font-size:16px}
+  .wrap{padding:0 18px 80px}
+  .hour,.risk{grid-template-columns:1fr; gap:6px}
+  .rail{padding-left:22px}
+  .phase::before{left:-27px}
+}
+@media (prefers-reduced-motion:reduce){#swell{display:none}}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">WaterWay Mod Manager &nbsp;/&nbsp; Surf Sandbox &nbsp;/&nbsp; nocanwin</div>
+  <h1>Day One Modding Plan</h1>
+  <p class="dek">Ship <strong>WaterWay</strong> — the first mod loader pack, mod manager and mod for
+  Surf Sandbox — inside 24 hours of release, then build multiplayer on top of it.</p>
+  <canvas id="swell" aria-hidden="true"></canvas>
+  <dl class="buoy">
+    <div><dt>Release</dt><dd class="hot">Aug 25, 2026</dd></div>
+    <div><dt>Runway</dt><dd>17 days</dd></div>
+    <div><dt>Engine</dt><dd>Unity</dd></div>
+    <div><dt>Backend</dt><dd>Unknown</dd></div>
+    <div><dt>Platform</dt><dd class="hot">Windows only</dd></div>
+    <div><dt>Anti-cheat</dt><dd>None listed</dd></div>
+    <div><dt>Level editor</dt><dd>Ships with</dd></div>
+  </dl>
+</header>
+
+<section>
+  <h2>The constraint that shapes everything</h2>
+  <div class="thesis">
+    <span class="tag">Verified — this inverts the obvious plan</span>
+    <p>Both major mod platforms refuse to create a game page in advance. <strong>Thunderstore</strong> requires
+    "pre-existing mod developer interest" and mods "ready for immediate upload," requested by hand in their
+    Discord <code>#game-requests</code> channel. <strong>Nexus Mods</strong> only approves a new game entry
+    when you already have ready mods attached to the request.</p>
+    <p>So there is no spot to reserve. Whoever shows up first <em>with a working mod in hand</em> founds the
+    community and becomes its default. That makes day 1 a race decided by how fast a working artifact exists —
+    and it means the 17 days before release should be spent building everything that doesn't need the binary,
+    so that on Aug 25 you are only filling in the game-specific gaps.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Phases</h2>
+  <p class="sub">The work is genuinely sequential and date-anchored, so it's laid out on a timeline.</p>
+
+  <div class="rail">
+
+    <article class="phase now">
+      <span class="when">Now → Aug 24 &nbsp;·&nbsp; 17 days &nbsp;·&nbsp; build blind</span>
+      <h3>Everything that doesn't need the binary</h3>
+      <p>Roughly 80% of a mod manager is game-agnostic: profiles, install/uninstall, a package index client,
+      and launching the game with the right injector arguments. None of that needs Surf Sandbox to exist.</p>
+      <ul class="check">
+        <li><span class="lab">Name</span>Pick and claim the brand across GitHub org, Discord, and a Thunderstore team name. One name everywhere.</li>
+        <li><span class="lab">Repo</span>Public GitHub repo with README, license, CI that builds and attaches release artifacts on tag.</li>
+        <li><span class="lab">Manager</span>Build the manager shell: mod folder layout, per-mod manifest, dependency resolution, profile switching, one-click launch with Doorstop args.</li>
+        <li><span class="lab">Index</span>Thunderstore API client — package listing, version resolution, download and unpack. Works against any community, so it's testable today against an existing game.</li>
+        <li><span class="lab">Template</span>A BepInEx plugin template project that compiles, so day 1 is edit-and-build rather than scaffold-from-scratch.</li>
+        <li><span class="lab">Copy</span>Draft the Steam guide, the GameBanana page, the Thunderstore request post, and the README — written and waiting, so publishing is a paste.</li>
+        <li><span class="lab">Contact</span>Message nocanwin. Ask whether mod hooks or an official API are planned. A yes could delete the entire reverse-engineering phase.</li>
+      </ul>
+    </article>
+
+    <article class="phase launch">
+      <span class="when">Aug 25 &nbsp;·&nbsp; launch day &nbsp;·&nbsp; the race</span>
+      <h3>Triage, patch, publish</h3>
+      <p>The whole day hinges on one question answered in the first five minutes, so it comes first.</p>
+
+      <div class="fork">
+        <div class="branch easy">
+          <span class="k">If you find</span>
+          <h4><code>Assembly-CSharp.dll</code></h4>
+          <p class="verdict">MONO — writing patches same day</p>
+          <p>In <code>SurfSandbox_Data/Managed/</code>. Decompiles to readable C# in dnSpy or ILSpy with real
+          method and field names. Drop in BepInEx and you're patching within the hour.</p>
+        </div>
+        <div class="branch hard">
+          <span class="k">If you find</span>
+          <h4><code>GameAssembly.dll</code></h4>
+          <p class="verdict">IL2CPP — add ~1 day of scaffolding</p>
+          <p>Alongside <code>il2cpp_data/</code>. AOT-compiled to native; needs Il2CppDumper or Cpp2IL to
+          recover metadata, then BepInEx 6 with Il2CppInterop. Still very much doable.</p>
+        </div>
+      </div>
+
+      <div class="hours">
+        <div class="hour"><div class="t">H+0:00</div><div class="b"><strong>Install and triage</strong>
+          <p>Buy, install, verify files. Check the Managed folder to settle Mono vs IL2CPP. Note the Unity version from <code>globalgamemanagers</code>. Confirm whether Steamworks assemblies are present — that decides the multiplayer transport later.</p></div></div>
+        <div class="hour"><div class="t">H+0:30</div><div class="b"><strong>Loader in</strong>
+          <p>Install BepInEx for the matching backend and architecture. Confirm it injects and writes a log. This alone is the artifact half the community will need first.</p></div></div>
+        <div class="hour"><div class="t">H+1:00</div><div class="b"><strong>Decompile and map</strong>
+          <p>Find the two classes that matter: the wave/water simulation and how its state is stored, and the surfer controller. Everything downstream — mods and multiplayer both — is decided by what those look like.</p></div></div>
+        <div class="hour"><div class="t">H+3:00</div><div class="b"><strong>Proof-of-life mod</strong>
+          <p>Smallest real Harmony patch that visibly changes the game — a debug HUD reading wave height and surfer velocity. It proves the toolchain end to end and doubles as the reference example for other modders.</p></div></div>
+        <div class="hour"><div class="t">H+5:00</div><div class="b"><strong>Ship v0.1.0</strong>
+          <p>Tag the release. GitHub release with the manager binary, the loader pack, and the example mod. This is the moment you are objectively first.</p></div></div>
+        <div class="hour"><div class="t">H+5:30</div><div class="b"><strong>Plant every flag</strong>
+          <p>Publish to the ungated platforms immediately, then file the gated requests with the working mod attached. Order matters — see the distribution table below.</p></div></div>
+        <div class="hour"><div class="t">H+8:00</div><div class="b"><strong>Be present</strong>
+          <p>Post the Steam guide, answer every question in the discussions and the Discord. Day-1 goodwill is what makes yours the default manager instead of a footnote.</p></div></div>
+      </div>
+    </article>
+
+    <article class="phase">
+      <span class="when">Aug 26 → Sep 1 &nbsp;·&nbsp; week one</span>
+      <h3>Consolidate before anyone else arrives</h3>
+      <ul class="check">
+        <li><span class="lab">Docs</span>Write the modding guide — the thing that recruits the second, third and fourth modder into <em>your</em> ecosystem.</li>
+        <li><span class="lab">API</span>Extract the common patch points into a shared library so other mods depend on yours rather than reinventing hooks.</li>
+        <li><span class="lab">Levels</span>Build the break/level browser. The game ships a level editor, so custom breaks are the obvious content economy and no generic manager understands that format.</li>
+        <li><span class="lab">Follow-up</span>Chase the Thunderstore and Nexus requests. Approvals are human and can stall; polite persistence wins them.</li>
+      </ul>
+    </article>
+
+    <article class="phase">
+      <span class="when">Sep &nbsp;·&nbsp; weeks 2–4</span>
+      <h3>Multiplayer</h3>
+      <p>The genuinely hard piece, made tractable by this game specifically. A 2.5D surf sim with editable
+      ocean-bottom contours almost certainly stores its wave as a heightfield array over a bathymetry profile —
+      hundreds of floats, not a 3D FFT ocean or a particle fluid.</p>
+      <p>That means you can <strong>broadcast the entire water state from the host at ~20Hz</strong> and skip
+      cross-machine float determinism altogether — no lockstep, no rollback. Host runs the only real sim;
+      clients render it and simulate their own surfer locally, sending transforms up. Transport over Steam P2P
+      lobbies if Steamworks is present, giving NAT traversal and friend invites with no port forwarding.</p>
+      <ul class="check">
+        <li><span class="lab">1</span>Confirm the water state shape and size in the decompiled sim. This validates or kills the whole approach — do it first.</li>
+        <li><span class="lab">2</span>Two-client transform sync with interpolation. Ghost surfers in a shared lineup.</li>
+        <li><span class="lab">3</span>Host-authoritative water broadcast plus level hash check so everyone rides the same break.</li>
+        <li><span class="lab">4</span>Lobby UI, invites, and manager integration that auto-syncs the host's mod set.</li>
+      </ul>
+    </article>
+
+  </div>
+</section>
+
+<section>
+  <h2>Where to publish</h2>
+  <p class="sub">Ordered by how fast you can actually be first there. The ungated platforms are where you win
+  the "first" claim on day 1; the gated ones are where the audience lives long-term.</p>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>Order</th><th>Platform</th><th>Gate</th><th>What it needs</th><th>Why it matters</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="rank">1</td>
+          <td><strong>GitHub Releases</strong><span class="note">Canonical home for the manager and loader pack</span></td>
+          <td><span class="pill p-open">Instant</span></td>
+          <td>Nothing. Push and tag.</td>
+          <td>Zero gatekeeper, so this is where "first" is timestamped and provable. Also the only sane place to host a mod manager binary.</td>
+        </tr>
+        <tr>
+          <td class="rank">2</td>
+          <td><strong>Steam guide + discussions</strong><span class="note">On the game's own hub</span></td>
+          <td><span class="pill p-open">Instant</span></td>
+          <td>Owning the game.</td>
+          <td>Where 100% of day-1 players actually are. A pinned-worthy "How to mod Surf Sandbox" guide is the single highest-leverage post you can make.</td>
+        </tr>
+        <tr>
+          <td class="rank">3</td>
+          <td><strong>GameBanana</strong><span class="note">Fast, permissive, adds new games readily</span></td>
+          <td><span class="pill p-open">Hours</span></td>
+          <td>A submission; new games accepted with low friction.</td>
+          <td>The fastest of the real mod sites to carry a brand-new game. Good flag-planting while the gated requests are pending.</td>
+        </tr>
+        <tr>
+          <td class="rank">4</td>
+          <td><strong>Thunderstore</strong><span class="note">Feeds r2modman and Gale</span></td>
+          <td><span class="pill p-gate">Manual review</span></td>
+          <td>Request in their Discord <code>#game-requests</code>, following the post guidelines. Needs demonstrated modder interest and mods ready to upload.</td>
+          <td>The centre of gravity for BepInEx-era Unity modding. Founding this community is the single biggest prize on the list.</td>
+        </tr>
+        <tr>
+          <td class="rank">5</td>
+          <td><strong>Nexus Mods</strong><span class="note">Largest general audience</span></td>
+          <td><span class="pill p-gate">Manual review</span></td>
+          <td>Start a mod upload, hit "Add new game," submit. Only approved once you have ready mods for it.</td>
+          <td>Biggest reach by far. Writing a Nexus app/Vortex game extension is also a literal way to be first-party manager support.</td>
+        </tr>
+        <tr>
+          <td class="rank">6</td>
+          <td><strong>Your own Discord</strong><span class="note">Plus the dev's, if one exists</span></td>
+          <td><span class="pill p-open">Instant</span></td>
+          <td>Nothing.</td>
+          <td>Where the second and third modders get recruited. A modding scene forms in chat, not on a download page.</td>
+        </tr>
+        <tr>
+          <td class="rank">7</td>
+          <td><strong>ModDB</strong><span class="note">Long tail, total conversions</span></td>
+          <td><span class="pill p-later">Days</span></td>
+          <td>Game entry submission.</td>
+          <td>Low urgency, worth claiming eventually for search visibility.</td>
+        </tr>
+        <tr>
+          <td class="rank">8</td>
+          <td><strong>Steam Workshop</strong><span class="note">Levels only, if enabled</span></td>
+          <td><span class="pill p-later">Dev's call</span></td>
+          <td>nocanwin has to enable it.</td>
+          <td>Can't host code mods, but given the built-in level editor there's a real chance it appears for custom breaks. Worth watching, not planning around.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Running it on an Apple Silicon Mac</h2>
+  <p class="sub">Surf Sandbox ships Windows-only — the Steam page lists no macOS or Linux build, just
+  Windows 10 64-bit and DirectX 11. On an M1 there is no Boot Camp. This is the single biggest logistical
+  constraint on the plan, and it splits the work cleanly in two.</p>
+
+  <div class="thesis">
+    <span class="tag">The split that makes this workable</span>
+    <p><strong>Everything you build runs natively on the Mac.</strong> The .NET SDK is native on arm64, and a
+    compiled mod is just a DLL — platform-independent. Decompiling is native too: Rider ships an Apple Silicon
+    build with a built-in decompiler, and <code>ilspycmd</code> installs as a dotnet global tool. Il2CppDumper
+    and Cpp2IL are .NET and cross-platform. dnSpy is the only Windows-only tool in the chain, and you don't
+    need it.</p>
+    <p><strong>Only running and testing the game needs Windows.</strong> That's the gap to fill — and it's
+    smaller than it first looks, because day-1 triage is all file reading, not gameplay.</p>
+  </div>
+
+  <h3>You can start before you have Windows at all</h3>
+  <p>Steam on macOS won't install a Windows-only title, but SteamCMD will happily pull the Windows depot onto
+  the Mac if you force the platform type:</p>
+  <p><code>steamcmd +@sSteamCmdForcePlatformType windows +login &lt;user&gt; +app_update 4480760 validate +quit</code></p>
+  <p>That puts the real game files on disk natively. The Mono-vs-IL2CPP check, the decompile, and mapping the
+  water sim and surfer controller are all just reading those files — so the first three hours of launch day can
+  happen on the Mac at full speed, with no compatibility layer involved. Windows is only needed once there's a
+  patch to actually run.</p>
+
+  <h3>Four ways to get a Windows environment</h3>
+  <div class="fork">
+    <div class="branch pick">
+      <span class="k">Best for the full roadmap</span>
+      <h4>A cheap Windows PC</h4>
+      <p class="verdict">~$150–300 used mini PC</p>
+      <p>Sounds like overkill until you remember the roadmap ends in multiplayer — which needs two game
+      instances on two machines to test at all. A second box isn't overhead here, it's a requirement you were
+      always going to hit. It also gives you a true target environment for the manager.</p>
+    </div>
+    <div class="branch pick">
+      <span class="k">Best single purchase</span>
+      <h4>Parallels Desktop</h4>
+      <p class="verdict">Windows 11 ARM VM</p>
+      <p>The game asks for 4 GB RAM, a GTX 1050 and 1 GB of disk — trivially within what Parallels handles. You
+      get real Windows, so you can test the manager's installer, path handling and launch arguments exactly as
+      your users will experience them. Wine will quietly lie to you about all three.</p>
+    </div>
+    <div class="branch hard">
+      <span class="k">Cheapest that works</span>
+      <h4>CrossOver</h4>
+      <p class="verdict">~$74 · Whisky is dead</p>
+      <p>Whisky was discontinued in April 2025 and its own developer pointed users at CrossOver. CrossOver 26
+      handles far heavier games than this one. Fine for the decompile-and-patch loop; weaker as a place to
+      validate a Windows distributable.</p>
+    </div>
+    <div class="branch meh">
+      <span class="k">Free option</span>
+      <h4>Sikarugir</h4>
+      <p class="verdict">Free · formerly Kegworks</p>
+      <p>Renamed and modernised in October 2025, with D3DMetal, DXVK and DXMT backend toggles. Worth trying
+      first precisely because it costs nothing — if the game runs, you've saved the CrossOver licence.</p>
+    </div>
+  </div>
+
+  <h3>The one gotcha under Wine or CrossOver</h3>
+  <p>BepInEx will silently fail to start under any Wine-based layer unless you tell it to. BepInEx works by
+  having the game load a local <code>winhttp.dll</code> from its own folder, and Wine prefers its system DLL
+  instead. The fix is a DLL override — <code>WINEDLLOVERRIDES="winhttp.dll=n,b"</code> in the launch options,
+  or adding <code>winhttp</code> under the Libraries tab in <code>winecfg</code>. BepInEx documents this
+  officially, so it's a supported path rather than a hack. Note that there are open reports of friction with
+  the newest Wine and Proton builds, so budget an hour for this and don't discover it at hour zero on launch
+  day. A VM sidesteps the issue entirely.</p>
+</section>
+
+<section>
+  <h2>What could go wrong</h2>
+  <div class="risks">
+    <div class="risk hi"><div class="sev">High</div><div class="b"><strong>Early-development churn breaks patches</strong>
+      <p>The store page says features may change. Patches matching on IL offsets or field ordering will break with every update. Match on method signatures, pin a known-good game version, and version-gate the loader so a mismatch fails loudly instead of corrupting a save.</p></div></div>
+    <div class="risk md"><div class="sev">Medium</div><div class="b"><strong>Water isn't a simple heightfield</strong>
+      <p>If the sim turns out to be particle-based, host-authoritative broadcast gets expensive and the multiplayer plan needs rework. This is why mapping the water class is step one of both day 1 and the multiplayer phase — it's cheap to check and it invalidates a lot if wrong.</p></div></div>
+    <div class="risk md"><div class="sev">Medium</div><div class="b"><strong>Gated platforms stall</strong>
+      <p>Thunderstore and Nexus approvals are human-paced and may take days regardless of how ready you are. Mitigated by the ordering above: GitHub, Steam and GameBanana establish you publicly while the requests sit in a queue.</p></div></div>
+    <div class="risk md"><div class="sev">Medium</div><div class="b"><strong>Mac-only dev setup slows the day-1 loop</strong>
+      <p>The game is Windows-only and you're on an M1. Decompiling and building are native and fast, but every test run crosses a compatibility layer or a VM. Sort the Windows environment out during the prep phase, not on launch morning.</p></div></div>
+    <div class="risk lo"><div class="sev">Low</div><div class="b"><strong>Legal or EULA restrictions</strong>
+      <p>No DRM, no anti-cheat, and a ships-with-level-editor design all point to a mod-friendly stance. Still read the EULA on release day before publishing anything.</p></div></div>
+    <div class="risk lo"><div class="sev">Low</div><div class="b"><strong>Someone else gets there first</strong>
+      <p>It's a small pixel-art indie surf sim, not a viral phenomenon — the field is likely empty. The prep phase is what makes this near-certain rather than merely likely.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>The one thing I can't do</h2>
+  <p>I can't buy the game or log into Steam — that needs your account. Once the files are on disk (via SteamCMD
+  with the forced Windows platform type, or a Windows install), the triage, decompile, patching and publishing
+  are all things I can drive natively on the Mac.</p>
+  <p>Between now and then, none of the prep work is blocked. The manager, the repo, the plugin template and the
+  draft copy can all be built starting today.</p>
+</section>
+
+<footer>Plan drafted Aug 8, 2026 &nbsp;·&nbsp; T‑minus 17 days &nbsp;·&nbsp; Surf Sandbox releases Aug 25, 2026</footer>
+
+</div>
+
+<script>
+(function(){
+  var c=document.getElementById('swell');
+  if(!c||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+  var x=c.getContext('2d'),t=0,w=0,h=0;
+  function size(){
+    var r=window.devicePixelRatio||1;
+    w=c.clientWidth;h=60;c.width=w*r;c.height=h*r;x.setTransform(r,0,0,r,0,0);
+  }
+  function ink(){
+    return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#067A8A';
+  }
+  function frame(){
+    x.clearRect(0,0,w,h);
+    var col=ink();
+    for(var L=0;L<3;L++){
+      x.beginPath();
+      var amp=7-L*1.8, sp=0.011+L*0.004, ph=t*(0.9+L*0.35)+L*2.1, base=h*0.55+L*5;
+      for(var i=0;i<=w;i+=3){
+        var y=base+Math.sin(i*sp+ph)*amp+Math.sin(i*sp*2.3+ph*1.5)*amp*0.35;
+        i?x.lineTo(i,y):x.moveTo(i,y);
+      }
+      x.globalAlpha=0.5-L*0.14;x.strokeStyle=col;x.lineWidth=1.3;x.stroke();
+    }
+    x.globalAlpha=1;t+=0.014;requestAnimationFrame(frame);
+  }
+  size();window.addEventListener('resize',size);frame();
+})();
+</script>
