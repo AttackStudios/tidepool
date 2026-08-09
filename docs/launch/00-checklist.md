@@ -6,7 +6,11 @@ Everything in this folder is pre-written so launch day is paste-and-publish. Pla
 ## Before the day
 
 - [ ] `gh auth refresh -s workflow`, then commit `.github/workflows/build.yml` (currently untracked)
-- [ ] Decide on code signing — unsigned builds trip SmartScreen and Gatekeeper
+- [x] ~~Decide on code signing~~ — **decided: ship unsigned on day one.** Microsoft removed EV's
+      instant SmartScreen bypass, so any new certificate starts with zero reputation and earns it
+      through clean download volume. Signing on 25 Aug would cost money and still show the warning.
+      The Steam guide documents the *More info → Run anyway* path. Get a certificate after launch so
+      reputation starts building — see `code-signing.md`.
 - [ ] Flip the repo public: `gh repo edit AttackStudios/tidepool --visibility public --accept-visibility-change-consequences`
 - [ ] Message nocanwin about mod support. A planned modding API would delete most of the day.
 
