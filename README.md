@@ -44,19 +44,54 @@ Thunderstore and Nexus Mods both refuse to create a page for a game until you al
 ready-to-upload mods. There is no spot to reserve in advance — whoever arrives first *with a working
 mod in hand* founds the community. That makes the pre-release prep in this repo the whole ballgame.
 
-## Repo layout
+## Stack
+
+Electron + TypeScript + React, matching r2modman (the dominant Thunderstore manager, also
+Electron/TypeScript). Development happens on macOS; the Windows build is produced on a
+`windows-latest` CI runner, so nothing is ever cross-compiled.
 
 ```
-docs/         plan, runbook, and modding documentation
+src/shared/      types + dependency resolution (pure, fully tested)
+src/main/        Electron main process
+  services/      thunderstore, steam, profiles, install, launch
+src/renderer/    React UI
+docs/            plan, runbook, Discord docs
 ```
 
-Further directories get added once the stack is chosen — see below.
+## Development
+
+```sh
+npm install
+npm test          # 43 unit tests, no network required
+npm run typecheck
+npm start         # build + launch Electron
+npm run dist:win  # Windows build (CI does this on a Windows runner)
+```
+
+### What already works without the game
+
+The whole dependency and packaging layer is game-agnostic and testable today:
+
+- **Dependency resolution** — parses `Owner-Name-1.2.3` refs (including names containing hyphens),
+  produces an install order with dependencies first, and reports missing packages and version
+  conflicts. Verified against the live Thunderstore API on a real 3-deep dependency chain.
+- **Thunderstore client** — Thunderstore answers an unknown community with **503, not 404**, so an
+  unknown slug is indistinguishable from an outage on one request. The client probes a known-good
+  community to tell "surf-sandbox doesn't exist yet" from "Thunderstore is down".
+- **Profiles** — each profile owns its own BepInEx tree, so switching never touches the game install.
+- **Launch plan** — Doorstop 3 and Doorstop 4 use *different* flag names (`--doorstop-enable` vs
+  `--doorstop-enabled`, `--doorstop-target` vs `--doorstop-target-assembly`); the wrong pair fails
+  silently by launching unmodded.
+- **Package layout normalisation** — Thunderstore zips are inconsistent, some carrying a `BepInEx/`
+  tree and some just loose DLLs. Both are normalised into the profile's plugin folder.
+
+### What needs the game
+
+Backend detection (Mono vs IL2CPP), the actual BepInEx pack, and anything touching Surf Sandbox's
+own level format.
 
 ## Open decisions
 
-- **Manager stack.** Not yet chosen. C#/.NET keeps one toolchain across mods and manager and matches
-  the BepInEx ecosystem; a web stack (Tauri/Electron) trades that for faster UI work. Deliberately
-  left open rather than guessed at.
 - **Licence.** MIT for now, as is conventional for BepInEx-adjacent tooling. Easy to change while the
   repo is young.
 
