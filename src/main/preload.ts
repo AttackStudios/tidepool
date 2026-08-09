@@ -8,6 +8,8 @@ import type { BrowseQuery, InstallProgress, Settings } from '../shared/types'
  * folder, so the UI layer should never hold that power directly.
  */
 const api = {
+  /** Renderer needs this to reserve room for the macOS window buttons. */
+  platform: process.platform,
   detectGame: () => ipcRenderer.invoke(CHANNELS.detectGame),
   browse: (query: BrowseQuery, community?: string) =>
     ipcRenderer.invoke(CHANNELS.browse, query, community),

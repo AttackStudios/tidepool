@@ -26,6 +26,11 @@ function createWindow(): void {
     backgroundColor: '#07171d',
     icon: process.platform === 'linux' ? resource('build', 'icon.png') : undefined,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    // Nudges the traffic lights down so they sit centred in the title strip
+    // rather than clipping the row beneath it.
+    // Centres the buttons in the 58px topbar. The stylesheet reserves 104px of
+    // left padding to match, so nothing is ever drawn underneath them.
+    trafficLightPosition: process.platform === 'darwin' ? { x: 20, y: 21 } : undefined,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,

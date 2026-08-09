@@ -146,6 +146,25 @@ Browse -> install -> launch is complete.
 - **Profiles** support create, rename, duplicate and delete. Renaming changes the label only: the id
   is the folder name that Doorstop is pointed at, so moving it would break a running game.
 
+### Visual design
+
+Prismarine dark blues over a pixel-art surf backdrop, which fades to solid prismarine at every corner
+and edge so window chrome and text always sit on settled ground.
+
+Two rules keep it readable rather than pretty-but-unusable:
+
+- **Every text colour is verified against the worst case**, not the average one — a translucent panel
+  sitting over the brightest pixel in the artwork, after the vignette. The lowest-contrast pair in the
+  UI measures **4.95:1**, clear of WCAG AA. The previous tertiary ink was around 3.0:1 against panels,
+  which is why small meta text was hard to read.
+- **The macOS window buttons get reserved space.** The renderer stamps the real platform onto
+  `<html>`, and the stylesheet keys 104px of topbar padding off that, matched to a
+  `trafficLightPosition` that centres the buttons in the 58px bar. The previous approach inferred
+  macOS from an `@supports` query, which is why the traffic lights ended up over the content.
+
+The backdrop is smoothed rather than nearest-neighboured: at typical window sizes it is a downscale,
+where hard pixel edges only produce shimmer.
+
 ### Catalog caching and offline use
 
 The index is cached to disk, gzipped, and consulted before the network. Without it every launch
