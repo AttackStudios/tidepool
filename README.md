@@ -146,6 +146,31 @@ Browse -> install -> launch is complete.
 - **Profiles** support create, rename, duplicate and delete. Renaming changes the label only: the id
   is the folder name that Doorstop is pointed at, so moving it would break a running game.
 
+### Running the game
+
+Three routes, because they trade off differently:
+
+| Button | What it does | Trade-off |
+| --- | --- | --- |
+| **▶ Run** | Spawns the executable directly with the Doorstop arguments | One click, no Steam round trip, guaranteed to load this profile. Windows only; Steam records no playtime and the overlay is absent. |
+| **Via Steam** | Opens `steam://rungameid/4480760` | Keeps overlay, playtime and cloud saves, and works anywhere Steam runs the game — but applies whatever launch options are saved in Steam, not ours. |
+| **Vanilla** | Spawns the executable with no arguments and no Wine override | The fastest way to answer "is this bug actually caused by a mod?" |
+
+The Steam URL is constructed in the main process, so the renderer can never hand the shell an
+arbitrary protocol.
+
+### Installed mods
+
+A dedicated tab lists what's in the active profile, with dependencies sorted below the mods you
+actually chose.
+
+- **Enable/disable without uninstalling.** BepInEx only loads `.dll` files from `plugins`, so
+  disabling suffixes them with `.disabled`. Only DLLs are touched — renaming configs would throw away
+  the user's settings on every toggle. Verified live: 13 DLLs parked and restored, config preserved.
+- **Update detection** compares each installed mod against the catalog and never suggests a
+  downgrade, since running ahead of the catalog is normal after a package is pulled. Verified live by
+  installing BepInExPack 5.4.2100, detecting 5.4.2305, applying it, and re-checking to zero.
+
 ### Packaging
 
 ```sh

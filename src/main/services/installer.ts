@@ -5,7 +5,7 @@
  * a profile folder, so the whole pipeline is exercisable before Surf Sandbox
  * ships. Only *launching* needs the game.
  */
-import { existsSync, rmSync, rmdirSync, readdirSync } from 'node:fs'
+import { existsSync, renameSync, rmSync, rmdirSync, readdirSync } from 'node:fs'
 import { dirname, relative, sep } from 'node:path'
 import type {
   DependencyRef,
@@ -19,6 +19,9 @@ import type { ProfileStore } from './profiles'
 import { downloadPackage, extractInto } from './install'
 
 export type ProgressFn = (progress: InstallProgress) => void
+
+/** Suffix applied to a disabled mod's DLLs so BepInEx stops loading them. */
+export const DISABLED_SUFFIX = '.disabled'
 
 export class Installer {
   constructor(
@@ -103,6 +106,35 @@ export class Installer {
     return { installed, skipped, missing: resolution.missing, conflicts: resolution.conflicts }
   }
 
+  /**
+   * Enable or disable a mod without uninstalling it.
+   *
+   * BepInEx only loads `.dll` files from `plugins`, so suffixing them is enough
+   * to take a mod out of play while keeping its configs and downloads. Only
+   * DLLs are touched — renaming configs would lose the user's settings.
+   */
+  setEnabled(profileId: string, fullName: string, enabled: boolean): InstalledMod[] {
+    const profile = this.profiles.read(profileId)
+    if (!profile) throw new Error(`No such profile: ${profileId}`)
+
+    const mod = profile.mods.find((m) => m.fullName === fullName)
+    if (!mod) return profile.mods
+
+    const dir = this.profiles.dir(profileId)
+    for (const rel of mod.files) {
+      if (!rel.toLowerCase().endsWith('.dll')) continue
+      const active = `${dir}${sep}${rel}`
+      const parked = `${active}${DISABLED_SUFFIX}`
+      const from = enabled ? parked : active
+      const to = enabled ? active : parked
+      if (existsSync(from)) renameSync(from, to)
+    }
+
+    const updated = profile.mods.map((m) => (m.fullName === fullName ? { ...m, enabled } : m))
+    this.profiles.setMods(profileId, updated)
+    return updated
+  }
+
   /** Remove a mod and the files it wrote. Dependencies are left alone. */
   uninstall(profileId: string, fullName: string): InstalledMod[] {
     const profile = this.profiles.read(profileId)
@@ -119,7 +151,10 @@ export class Installer {
   private removeFiles(profileDir: string, files: string[]): void {
     for (const rel of files) {
       const abs = `${profileDir}${sep}${rel}`
+      // A disabled mod's DLLs sit under the suffixed name, so clear both or
+      // uninstall would silently leave the parked copies behind.
       rmSync(abs, { force: true })
+      rmSync(`${abs}${DISABLED_SUFFIX}`, { force: true })
       this.pruneEmptyDirs(profileDir, dirname(abs))
     }
   }

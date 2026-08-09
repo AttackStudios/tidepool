@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { GameInstall, LaunchInfo, Profile, Result } from '../shared/types'
 
-interface LaunchOutcome { started: boolean; reason?: string }
+interface LaunchOutcome { started: boolean; mode: string; reason?: string }
 
 export function GameBar({ profile }: { profile: Profile | null }) {
   const [game, setGame] = useState<GameInstall | null | undefined>(undefined)
@@ -39,13 +39,14 @@ export function GameBar({ profile }: { profile: Profile | null }) {
     setTimeout(() => setCopied(false), 1800)
   }
 
-  const start = async () => {
-    if (!profile) return
+  const run = async (fn: () => Promise<Result<LaunchOutcome>>) => {
     setNote(null)
-    const res: Result<LaunchOutcome> = await window.tidepool.launchGame(profile.id)
+    const res = await fn()
     if (!res.ok) setNote(res.message)
     else if (!res.data.started) setNote(res.data.reason ?? 'Could not start the game.')
   }
+
+  const direct = Boolean(game && profile && launch?.canLaunch)
 
   return (
     <div className="gamebar">
@@ -64,34 +65,57 @@ export function GameBar({ profile }: { profile: Profile | null }) {
             <span className="gamebar__path" title={game.root}>{game.root}</span>
             <span className="tag">{game.source}</span>
             <span className="tag">{game.backend ?? 'backend unknown'}</span>
-            {game.executable && <span className="tag">{game.executable}</span>}
           </>
         )}
       </div>
 
       <div className="gamebar__actions">
+        <button
+          onClick={() => void run(() => window.tidepool.launchGame(profile!.id, 'modded'))}
+          disabled={!direct}
+          title={launch && !launch.canLaunch
+            ? 'Direct launch is Windows-only — use “Via Steam” here'
+            : 'Start the game with this profile’s mods'}
+        >
+          ▶ Run
+        </button>
+
+        <button
+          className="button--ghost"
+          onClick={() => void run(() => window.tidepool.launchViaSteam())}
+          disabled={!game}
+          title="Hand off to Steam, keeping the overlay, playtime and cloud saves"
+        >
+          Via Steam
+        </button>
+
+        <button
+          className="button--ghost"
+          onClick={() => void run(() => window.tidepool.launchGame(profile!.id, 'vanilla'))}
+          disabled={!direct}
+          title="Start unmodded — the quickest way to tell whether a mod caused a bug"
+        >
+          Vanilla
+        </button>
+
+        <span className="gamebar__sep" aria-hidden="true" />
+
+        <button className="button--ghost" onClick={() => void copy()} disabled={!launch}>
+          {copied ? 'Copied' : 'Copy Steam options'}
+        </button>
         <button className="button--ghost" onClick={() => void locate()}>
           {game ? 'Change folder' : 'Locate game…'}
         </button>
         {game?.source === 'manual' && (
           <button className="button--ghost" onClick={() => void clear()}>Reset</button>
         )}
-        <button className="button--ghost" onClick={() => void copy()} disabled={!launch}>
-          {copied ? 'Copied' : 'Copy Steam options'}
-        </button>
-        <button onClick={() => void start()} disabled={!game || !profile || !launch?.canLaunch}
-          title={launch && !launch.canLaunch
-            ? 'Direct launch is Windows-only; use Steam launch options here'
-            : undefined}>
-          Launch
-        </button>
       </div>
 
       {note && <p className="gamebar__note error">{note}</p>}
       {launch && !launch.canLaunch && !note && (
         <p className="gamebar__note muted">
-          Surf Sandbox is a Windows executable, so paste the Steam launch options into the game's
-          properties and start it from Steam.
+          Direct launch needs Windows. “Via Steam” works here — paste the launch options into the
+          game’s Steam properties once, and Steam will apply them.
         </p>
       )}
     </div>

@@ -30,7 +30,13 @@ const api = {
   renameProfile: (id: string, name: string) => ipcRenderer.invoke(CHANNELS.renameProfile, id, name),
   duplicateProfile: (id: string, name?: string) =>
     ipcRenderer.invoke(CHANNELS.duplicateProfile, id, name),
-  launchGame: (profileId: string) => ipcRenderer.invoke(CHANNELS.launchGame, profileId),
+  launchGame: (profileId: string, mode?: 'modded' | 'vanilla') =>
+    ipcRenderer.invoke(CHANNELS.launchGame, profileId, mode),
+  launchViaSteam: () => ipcRenderer.invoke(CHANNELS.launchViaSteam),
+  setModEnabled: (profileId: string, fullName: string, enabled: boolean) =>
+    ipcRenderer.invoke(CHANNELS.setModEnabled, profileId, fullName, enabled),
+  checkUpdates: (profileId: string, community?: string) =>
+    ipcRenderer.invoke(CHANNELS.checkUpdates, profileId, community),
   readSettings: () => ipcRenderer.invoke(CHANNELS.readSettings),
   writeSettings: (patch: Partial<Settings>) => ipcRenderer.invoke(CHANNELS.writeSettings, patch),
   /** Subscribe to install progress. Returns an unsubscribe function. */

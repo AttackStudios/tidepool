@@ -2,7 +2,9 @@
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { findGameInstall } from './services/steam'
 import { inspectGameFolder } from './services/gamefolder'
-import { canLaunchDirectly, launchGame } from './services/launcher'
+import { canLaunchDirectly, launchGame, steamRunUrl } from './services/launcher'
+import { findUpdates } from './services/updates'
+import type { LaunchMode } from './services/launcher'
 import { SettingsStore } from './services/settings'
 import { CommunityNotFoundError, ThunderstoreUnavailableError } from './services/thunderstore'
 import { ProfileStore } from './services/profiles'
@@ -38,6 +40,9 @@ export const CHANNELS = {
   launchGame: 'launch:start',
   readSettings: 'settings:read',
   writeSettings: 'settings:write',
+  launchViaSteam: 'launch:steam',
+  setModEnabled: 'mods:set-enabled',
+  checkUpdates: 'mods:check-updates',
 } as const
 
 /** Map thrown errors onto the discriminated union the UI switches on. */
@@ -125,12 +130,32 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
     profiles.duplicate(id, name),
   )
 
-  ipcMain.handle(CHANNELS.launchGame, (_e, profileId: string) =>
+  ipcMain.handle(CHANNELS.launchGame, (_e, profileId: string, mode: LaunchMode = 'modded') =>
     attempt(async () => {
       const game = resolveGame()
       if (!game) throw new Error('No game folder set. Use "Locate game" to pick it.')
       const plan = buildLaunchPlan(profiles.dir(profileId))
-      return launchGame(game.root, plan)
+      return launchGame(game.root, plan, mode)
+    }),
+  )
+
+  /** The URL is built in main, so the renderer can never hand us an arbitrary protocol. */
+  ipcMain.handle(CHANNELS.launchViaSteam, () =>
+    attempt(async () => {
+      await shell.openExternal(steamRunUrl())
+      return { started: true, mode: 'steam' as const }
+    }),
+  )
+
+  ipcMain.handle(CHANNELS.setModEnabled, (_e, profileId: string, fullName: string, on: boolean) =>
+    attempt(async () => installer.setEnabled(profileId, fullName, on)),
+  )
+
+  ipcMain.handle(CHANNELS.checkUpdates, (_e, profileId: string, community?: string) =>
+    attempt(async () => {
+      const profile = profiles.read(profileId)
+      if (!profile) throw new Error(`No such profile: ${profileId}`)
+      return findUpdates(profile, catalog, community)
     }),
   )
 

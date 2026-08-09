@@ -173,6 +173,42 @@ describe('Installer', () => {
     expect(r.installed.map((m) => m.fullName)).toEqual(['A-Top'])
   })
 
+  it('disabling parks the DLLs so BepInEx stops loading them', async () => {
+    stubFetch([pkg('A-Top', '1.0.0')], {
+      'https://example.test/A-Top-1.0.0.zip':
+        zipFor({ 'BepInEx/plugins/Top.dll': 'x', 'BepInEx/config/Top.cfg': 'keep' }),
+    })
+    const profile = profiles.create('Test')
+    const installer = new Installer(new Catalog(), profiles, cache)
+    await installer.install(profile.id, ['A-Top-1.0.0'], 'x')
+
+    const dir = profiles.dir(profile.id)
+    installer.setEnabled(profile.id, 'A-Top', false)
+    expect(existsSync(join(dir, 'BepInEx/plugins/Top.dll'))).toBe(false)
+    expect(existsSync(join(dir, 'BepInEx/plugins/Top.dll.disabled'))).toBe(true)
+    // Configs must survive, or the user loses their settings on every toggle.
+    expect(existsSync(join(dir, 'BepInEx/config/Top.cfg'))).toBe(true)
+    expect(profiles.read(profile.id)!.mods[0]!.enabled).toBe(false)
+
+    installer.setEnabled(profile.id, 'A-Top', true)
+    expect(existsSync(join(dir, 'BepInEx/plugins/Top.dll'))).toBe(true)
+    expect(profiles.read(profile.id)!.mods[0]!.enabled).toBe(true)
+  })
+
+  it('uninstall clears parked files from a disabled mod too', async () => {
+    stubFetch([pkg('A-Top', '1.0.0')], {
+      'https://example.test/A-Top-1.0.0.zip': zipFor({ 'BepInEx/plugins/Top.dll': 'x' }),
+    })
+    const profile = profiles.create('Test')
+    const installer = new Installer(new Catalog(), profiles, cache)
+    await installer.install(profile.id, ['A-Top-1.0.0'], 'x')
+    installer.setEnabled(profile.id, 'A-Top', false)
+    installer.uninstall(profile.id, 'A-Top')
+
+    const dir = profiles.dir(profile.id)
+    expect(existsSync(join(dir, 'BepInEx/plugins/Top.dll.disabled'))).toBe(false)
+  })
+
   it('refuses to install into a profile that does not exist', async () => {
     stubFetch([pkg('A-Top', '1.0.0')], {})
     await expect(

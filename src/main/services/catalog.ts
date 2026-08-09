@@ -16,7 +16,7 @@ import type {
   Resolution,
 } from '../../shared/types'
 import { browse, toSummary } from '../../shared/browse'
-import { indexPackages, latestVersion, resolve } from '../../shared/deps'
+import { compareVersions, indexPackages, latestVersion, resolve } from '../../shared/deps'
 import { DEFAULT_COMMUNITY, fetchPackages } from './thunderstore'
 
 /** How long a fetched index stays fresh before we go back to Thunderstore. */
@@ -87,8 +87,12 @@ export class Catalog {
     if (!pkg) return null
     return {
       summary: toSummary(pkg),
-      // Newest first is what a version picker wants.
-      versions: [...pkg.versions].reverse(),
+      // Sorted explicitly rather than trusting the API's order. Thunderstore
+      // happens to return newest-first today, but relying on that once already
+      // produced an oldest-first version list.
+      versions: [...pkg.versions].sort((a, b) =>
+        compareVersions(b.version_number, a.version_number),
+      ),
       latest: latestVersion(pkg),
     }
   }

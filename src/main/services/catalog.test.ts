@@ -72,12 +72,29 @@ describe('Catalog', () => {
   })
 
   it('returns detail with versions newest-first', async () => {
+    // The live API returns newest-first, so the fixture matches that ordering.
+    // An earlier fixture used the opposite order and hid a reversed list.
     const p = pkg('Owner-Mod')
-    p.versions.push({ ...p.versions[0]!, version_number: '2.0.0', full_name: 'Owner-Mod-2.0.0' })
+    p.versions = [
+      { ...p.versions[0]!, version_number: '2.0.0', full_name: 'Owner-Mod-2.0.0' },
+      { ...p.versions[0]!, version_number: '1.0.0', full_name: 'Owner-Mod-1.0.0' },
+    ]
     stubFetch([p])
     const detail = await new Catalog().detail('Owner-Mod', 'x')
-    expect(detail?.versions[0]?.version_number).toBe('2.0.0')
+    expect(detail?.versions.map((v) => v.version_number)).toEqual(['2.0.0', '1.0.0'])
     expect(detail?.latest?.version_number).toBe('2.0.0')
+  })
+
+  it('sorts versions rather than trusting the order it was given', async () => {
+    const p = pkg('Owner-Mod')
+    p.versions = [
+      { ...p.versions[0]!, version_number: '1.9.0', full_name: 'Owner-Mod-1.9.0' },
+      { ...p.versions[0]!, version_number: '1.10.0', full_name: 'Owner-Mod-1.10.0' },
+      { ...p.versions[0]!, version_number: '1.2.0', full_name: 'Owner-Mod-1.2.0' },
+    ]
+    stubFetch([p])
+    const detail = await new Catalog().detail('Owner-Mod', 'x')
+    expect(detail?.versions.map((v) => v.version_number)).toEqual(['1.10.0', '1.9.0', '1.2.0'])
   })
 
   it('returns null for an unknown package', async () => {

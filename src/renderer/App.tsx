@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { GameBar } from './GameBar'
+import { InstalledPanel } from './InstalledPanel'
 import { ModBrowser } from './ModBrowser'
 import { ProfileControls } from './ProfileControls'
 import { useProfiles } from './useProfiles'
@@ -18,6 +19,7 @@ const COMMUNITIES = [
 export function App() {
   const [community, setCommunity] = useState('lethal-company')
   const [refreshing, setRefreshing] = useState(false)
+  const [tab, setTab] = useState<'browse' | 'installed'>('browse')
   const { profiles, current, setCurrentId, refresh } = useProfiles()
 
   // Remember the community across restarts.
@@ -68,7 +70,34 @@ export function App() {
 
       <GameBar profile={current} />
 
-      <ModBrowser community={community} profile={current} onChanged={() => void refresh()} />
+      <nav className="tabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={tab === 'browse'}
+          className={tab === 'browse' ? 'tab tab--on' : 'tab'}
+          onClick={() => setTab('browse')}
+        >
+          Browse
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === 'installed'}
+          className={tab === 'installed' ? 'tab tab--on' : 'tab'}
+          onClick={() => setTab('installed')}
+        >
+          Installed{current ? ` (${current.mods.length})` : ''}
+        </button>
+      </nav>
+
+      {tab === 'browse' ? (
+        <ModBrowser community={community} profile={current} onChanged={() => void refresh()} />
+      ) : (
+        <InstalledPanel
+          profile={current}
+          community={community}
+          onChanged={() => void refresh()}
+        />
+      )}
     </div>
   )
 }
