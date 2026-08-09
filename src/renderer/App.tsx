@@ -1,83 +1,54 @@
 import { useEffect, useState } from 'react'
-import type { GameInstall, Profile } from '../shared/types'
+import type { GameInstall } from '../shared/types'
+import { ModBrowser } from './ModBrowser'
 
-type PackagesState =
-  | { status: 'loading' }
-  | { status: 'ok'; count: number }
-  | { status: 'no-community'; message: string }
-  | { status: 'unavailable'; message: string }
-  | { status: 'error'; message: string }
+/**
+ * The surf-sandbox community will not exist until mods are published for it, so
+ * the browser is pointed at a real community during development. This selector
+ * is what makes the whole UI exercisable months before the game ships.
+ */
+const COMMUNITIES = [
+  { slug: 'surf-sandbox', label: 'Surf Sandbox (not live yet)' },
+  { slug: 'lethal-company', label: 'Lethal Company (dev target)' },
+  { slug: 'valheim', label: 'Valheim (dev target)' },
+]
 
 export function App() {
   const [game, setGame] = useState<GameInstall | null | undefined>(undefined)
-  const [profiles, setProfiles] = useState<Profile[]>([])
-  const [packages, setPackages] = useState<PackagesState>({ status: 'loading' })
+  const [community, setCommunity] = useState('lethal-company')
 
-  useEffect(() => {
-    void window.tidepool.detectGame().then(setGame)
-    void window.tidepool.listProfiles().then(setProfiles)
-    void window.tidepool.listPackages().then((res: any) => {
-      if (res.ok) setPackages({ status: 'ok', count: res.packages.length })
-      else if (res.reason === 'no-community')
-        setPackages({ status: 'no-community', message: res.message })
-      else if (res.reason === 'unavailable')
-        setPackages({ status: 'unavailable', message: res.message })
-      else setPackages({ status: 'error', message: res.message })
-    })
-  }, [])
-
-  const addProfile = async () => {
-    const name = `Profile ${profiles.length + 1}`
-    await window.tidepool.createProfile(name)
-    setProfiles(await window.tidepool.listProfiles())
-  }
+  useEffect(() => { void window.tidepool.detectGame().then(setGame) }, [])
 
   return (
     <div className="app">
-      <header>
-        <h1>TidePool</h1>
-        <p className="sub">Mod manager for Surf Sandbox</p>
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand__mark" aria-hidden="true" />
+          <div>
+            <h1>TidePool</h1>
+            <p className="brand__sub">Mod manager for Surf Sandbox</p>
+          </div>
+        </div>
+
+        <div className="topbar__right">
+          <span className={`status status--${game === undefined ? 'wait' : game ? 'ok' : 'off'}`}>
+            {game === undefined && 'Looking for game…'}
+            {game === null && 'Game not installed'}
+            {game && `Game found · ${game.backend ?? 'backend unknown'}`}
+          </span>
+          <select
+            value={community}
+            onChange={(e) => setCommunity(e.target.value)}
+            aria-label="Thunderstore community"
+          >
+            {COMMUNITIES.map((c) => (
+              <option key={c.slug} value={c.slug}>{c.label}</option>
+            ))}
+          </select>
+        </div>
       </header>
 
-      <section>
-        <h2>Game</h2>
-        {game === undefined && <p className="muted">Looking…</p>}
-        {game === null && (
-          <p className="muted">
-            Surf Sandbox not found. It releases 25 Aug 2026 — until then there is nothing to detect.
-          </p>
-        )}
-        {game && (
-          <dl className="facts">
-            <div><dt>Path</dt><dd>{game.root}</dd></div>
-            <div><dt>Found via</dt><dd>{game.source}</dd></div>
-            <div><dt>Backend</dt><dd>{game.backend ?? 'unknown'}</dd></div>
-          </dl>
-        )}
-      </section>
-
-      <section>
-        <h2>Thunderstore</h2>
-        {packages.status === 'loading' && <p className="muted">Checking…</p>}
-        {packages.status === 'ok' && <p>{packages.count} packages available.</p>}
-        {packages.status === 'no-community' && <p className="muted">{packages.message}</p>}
-        {packages.status === 'unavailable' && <p className="error">{packages.message}</p>}
-        {packages.status === 'error' && <p className="error">{packages.message}</p>}
-      </section>
-
-      <section>
-        <h2>Profiles</h2>
-        {profiles.length === 0 && <p className="muted">No profiles yet.</p>}
-        <ul className="profiles">
-          {profiles.map((p) => (
-            <li key={p.id}>
-              <span>{p.name}</span>
-              <span className="muted">{p.mods.length} mods</span>
-            </li>
-          ))}
-        </ul>
-        <button onClick={() => void addProfile()}>New profile</button>
-      </section>
+      <ModBrowser community={community} />
     </div>
   )
 }

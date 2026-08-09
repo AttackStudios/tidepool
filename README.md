@@ -85,6 +85,30 @@ The whole dependency and packaging layer is game-agnostic and testable today:
 - **Package layout normalisation** — Thunderstore zips are inconsistent, some carrying a `BepInEx/`
   tree and some just loose DLLs. Both are normalised into the profile's plugin folder.
 
+### Mod browser
+
+Search, sort, category filter and paginated results, with a detail panel that shows the resolved
+dependency chain before you install anything.
+
+The architecture here is driven by a measurement rather than a guess. A mature community's full
+package index is **311 MB** (lethal-company: 50,362 packages, 190,959 versions), so it can never cross
+the IPC boundary — sending it would stall the app. Instead the main process holds the index (dependency
+resolution needs every version, because dependencies pin exact ones) and serves pages of trimmed
+summaries. Measured against the live API:
+
+| Query | Matches | Page payload | Time |
+| --- | --- | --- | --- |
+| Default, by downloads | 38,667 | 35 KB | 37 ms |
+| Search "bepinex" | 5,215 | 35 KB | 29 ms |
+| Category: Tools | 828 | 34 KB | 18 ms |
+
+Roughly a 9,000x reduction over shipping the index. Search is weighted so an exact name match beats an
+incidental mention — searching "bepinex" returns BepInExPack first, ahead of the 5,214 packages that
+merely name it in a description.
+
+A community selector in the title bar points the browser at a real community, since `surf-sandbox`
+will not exist until mods are published for it. That is what makes the entire UI exercisable today.
+
 ### What needs the game
 
 Backend detection (Mono vs IL2CPP), the actual BepInEx pack, and anything touching Surf Sandbox's
