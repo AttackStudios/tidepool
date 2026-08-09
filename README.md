@@ -1,4 +1,4 @@
-# WaterWay Mod Manager
+# TidePools Mod Manager
 
 A mod loader package, mod manager, and eventually a multiplayer mod for
 **[Surf Sandbox](https://store.steampowered.com/app/4480760/Surf_Sandbox/)**
@@ -9,7 +9,7 @@ A mod loader package, mod manager, and eventually a multiplayer mod for
 
 ## What this is
 
-Surf Sandbox ships with a level editor but no mod support and no multiplayer. WaterWay aims to add
+Surf Sandbox ships with a level editor but no mod support and no multiplayer. TidePools aims to add
 all three layers the community will need, in the order they become possible:
 
 1. **Loader pack** — a preconfigured BepInEx drop-in for Surf Sandbox, so a player can install mods
