@@ -51,3 +51,30 @@ To get this moving, post now:
 
 -# Never share account details, purchase receipts, or passwords here. Staff will not ask for them.
 ```
+
+## Making `#help` panel-only (no visible conversation)
+
+The goal — nobody reads anyone else's support conversation — is solved by **tickets**, not by hiding
+history. Make `#help` hold *only* the panel, and every actual conversation happens in a private ticket
+channel that only the opener and staff can see.
+
+Channel Settings → **Permissions** → `@everyone`:
+
+| Permission | Set to | Why |
+| --- | --- | --- |
+| View Channel | ✅ Allow | They must see the channel to use it |
+| Read Message History | ✅ Allow | **Required** — deny this and the panel itself becomes invisible |
+| Send Messages | ❌ Deny | This is what stops conversation happening in the open |
+| Add Reactions | ❌ Deny | Optional; keeps the panel clean |
+| Create Public Threads | ❌ Deny | Otherwise people talk in threads off the panel |
+
+Then allow **Send Messages** for your staff role and for the Ticket Tool bot.
+
+The result: `#help` contains exactly one message — the panel — so there is no history to read.
+
+### Why not just deny Read Message History?
+
+Because it does not do what it sounds like. Denying it stops members loading *past* messages, but
+messages sent while they have the channel open still arrive live. So anyone sitting in the channel
+still watches conversations happen in real time. It is a scrollback restriction, not privacy — and it
+would also hide your ticket panel. Don't rely on it.
