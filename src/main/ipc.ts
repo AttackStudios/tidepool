@@ -5,6 +5,7 @@ import { findGameInstall } from './services/steam'
 import { inspectGameFolder } from './services/gamefolder'
 import { canLaunchDirectly, launchGame, steamRunUrl } from './services/launcher'
 import { findUpdates } from './services/updates'
+import { decodeProfile, encodeProfile, refsFor } from './services/profilecode'
 import type { LaunchMode } from './services/launcher'
 import { SettingsStore } from './services/settings'
 import { CommunityNotFoundError, ThunderstoreUnavailableError } from './services/thunderstore'
@@ -46,6 +47,8 @@ export const CHANNELS = {
   setModEnabled: 'mods:set-enabled',
   checkUpdates: 'mods:check-updates',
   catalogStatus: 'catalog:status',
+  exportProfile: 'profiles:export',
+  importProfile: 'profiles:import',
 } as const
 
 /** Map thrown errors onto the discriminated union the UI switches on. */
@@ -143,6 +146,40 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
   )
 
   /** The URL is built in main, so the renderer can never hand us an arbitrary protocol. */
+  ipcMain.handle(CHANNELS.exportProfile, (_e, profileId: string, community?: string) =>
+    attempt(async () => {
+      const profile = profiles.read(profileId)
+      if (!profile) throw new Error(`No such profile: ${profileId}`)
+      return encodeProfile(profile, community)
+    }),
+  )
+
+  ipcMain.handle(
+    CHANNELS.importProfile,
+    (event, code: string, community?: string) =>
+      attempt(async () => {
+        // Decode first: a bad code should fail before an empty profile is left behind.
+        const decoded = decodeProfile(code)
+        const created = profiles.create(decoded.name)
+        const refs = refsFor(decoded)
+        if (refs.length === 0) return { profile: created, result: null }
+
+        const result = await installer.install(
+          created.id,
+          refs,
+          decoded.community ?? community,
+          (progress) => {
+            if (!event.sender.isDestroyed()) event.sender.send(CHANNELS.installProgress, progress)
+          },
+        )
+        // Honour whatever was disabled in the exported profile.
+        for (const mod of decoded.mods) {
+          if (!mod.enabled) installer.setEnabled(created.id, mod.fullName, false)
+        }
+        return { profile: profiles.read(created.id), result }
+      }),
+  )
+
   ipcMain.handle(CHANNELS.launchViaSteam, () =>
     attempt(async () => {
       await shell.openExternal(steamRunUrl())

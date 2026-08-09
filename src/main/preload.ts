@@ -36,6 +36,10 @@ const api = {
   launchGame: (profileId: string, mode?: 'modded' | 'vanilla') =>
     ipcRenderer.invoke(CHANNELS.launchGame, profileId, mode),
   launchViaSteam: () => ipcRenderer.invoke(CHANNELS.launchViaSteam),
+  exportProfile: (profileId: string, community?: string) =>
+    ipcRenderer.invoke(CHANNELS.exportProfile, profileId, community),
+  importProfile: (code: string, community?: string) =>
+    ipcRenderer.invoke(CHANNELS.importProfile, code, community),
   setModEnabled: (profileId: string, fullName: string, enabled: boolean) =>
     ipcRenderer.invoke(CHANNELS.setModEnabled, profileId, fullName, enabled),
   checkUpdates: (profileId: string, community?: string) =>

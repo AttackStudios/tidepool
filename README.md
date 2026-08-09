@@ -183,6 +183,20 @@ network it still throws, because there is genuinely nothing to show. Cache files
 write-then-rename so a crash can't leave a truncated file, and are keyed by a hash of the community
 slug so an odd slug can't escape the cache directory.
 
+### Sharing profiles
+
+**Share** turns the active profile into a code; **Import** rebuilds it as a new profile. Codes are
+self-contained — no server, no account — and carry the mod list rather than the files, so the
+recipient downloads fresh from Thunderstore. A five-mod profile encodes to about 230 characters.
+
+Codes arrive from strangers and trigger downloads, so decoding validates defensively rather than
+trusting its own format: entries must survive the same reference parsing that installs use, the list
+is capped at 500 mods, and a damaged or truncated code says so instead of half-importing. Disabled
+mods stay disabled on the other side.
+
+Verified live by installing LethalLib and its four dependencies, disabling one, exporting, importing,
+and comparing: identical mod sets, identical versions, identical enabled states, 35 files each side.
+
 ### Running the game
 
 Three routes, because they trade off differently:

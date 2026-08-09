@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { BrowsePage, Profile, Result, SortKey } from '../shared/types'
 import { ModCard } from './ModCard'
 import { ModDetail } from './ModDetail'
@@ -35,7 +35,20 @@ export function ModBrowser({
   const [selected, setSelected] = useState<string | null>(null)
   const [state, setState] = useState<State>({ status: 'loading' })
 
+  const searchBox = useRef<HTMLInputElement>(null)
   const debouncedSearch = useDebounced(search)
+
+  // Cmd/Ctrl+F focuses search, matching what anyone browsing a long list expects.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault()
+        searchBox.current?.select()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // Any change to the query invalidates the current page number.
   useEffect(() => { setPage(0) }, [debouncedSearch, category, sort, includeDeprecated, community])
@@ -71,6 +84,7 @@ export function ModBrowser({
     <div className="browser">
       <div className="browser__controls">
         <input
+          ref={searchBox}
           className="search"
           type="search"
           placeholder="Search mods…"

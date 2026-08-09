@@ -60,6 +60,7 @@ export function App() {
           <ProfileControls
             profiles={profiles}
             current={current}
+            community={community}
             onSelect={setCurrentId}
             onChanged={() => void refresh()}
           />

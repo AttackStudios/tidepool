@@ -459,3 +459,40 @@ button:disabled {
   * { transition: none !important; }
   .card:hover { transform: none; }
 }
+
+/* ---------- dialog ---------- */
+
+.scrim {
+  position: fixed; inset: 0; z-index: 40;
+  background: rgba(3, 12, 16, 0.66);
+  backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.dialog {
+  width: min(560px, 100%);
+  background: rgba(11, 34, 42, 0.97);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 22px 18px;
+}
+.dialog__title { margin: 0 0 10px; font-size: 1.06rem; }
+.dialog__body p { margin: 0 0 12px; font-size: 0.87rem; }
+.dialog__foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+.codebox {
+  width: 100%;
+  background: var(--abyss);
+  color: var(--ink);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  resize: vertical;
+  word-break: break-all;
+}
+.codebox:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.codebox::placeholder { color: var(--ink-3); }
