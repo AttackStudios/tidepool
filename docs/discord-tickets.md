@@ -1,8 +1,8 @@
-# TidePools — ticket setup (Ticket Tool)
+# TidePool — ticket setup (Ticket Tool)
 
 ## Setup
 
-1. **Invite** the bot from <https://tickettool.xyz> → Add to Discord → pick the TidePools server.
+1. **Invite** the bot from <https://tickettool.xyz> → Add to Discord → pick the TidePool server.
    It needs **Manage Channels** and **Manage Roles**; don't strip those or ticket creation fails.
 2. Open the **dashboard** at <https://tickettool.xyz/dashboard> and select the server.
 3. Create a **panel** — the message with a button that members press to open a ticket. Set:
@@ -29,7 +29,7 @@ Mod support / Bug report / Moderation appeal once real volume shows up.
 ```
 ## 🎫 Open a ticket
 
-Need help with a mod, want to report a TidePools bug, or think a moderation call was wrong? Press the button below and a private channel opens between you and staff.
+Need help with a mod, want to report a TidePool bug, or think a moderation call was wrong? Press the button below and a private channel opens between you and staff.
 
 **Have these ready** — it's the difference between a fix in one reply and a fix in ten:
 - Your `BepInEx/LogOutput.log`

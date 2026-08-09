@@ -1,4 +1,4 @@
-# 🌊 TidePools Rules
+# 🌊 TidePool Rules
 
 **1 · Be decent.** No harassment, hate speech, or personal attacks.
 **2 · No piracy.** Never request or share cracked copies, game files, or decompiled source. Own the game.

@@ -1,5 +1,5 @@
 {
-  "name": "tidepools",
+  "name": "tidepool",
   "version": "0.0.1",
   "private": true,
   "description": "Mod manager for Surf Sandbox",
@@ -35,8 +35,8 @@
     "vitest": "^2.1.8"
   },
   "build": {
-    "appId": "gg.tidepools.manager",
-    "productName": "TidePools",
+    "appId": "gg.tidepool.manager",
+    "productName": "TidePool",
     "files": ["dist/**/*", "package.json"],
     "win": { "target": ["nsis", "zip"] }
   }
