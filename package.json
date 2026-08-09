@@ -18,7 +18,8 @@
     "dist:win": "npm run build && electron-builder --win --publish never",
     "icons": "python3 tools/make-icon.py",
     "dist:mac": "npm run build && electron-builder --mac --publish never",
-    "dist": "npm run build && electron-builder --mac --win --publish never"
+    "dist": "npm run build && electron-builder --mac --win --publish never",
+    "launch:check": "node tools/check-launch-copy.mjs"
   },
   "dependencies": {
     "adm-zip": "^0.5.16"
