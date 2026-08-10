@@ -219,14 +219,10 @@ button:disabled {
 .topbar :is(button, select, input, label, a) { -webkit-app-region: no-drag; }
 
 .brand { display: flex; align-items: center; gap: 10px; }
-/* A blocky wave rather than a circle — circles do not exist here. */
+/* The app icon itself, so the window and the Dock agree. */
 .brand__mark {
-  width: 24px; height: 24px; flex-shrink: 0;
-  background:
-    linear-gradient(var(--accent) 0 0) 0 8px / 24px 4px no-repeat,
-    linear-gradient(var(--accent) 0 0) 4px 4px / 8px 4px no-repeat,
-    linear-gradient(var(--accent) 0 0) 16px 12px / 8px 4px no-repeat,
-    linear-gradient(var(--accent-deep) 0 0) 0 16px / 24px 4px no-repeat;
+  width: 28px; height: 28px; flex-shrink: 0;
+  image-rendering: pixelated;
 }
 .brand h1 { margin: 0; font-family: var(--display); font-size: var(--f-title); font-weight: 700; }
 .brand__sub { margin: 2px 0 0; font-size: var(--f-micro); color: var(--ink-2); }

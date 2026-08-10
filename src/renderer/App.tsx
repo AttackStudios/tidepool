@@ -6,6 +6,7 @@ import { ModBrowser } from './ModBrowser'
 import { ProfileControls } from './ProfileControls'
 import { useProfiles } from './useProfiles'
 import { Toasts } from './toast'
+import mark from './assets/mark.png'
 import { Welcome } from './Welcome'
 import type { GameInstall } from '../shared/types'
 
@@ -72,7 +73,7 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="brand__mark" aria-hidden="true" />
+          <img className="brand__mark" src={mark} alt="" width={28} height={28} />
           <div>
             <h1>TidePool</h1>
             <p className="brand__sub">Mod manager for Surf Sandbox</p>
