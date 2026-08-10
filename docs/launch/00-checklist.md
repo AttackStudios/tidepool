@@ -14,6 +14,22 @@ Everything in this folder is pre-written so launch day is paste-and-publish. Pla
 - [ ] Flip the repo public: `gh repo edit AttackStudios/tidepool --visibility public --accept-visibility-change-consequences`
 - [ ] Message nocanwin about mod support. A planned modding API would delete most of the day.
 
+## Release process (rehearsed 9 Aug 2026)
+
+Tagging is the whole thing:
+
+```sh
+git tag -a v0.1.0 -m "First release"
+git push origin v0.1.0
+```
+
+CI then checks, builds on Windows, and publishes a GitHub release with the installer and portable zip
+attached. Tags containing `-rc`, `-beta` or `-alpha` are marked prerelease automatically. The version
+in the artifact names comes from the tag, so they always agree with the release.
+
+Verified end to end on `v0.1.0-rc.3`: three jobs green, release published, and the downloaded
+`TidePool-Setup-0.1.0-rc.3.exe` confirmed as a real PE32 NSIS installer.
+
 ## Hour by hour
 
 | When | Do |
