@@ -32,6 +32,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Without this the artifacts carry package.json's version while the release
+      # carries the tag's, so v0.1.0 ships a file called 0.0.1.
+      - name: Match package version to the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          echo "building version $VERSION"
       - run: npm run dist:win
       - uses: actions/upload-artifact@v5
         with:
