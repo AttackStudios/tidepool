@@ -7,27 +7,21 @@ import { ProfileControls } from './ProfileControls'
 import { useProfiles } from './useProfiles'
 import { Toasts } from './toast'
 import mark from './assets/mark.png'
+import { HOME_COMMUNITY, communitiesFor } from '../shared/communities'
 import { Welcome } from './Welcome'
 import type { GameInstall } from '../shared/types'
 
-const HOME_COMMUNITY = { slug: 'surf-sandbox', label: 'Surf Sandbox' }
-
-/**
- * The surf-sandbox community will not exist until mods are published for it, so
- * during development the browser can be pointed at a real community instead —
- * which is what makes the whole UI exercisable months before the game ships.
+/*
+ * Two gates, deliberately.
  *
- * Shipped builds only ever see Surf Sandbox. Offering a stranger a dropdown of
- * unrelated games would be baffling, and pointing them at Lethal Company mods
- * by default would be worse.
+ * `__TIDEPOOL_DEV__` is a build-time constant, so a production build folds this
+ * to the literal branch and the bundler drops `communitiesFor` and the dev list
+ * entirely — those strings are not merely hidden, they are absent from the
+ * shipped JavaScript. The runtime `isDev` check remains as a backstop in case a
+ * production build is ever run unpackaged.
  */
-const DEV_COMMUNITIES = [
-  { slug: 'lethal-company', label: 'Lethal Company (dev target)' },
-  { slug: 'valheim', label: 'Valheim (dev target)' },
-]
-
-const COMMUNITIES = window.tidepool.isDev
-  ? [HOME_COMMUNITY, ...DEV_COMMUNITIES]
+const COMMUNITIES = __TIDEPOOL_DEV__
+  ? communitiesFor(window.tidepool.isDev)
   : [HOME_COMMUNITY]
 
 export function App() {

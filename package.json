@@ -14,12 +14,14 @@
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "npm run build && electron .",
+    "start": "npm run build:dev && electron .",
     "dist:win": "npm run build && electron-builder --win --publish never",
     "icons": "python3 tools/make-icon.py",
     "dist:mac": "npm run build && electron-builder --mac --publish never",
     "dist": "npm run build && electron-builder --mac --win --publish never",
-    "launch:check": "node tools/check-launch-copy.mjs"
+    "launch:check": "node tools/check-launch-copy.mjs",
+    "build:renderer:dev": "vite build --mode development",
+    "build:dev": "npm run build:main && npm run build:renderer:dev"
   },
   "dependencies": {
     "adm-zip": "^0.5.16"

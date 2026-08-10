@@ -108,10 +108,18 @@ merely name it in a description.
 
 A community selector points the browser at a real community during development, since `surf-sandbox`
 will not exist until mods are published for it — that is what makes the entire UI exercisable today.
-**Shipped builds never see it**: they default to Surf Sandbox and the picker is hidden entirely, because
-a stranger opening a Surf Sandbox mod manager and finding Lethal Company mods would rightly be baffled.
-The flag comes from `app.isPackaged` via `additionalArguments`, not an environment variable — the
-preload runs in the renderer process, where main's environment is not guaranteed.
+**Shipped builds never see it**, and not merely because the UI hides it. Two independent gates:
+
+1. **Build time.** `__TIDEPOOL_DEV__` is a define keyed off the Vite mode, so a production build folds
+   the branch away and the bundler drops the development list outright. Verified by grepping the
+   built bundle: the production renderer contains **zero** occurrences of `dev target` or
+   `lethal-company`; the development build contains them. (`import.meta.env.DEV` is unusable here —
+   `vite build` applies production semantics whatever `--mode` says.)
+2. **Runtime.** `app.isPackaged` reaches the preload through `additionalArguments`, not an environment
+   variable, because the preload runs in the renderer process where main's environment is not
+   guaranteed. This remains as a backstop if a production build is ever run unpackaged.
+
+`npm start` uses the development build, so the picker stays available locally.
 
 ### Install pipeline
 
