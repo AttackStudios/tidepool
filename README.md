@@ -252,6 +252,28 @@ Three routes, because they trade off differently:
 The Steam URL is constructed in the main process, so the renderer can never hand the shell an
 arbitrary protocol.
 
+### Sources
+
+The browser can list from **Thunderstore** or **GameBanana**, chosen in the toolbar. They are not
+equivalent, and the UI says so rather than pretending otherwise.
+
+| | Thunderstore | GameBanana |
+| --- | --- | --- |
+| Browse | yes | yes |
+| Search / sort / filter | yes | no — it pages its own listings |
+| Install from TidePool | yes, dependencies and all | no, opens in your browser |
+
+GameBanana's API gives listings, versions and direct download links, but carries **no dependency
+information**, has no predictable archive layout, and a single mod frequently ships several
+alternative files. Auto-installing that would guess wrong often enough to break people's games, so
+those entries are listed and handed off. Thunderstore packages pin exact dependency versions, which is
+what makes installing them safe to automate.
+
+Neither has a Surf Sandbox page yet — both are created once mods exist. Verified live: the GameBanana
+lookup correctly reports no page for Surf Sandbox, and lists a real game's submissions (15 of 160,678)
+with names, authors and links. Its name matching is fuzzy — searching "surf" returns Subway Surfers
+and Audiosurf — so the lookup requires an exact title rather than taking the first hit.
+
 ### Installed mods
 
 A dedicated tab lists what's in the active profile, with dependencies sorted below the mods you

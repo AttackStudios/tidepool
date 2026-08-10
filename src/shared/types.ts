@@ -57,11 +57,24 @@ export interface PackageSummary {
   isNsfw: boolean
   dateUpdated: string
   packageUrl: string | null
+  source: SourceId
+  /**
+   * Whether TidePool can install this itself.
+   *
+   * Thunderstore packages carry pinned dependency references and a predictable
+   * layout. GameBanana submissions carry neither, and frequently ship several
+   * alternative files per mod, so they are browse-and-open only.
+   */
+  installable: boolean
 }
+
+/** Where a listing came from. */
+export type SourceId = 'thunderstore' | 'gamebanana'
 
 export type SortKey = 'relevance' | 'downloads' | 'rating' | 'updated' | 'name'
 
 export interface BrowseQuery {
+  source?: SourceId
   search?: string
   category?: string | null
   sort?: SortKey

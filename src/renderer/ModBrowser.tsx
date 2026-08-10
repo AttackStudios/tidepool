@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import type { BrowsePage, InstallProgress, Profile, Result, SortKey } from '../shared/types'
+import type { BrowsePage, InstallProgress, Profile, Result, SortKey, SourceId } from '../shared/types'
 import { ModCard } from './ModCard'
 import { ModDetail } from './ModDetail'
 import { useDebounced } from './useDebounced'
+
+const SOURCES: { id: SourceId; label: string }[] = [
+  { id: 'thunderstore', label: 'Thunderstore' },
+  { id: 'gamebanana', label: 'GameBanana' },
+]
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'relevance', label: 'Relevance' },
@@ -27,6 +32,7 @@ export function ModBrowser({
   profile: Profile | null
   onChanged: () => void
 }) {
+  const [source, setSource] = useState<SourceId>('thunderstore')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortKey | null>(null)
   const [category, setCategory] = useState<string | null>(null)
@@ -63,7 +69,7 @@ export function ModBrowser({
   }, [])
 
   // Any change to the query invalidates the current page number.
-  useEffect(() => { setPage(0) }, [debouncedSearch, category, sort, includeDeprecated, community])
+  useEffect(() => { setPage(0) }, [debouncedSearch, category, sort, includeDeprecated, community, source])
 
   useEffect(() => {
     let cancelled = false
@@ -72,6 +78,7 @@ export function ModBrowser({
     void window.tidepool
       .browse(
         {
+          source,
           search: debouncedSearch,
           category,
           includeDeprecated,
@@ -87,11 +94,11 @@ export function ModBrowser({
         else setState({ status: 'error', message: res.message })
       })
     return () => { cancelled = true }
-  }, [debouncedSearch, category, sort, includeDeprecated, page, community])
+  }, [debouncedSearch, category, sort, includeDeprecated, page, community, source])
 
   // Landing halfway down page two is disorienting; go back to the top whenever
   // the visible set changes.
-  useEffect(() => { listBox.current?.scrollTo({ top: 0 }) }, [page, debouncedSearch, category, sort])
+  useEffect(() => { listBox.current?.scrollTo({ top: 0 }) }, [page, debouncedSearch, category, sort, source])
 
   const result = state.status === 'ready' ? state.page : null
   const pageCount = result ? Math.ceil(result.total / result.pageSize) : 0
@@ -99,6 +106,13 @@ export function ModBrowser({
   return (
     <div className="browser">
       <div className="browser__controls">
+        <select
+          value={source}
+          onChange={(e) => setSource(e.target.value as SourceId)}
+          aria-label="Mod source"
+        >
+          {SOURCES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
         <input
           ref={searchBox}
           className="search"
@@ -107,8 +121,11 @@ export function ModBrowser({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search mods"
+          disabled={source === 'gamebanana'}
+          title={source === 'gamebanana' ? 'GameBanana pages its own listings; search isn’t wired up yet' : undefined}
         />
         <select
+          disabled={source === 'gamebanana'}
           value={sort ?? ''}
           onChange={(e) => setSort((e.target.value || null) as SortKey | null)}
           aria-label="Sort by"
@@ -120,7 +137,7 @@ export function ModBrowser({
           value={category ?? ''}
           onChange={(e) => setCategory(e.target.value || null)}
           aria-label="Filter by category"
-          disabled={!result || result.categories.length === 0}
+          disabled={source === 'gamebanana' || !result || result.categories.length === 0}
         >
           <option value="">All categories</option>
           {result?.categories.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -128,6 +145,7 @@ export function ModBrowser({
         <label className="check">
           <input
             type="checkbox"
+            disabled={source === 'gamebanana'}
             checked={includeDeprecated}
             onChange={(e) => setIncludeDeprecated(e.target.checked)}
           />
@@ -174,6 +192,13 @@ export function ModBrowser({
       {result && (
         <div className="browser__body">
           <div className="browser__list" ref={listBox}>
+            {source === 'gamebanana' && (
+              <p className="muted count">
+                GameBanana submissions carry no dependency data and often ship several alternative
+                files, so TidePool lists them and opens them in your browser rather than guessing an
+                install. Thunderstore mods install here directly.
+              </p>
+            )}
             <p className="muted count">
               {result.total.toLocaleString()} {result.total === 1 ? 'mod' : 'mods'}
               {debouncedSearch && ` matching “${debouncedSearch}”`}
@@ -212,6 +237,7 @@ export function ModBrowser({
           {selected && (
             <ModDetail
               fullName={selected}
+              summary={result.items.find((i) => i.fullName === selected) ?? null}
               community={community}
               profile={profile}
               onChanged={onChanged}

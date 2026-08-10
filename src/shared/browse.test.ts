@@ -24,7 +24,8 @@ const pkg = (over: Partial<Package> & { full_name: string }): Package => ({
 const summary = (over: Partial<PackageSummary> & { fullName: string }): PackageSummary => ({
   name: 'Mod', owner: 'Owner', description: '', icon: null, latestVersion: '1.0.0',
   downloads: 0, rating: 0, categories: [], isDeprecated: false, isPinned: false,
-  isNsfw: false, dateUpdated: '2026-01-01', packageUrl: null, ...over,
+  isNsfw: false, dateUpdated: '2026-01-01', packageUrl: null,
+  source: 'thunderstore', installable: true, ...over,
 })
 
 describe('totalDownloads', () => {

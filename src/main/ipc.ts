@@ -14,6 +14,7 @@ import { ProfileStore } from './services/profiles'
 import { buildLaunchPlan, steamLaunchOptions } from './services/launch'
 import { Catalog } from './services/catalog'
 import { IndexCache } from './services/indexcache'
+import { GameNotOnGameBananaError, fetchMods, findGameId } from './services/gamebanana'
 import { Installer } from './services/installer'
 import type {
   BrowseQuery,
@@ -55,6 +56,8 @@ export const CHANNELS = {
 
 /** Map thrown errors onto the discriminated union the UI switches on. */
 function toFailure(error: unknown): Failure {
+  if (error instanceof GameNotOnGameBananaError)
+    return { ok: false, reason: 'no-community', message: error.message }
   if (error instanceof CommunityNotFoundError)
     return { ok: false, reason: 'no-community', message: error.message }
   if (error instanceof ThunderstoreUnavailableError)
@@ -211,8 +214,25 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
     }),
   )
 
+  // GameBanana pages server-side and has no dependency data, so it is a separate
+  // path rather than another community fed through the Thunderstore catalog.
+  let gameBananaId: number | null = null
+
   ipcMain.handle(CHANNELS.browse, (_e, query: BrowseQuery, community?: string) =>
-    attempt(() => catalog.browse(query, community)),
+    attempt(async () => {
+      if (query.source !== 'gamebanana') return catalog.browse(query, community)
+
+      gameBananaId ??= await findGameId()
+      const page = (query.page ?? 0) + 1
+      const { items, total } = await fetchMods(gameBananaId, page)
+      return {
+        items,
+        total,
+        page: query.page ?? 0,
+        pageSize: items.length || 15,
+        categories: [],
+      }
+    }),
   )
   ipcMain.handle(CHANNELS.detail, (_e, fullName: string, community?: string) =>
     attempt(() => catalog.detail(fullName, community)),

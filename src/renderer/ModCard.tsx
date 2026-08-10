@@ -42,6 +42,7 @@ export function ModCard({
           <div className="card__title">
             <span className="card__name">{mod.name}</span>
             <span className="card__version">{mod.latestVersion}</span>
+            {mod.source === 'gamebanana' && <span className="tag">GameBanana</span>}
             {installing && <span className="tag tag--ok is-working">working…</span>}
             {installed && !installing && <span className="tag tag--ok">installed</span>}
             {mod.isDeprecated && <span className="tag tag--warn">deprecated</span>}

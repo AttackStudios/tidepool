@@ -40,6 +40,8 @@ export function toSummary(pkg: Package): PackageSummary {
     isNsfw: pkg.has_nsfw_content ?? false,
     dateUpdated: pkg.date_updated ?? '',
     packageUrl: pkg.package_url ?? null,
+    source: 'thunderstore',
+    installable: true,
   }
 }
 
