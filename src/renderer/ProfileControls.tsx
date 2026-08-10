@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import type { Profile, Result } from '../shared/types'
 import { Dialog } from './Dialog'
+import { ConfirmDialog, PromptDialog } from './Prompts'
+import { toast, toastError } from './toast'
 
-type Mode = null | 'export' | 'import'
+type Mode = null | 'export' | 'import' | 'create' | 'rename' | 'delete'
 
 export function ProfileControls({
   profiles,
@@ -25,32 +27,32 @@ export function ProfileControls({
 
   const close = () => { setMode(null); setCode(''); setError(null); setCopied(false) }
 
-  const create = async () => {
-    const name = window.prompt('Profile name', `Profile ${profiles.length + 1}`)
-    if (name?.trim()) { await window.tidepool.createProfile(name.trim()); onChanged() }
+  const create = async (name: string) => {
+    await window.tidepool.createProfile(name)
+    onChanged(); close()
+    toast(`Created “${name}”`)
   }
 
-  const rename = async () => {
+  const rename = async (name: string) => {
     if (!current) return
-    const name = window.prompt('Rename profile', current.name)
-    if (name?.trim()) { await window.tidepool.renameProfile(current.id, name.trim()); onChanged() }
+    await window.tidepool.renameProfile(current.id, name)
+    onChanged(); close()
+    toast(`Renamed to “${name}”`)
   }
 
   const duplicate = async () => {
     if (!current) return
     await window.tidepool.duplicateProfile(current.id)
     onChanged()
+    toast(`Duplicated “${current.name}”`)
   }
 
   const remove = async () => {
     if (!current) return
-    // Deleting takes the installed mods with it, so make that explicit.
-    const ok = window.confirm(
-      `Delete “${current.name}” and its ${current.mods.length} installed mod(s)? This cannot be undone.`,
-    )
-    if (!ok) return
+    const name = current.name
     await window.tidepool.deleteProfile(current.id)
-    onChanged()
+    onChanged(); close()
+    toast(`Deleted “${name}”`)
   }
 
   const openExport = async () => {
@@ -71,9 +73,9 @@ export function ProfileControls({
     setBusy(true); setError(null)
     const res: Result<unknown> = await window.tidepool.importProfile(code, community)
     setBusy(false)
-    if (!res.ok) return setError(res.message)
-    onChanged()
-    close()
+    if (!res.ok) { setError(res.message); return }
+    onChanged(); close()
+    toast('Profile imported')
   }
 
   return (
@@ -91,19 +93,51 @@ export function ProfileControls({
         </select>
       </label>
 
-      <button className="button--ghost" onClick={() => void create()}>New</button>
-      <button className="button--ghost" onClick={() => void rename()} disabled={!current}>Rename</button>
+      <button className="button--ghost" onClick={() => setMode('create')}>New</button>
+      <button className="button--ghost" onClick={() => setMode('rename')} disabled={!current}>Rename</button>
       <button className="button--ghost" onClick={() => void duplicate()} disabled={!current}>Duplicate</button>
       <button className="button--ghost" onClick={() => void openExport()} disabled={!current}>Share</button>
       <button className="button--ghost" onClick={() => setMode('import')}>Import</button>
       <button
         className="button--danger"
-        onClick={() => void remove()}
+        onClick={() => setMode('delete')}
         disabled={!current || profiles.length < 2}
         title={profiles.length < 2 ? 'Keep at least one profile' : undefined}
       >
         Delete
       </button>
+
+      {mode === 'create' && (
+        <PromptDialog
+          title="New profile"
+          label="Name"
+          initial={`Profile ${profiles.length + 1}`}
+          confirmLabel="Create"
+          onSubmit={(name) => void create(name)}
+          onClose={close}
+        />
+      )}
+
+      {mode === 'rename' && current && (
+        <PromptDialog
+          title="Rename profile"
+          label="Name"
+          initial={current.name}
+          onSubmit={(name) => void rename(name)}
+          onClose={close}
+        />
+      )}
+
+      {mode === 'delete' && current && (
+        <ConfirmDialog
+          title={`Delete “${current.name}”?`}
+          body={`This removes the profile and its ${current.mods.length} installed mod${
+            current.mods.length === 1 ? '' : 's'
+          }. Your game install is untouched, but this cannot be undone.`}
+          onConfirm={() => void remove()}
+          onClose={close}
+        />
+      )}
 
       {mode === 'export' && (
         <Dialog

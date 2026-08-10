@@ -36,6 +36,7 @@ export function ModBrowser({
   const [state, setState] = useState<State>({ status: 'loading' })
 
   const searchBox = useRef<HTMLInputElement>(null)
+  const listBox = useRef<HTMLDivElement>(null)
   const debouncedSearch = useDebounced(search)
 
   // Cmd/Ctrl+F focuses search, matching what anyone browsing a long list expects.
@@ -76,6 +77,10 @@ export function ModBrowser({
       })
     return () => { cancelled = true }
   }, [debouncedSearch, category, sort, includeDeprecated, page, community])
+
+  // Landing halfway down page two is disorienting; go back to the top whenever
+  // the visible set changes.
+  useEffect(() => { listBox.current?.scrollTo({ top: 0 }) }, [page, debouncedSearch, category, sort])
 
   const result = state.status === 'ready' ? state.page : null
   const pageCount = result ? Math.ceil(result.total / result.pageSize) : 0
@@ -157,7 +162,7 @@ export function ModBrowser({
 
       {result && (
         <div className="browser__body">
-          <div className="browser__list">
+          <div className="browser__list" ref={listBox}>
             <p className="muted count">
               {result.total.toLocaleString()} {result.total === 1 ? 'mod' : 'mods'}
               {debouncedSearch && ` matching “${debouncedSearch}”`}

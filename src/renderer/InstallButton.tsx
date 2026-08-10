@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { InstallProgress, InstallResult, Profile, Result } from '../shared/types'
+import { toast, toastError } from './toast'
 
 const LABELS: Record<InstallProgress['phase'], string> = {
   resolving: 'Resolving…',
@@ -31,13 +32,14 @@ export function InstallButton({
 
   const installed = profile?.mods.find((m) => m.fullName === fullName) ?? null
 
-  const run = async (fn: () => Promise<Result<unknown>>) => {
+  const run = async (fn: () => Promise<Result<unknown>>, done: (data: unknown) => void) => {
     setBusy(true)
     setError(null)
     const res = await fn()
     setBusy(false)
     setProgress(null)
-    if (!res.ok) setError(res.message)
+    if (!res.ok) { setError(res.message); toastError(res.message) }
+    else done(res.data)
     onChanged()
   }
 
@@ -50,7 +52,12 @@ export function InstallButton({
           <button
             className="button--danger"
             disabled={busy}
-            onClick={() => void run(() => window.tidepool.uninstall(profile.id, fullName))}
+            onClick={() =>
+              void run(
+                () => window.tidepool.uninstall(profile.id, fullName),
+                () => toast(`Removed ${fullName}`),
+              )
+            }
           >
             {busy ? 'Removing…' : `Uninstall ${installed.version}`}
           </button>
@@ -58,10 +65,23 @@ export function InstallButton({
           <button
             disabled={busy || !versionRef}
             onClick={() =>
-              void run(() =>
-                window.tidepool.install(profile.id, [versionRef!], community) as Promise<
-                  Result<InstallResult>
-                >,
+              void run(
+                () =>
+                  window.tidepool.install(profile.id, [versionRef!], community) as Promise<
+                    Result<InstallResult>
+                  >,
+                (data) => {
+                  const r = data as InstallResult
+                  const extra = r.installed.length - 1
+                  toast(
+                    extra > 0
+                      ? `Installed ${fullName} and ${extra} dependenc${extra === 1 ? 'y' : 'ies'}`
+                      : `Installed ${fullName}`,
+                  )
+                  if (r.missing.length > 0) {
+                    toastError(`Could not find: ${r.missing.join(', ')}`)
+                  }
+                },
               )
             }
           >

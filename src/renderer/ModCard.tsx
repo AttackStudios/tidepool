@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { PackageSummary } from '../shared/types'
 import { compactNumber, relativeDate } from './format'
 
@@ -12,6 +13,10 @@ export function ModCard({
   installed: boolean
   onSelect: (fullName: string) => void
 }) {
+  // Package icons are third-party URLs and do 404. A broken one should fall back
+  // to the placeholder rather than leaving a blank hole in the row.
+  const [iconOk, setIconOk] = useState(true)
+
   return (
     <li>
       <button
@@ -19,8 +24,14 @@ export function ModCard({
         onClick={() => onSelect(mod.fullName)}
         aria-pressed={selected}
       >
-        {mod.icon ? (
-          <img className="card__icon" src={mod.icon} alt="" loading="lazy" />
+        {mod.icon && iconOk ? (
+          <img
+            className="card__icon"
+            src={mod.icon}
+            alt=""
+            loading="lazy"
+            onError={() => setIconOk(false)}
+          />
         ) : (
           <div className="card__icon card__icon--empty" aria-hidden="true" />
         )}

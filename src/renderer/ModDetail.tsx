@@ -22,11 +22,13 @@ export function ModDetail({
 }) {
   const [detail, setDetail] = useState<Detail | null | undefined>(undefined)
   const [resolution, setResolution] = useState<Resolution | null>(null)
+  const [iconOk, setIconOk] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     setDetail(undefined)
     setResolution(null)
+    setIconOk(true)
 
     void window.tidepool.detail(fullName, community).then((res: Result<Detail | null>) => {
       if (cancelled) return
@@ -52,7 +54,9 @@ export function ModDetail({
   return (
     <aside className="detail">
       <header className="detail__head">
-        {summary.icon && <img className="detail__icon" src={summary.icon} alt="" />}
+        {summary.icon && iconOk && (
+          <img className="detail__icon" src={summary.icon} alt="" onError={() => setIconOk(false)} />
+        )}
         <div>
           <h2 className="detail__name">{summary.name}</h2>
           <p className="muted">by {summary.owner}</p>

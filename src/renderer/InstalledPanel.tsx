@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { InstalledMod, Profile, Result } from '../shared/types'
 import type { ModUpdate } from './types'
+import { toast, toastError } from './toast'
 
 export function InstalledPanel({
   profile,
@@ -35,12 +36,13 @@ export function InstalledPanel({
     return a.fullName.localeCompare(b.fullName)
   })
 
-  const act = async (key: string, fn: () => Promise<Result<unknown>>) => {
+  const act = async (key: string, fn: () => Promise<Result<unknown>>, message?: string) => {
     setBusy(key)
     setError(null)
     const res = await fn()
     setBusy(null)
-    if (!res.ok) setError(res.message)
+    if (!res.ok) { setError(res.message); toastError(res.message) }
+    else if (message) toast(message)
     onChanged()
     void check()
   }
@@ -48,7 +50,11 @@ export function InstalledPanel({
   const updateFor = (m: InstalledMod) => updates.find((u) => u.fullName === m.fullName)
 
   const updateAll = () =>
-    act('all', () => window.tidepool.install(profile.id, updates.map((u) => u.ref), community))
+    act(
+      'all',
+      () => window.tidepool.install(profile.id, updates.map((u) => u.ref), community),
+      `Updated ${updates.length} mod${updates.length === 1 ? '' : 's'}`,
+    )
 
   return (
     <div className="installed">
@@ -85,8 +91,10 @@ export function InstalledPanel({
                     checked={mod.enabled}
                     disabled={busy !== null}
                     onChange={(e) =>
-                      void act(mod.fullName, () =>
-                        window.tidepool.setModEnabled(profile.id, mod.fullName, e.target.checked),
+                      void act(
+                        mod.fullName,
+                        () => window.tidepool.setModEnabled(profile.id, mod.fullName, e.target.checked),
+                        `${e.target.checked ? 'Enabled' : 'Disabled'} ${mod.fullName}`,
                       )
                     }
                   />
@@ -107,8 +115,10 @@ export function InstalledPanel({
                   {update && (
                     <button
                       onClick={() =>
-                        void act(mod.fullName, () =>
-                          window.tidepool.install(profile.id, [update.ref], community),
+                        void act(
+                          mod.fullName,
+                          () => window.tidepool.install(profile.id, [update.ref], community),
+                          `Updated ${mod.fullName} to ${update.latest}`,
                         )
                       }
                       disabled={busy !== null}
@@ -119,8 +129,10 @@ export function InstalledPanel({
                   <button
                     className="button--danger"
                     onClick={() =>
-                      void act(mod.fullName, () =>
-                        window.tidepool.uninstall(profile.id, mod.fullName),
+                      void act(
+                        mod.fullName,
+                        () => window.tidepool.uninstall(profile.id, mod.fullName),
+                        `Removed ${mod.fullName}`,
                       )
                     }
                     disabled={busy !== null}

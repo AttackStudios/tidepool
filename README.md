@@ -166,6 +166,16 @@ Two rules keep it readable rather than pretty-but-unusable:
   `trafficLightPosition` that centres the buttons in the 58px bar. The previous approach inferred
   macOS from an `@supports` query, which is why the traffic lights ended up over the content.
 
+Interaction details that were audited rather than assumed:
+
+- **No native dialogs.** `window.prompt` and `window.confirm` cannot be styled and render as an OS
+  sheet over a fully custom window, which reads as a bug even when working. Creating, renaming and
+  deleting profiles all use in-app dialogs that close on Escape and move focus in on open.
+- **Every action reports itself.** Installs, removals, toggles, updates and imports raise a toast, and
+  failures raise a longer-lived one — silence after clicking a button is indistinguishable from a hang.
+- **Broken package icons fall back** to the placeholder. Icons are third-party URLs and do 404.
+- **Paging returns you to the top** of the list, rather than leaving you halfway down the next page.
+
 The backdrop is smoothed rather than nearest-neighboured: at typical window sizes it is a downscale,
 where hard pixel edges only produce shimmer.
 

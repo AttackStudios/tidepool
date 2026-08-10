@@ -5,6 +5,7 @@ import { InstalledPanel } from './InstalledPanel'
 import { ModBrowser } from './ModBrowser'
 import { ProfileControls } from './ProfileControls'
 import { useProfiles } from './useProfiles'
+import { Toasts } from './toast'
 
 const HOME_COMMUNITY = { slug: 'surf-sandbox', label: 'Surf Sandbox' }
 
@@ -94,6 +95,8 @@ export function App() {
           </button>
         </div>
       </header>
+
+      <Toasts />
 
       <GameBar profile={current} />
 
