@@ -172,8 +172,14 @@ button {
   /* Pressing physically moves the key into its own shadow. */
   transition: none;
 }
-button:hover:not(:disabled) { background: var(--foam); }
-button:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: none; }
+/*
+ * Wrapped in :where() so these carry zero specificity and behave as genuine
+ * defaults. Written plainly, `button:hover` scores (0,3,1) and outranks any
+ * single-class override like `.card:hover` at (0,2,0) — which is how mod cards
+ * ended up painting themselves near-white on hover and hiding their own text.
+ */
+:where(button:hover:not(:disabled)) { background: var(--foam); }
+:where(button:active:not(:disabled)) { transform: translate(2px, 2px); box-shadow: none; }
 button:disabled {
   background: var(--mid); color: var(--ink-3);
   border-color: var(--line-dim); box-shadow: none; cursor: not-allowed;
@@ -506,7 +512,9 @@ button:disabled {
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-deep); }
 
 @media (prefers-reduced-motion: reduce) {
-  button:active:not(:disabled) { transform: none; }
+  /* Zero-specificity like the default it overrides, and later in the file, so
+     it wins without outranking any component's own state. */
+  :where(button:active:not(:disabled)) { transform: none; }
 }
 
 /* A stepped blink rather than a fade — pixel art has no in-between states. */
