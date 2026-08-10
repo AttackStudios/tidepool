@@ -123,11 +123,33 @@ export function ModBrowser({
 
       {state.status === 'no-community' && (
         <div className="empty">
-          <p>{state.message}</p>
-          <p className="muted">
-            Until then, switch the community above to browse an existing one — the whole
-            pipeline is the same.
-          </p>
+          <h2 className="empty__title">No mods yet</h2>
+          <p className="muted">{state.message}</p>
+          {window.tidepool.isDev ? (
+            <p className="muted">
+              Switch the community above to browse an existing one — the pipeline is identical.
+            </p>
+          ) : (
+            <>
+              <p className="muted">
+                Surf Sandbox released on 25 August 2026 and the modding community is brand new. Once
+                the first mods are published they will appear here automatically — nothing to update.
+              </p>
+              <p className="muted">
+                Want to be one of the first? Everything you need is in the{' '}
+                <a
+                  href="https://github.com/AttackStudios/tidepool"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    void window.tidepool.openExternal('https://github.com/AttackStudios/tidepool')
+                  }}
+                >
+                  TidePool repository
+                </a>
+                .
+              </p>
+            </>
+          )}
         </div>
       )}
 

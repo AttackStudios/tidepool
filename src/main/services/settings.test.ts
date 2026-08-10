@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS, SettingsStore } from './settings'
+import { DEFAULT_COMMUNITY } from './thunderstore'
 
 let dir: string
 let file: string
@@ -11,6 +12,15 @@ beforeEach(() => {
   file = join(dir, 'settings.json')
 })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+describe('shipped defaults', () => {
+  it('points at our own community, not a development target', () => {
+    // A shipped build defaulting to another game's mods would be baffling, and
+    // it is the sort of thing only noticed on launch day.
+    expect(DEFAULT_SETTINGS.community).toBe(DEFAULT_COMMUNITY)
+    expect(DEFAULT_SETTINGS.community).toBe('surf-sandbox')
+  })
+})
 
 describe('SettingsStore', () => {
   it('returns defaults before anything is written', () => {

@@ -6,6 +6,14 @@ const APP_NAME = 'TidePool'
 const isDev = !app.isPackaged
 
 /**
+ * Passed into the renderer's argv so the preload can see it.
+ *
+ * The preload runs in the renderer process, so an environment variable set here
+ * in main is not a supported way to reach it. additionalArguments is.
+ */
+const PACKAGED_FLAG = '--tidepool-packaged'
+
+/**
  * Set before `whenReady`, otherwise macOS shows "Electron" in the menu bar and
  * in the About panel during development.
  */
@@ -36,6 +44,7 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      additionalArguments: app.isPackaged ? [PACKAGED_FLAG] : [],
     },
   })
 

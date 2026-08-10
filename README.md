@@ -106,8 +106,12 @@ Roughly a 9,000x reduction over shipping the index. Search is weighted so an exa
 incidental mention — searching "bepinex" returns BepInExPack first, ahead of the 5,214 packages that
 merely name it in a description.
 
-A community selector in the title bar points the browser at a real community, since `surf-sandbox`
-will not exist until mods are published for it. That is what makes the entire UI exercisable today.
+A community selector points the browser at a real community during development, since `surf-sandbox`
+will not exist until mods are published for it — that is what makes the entire UI exercisable today.
+**Shipped builds never see it**: they default to Surf Sandbox and the picker is hidden entirely, because
+a stranger opening a Surf Sandbox mod manager and finding Lethal Company mods would rightly be baffled.
+The flag comes from `app.isPackaged` via `additionalArguments`, not an environment variable — the
+preload runs in the renderer process, where main's environment is not guaranteed.
 
 ### Install pipeline
 

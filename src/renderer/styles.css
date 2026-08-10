@@ -496,3 +496,7 @@ button:disabled {
 }
 .codebox:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .codebox::placeholder { color: var(--ink-3); }
+
+.empty__title { margin: 0 0 10px; font-size: 1.12rem; }
+.empty p { margin: 0 0 11px; }
+.empty a { color: var(--accent); }

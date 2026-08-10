@@ -2,13 +2,16 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
+import { DEFAULT_COMMUNITY } from './thunderstore'
 import type { Settings } from '../../shared/types'
 
 export type { Settings }
 
 export const DEFAULT_SETTINGS: Settings = {
   gamePath: null,
-  community: 'lethal-company',
+  // Ships pointing at our own community. Development targets an existing one,
+  // but that is chosen in the UI and only offered in unpackaged builds.
+  community: DEFAULT_COMMUNITY,
   lastProfileId: null,
 }
 

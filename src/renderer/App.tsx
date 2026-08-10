@@ -6,19 +6,28 @@ import { ModBrowser } from './ModBrowser'
 import { ProfileControls } from './ProfileControls'
 import { useProfiles } from './useProfiles'
 
+const HOME_COMMUNITY = { slug: 'surf-sandbox', label: 'Surf Sandbox' }
+
 /**
  * The surf-sandbox community will not exist until mods are published for it, so
- * the browser is pointed at a real community during development. This selector
- * is what makes the whole UI exercisable months before the game ships.
+ * during development the browser can be pointed at a real community instead —
+ * which is what makes the whole UI exercisable months before the game ships.
+ *
+ * Shipped builds only ever see Surf Sandbox. Offering a stranger a dropdown of
+ * unrelated games would be baffling, and pointing them at Lethal Company mods
+ * by default would be worse.
  */
-const COMMUNITIES = [
-  { slug: 'surf-sandbox', label: 'Surf Sandbox (not live yet)' },
+const DEV_COMMUNITIES = [
   { slug: 'lethal-company', label: 'Lethal Company (dev target)' },
   { slug: 'valheim', label: 'Valheim (dev target)' },
 ]
 
+const COMMUNITIES = window.tidepool.isDev
+  ? [HOME_COMMUNITY, ...DEV_COMMUNITIES]
+  : [HOME_COMMUNITY]
+
 export function App() {
-  const [community, setCommunity] = useState('lethal-company')
+  const [community, setCommunity] = useState(HOME_COMMUNITY.slug)
   const [refreshing, setRefreshing] = useState(false)
   const [tab, setTab] = useState<'browse' | 'installed'>('browse')
   const [status, setStatus] = useState<{ packages: number; fetchedAt: number; stale: boolean } | null>(null)
@@ -64,15 +73,17 @@ export function App() {
             onSelect={setCurrentId}
             onChanged={() => void refresh()}
           />
-          <select
-            value={community}
-            onChange={(e) => setCommunity(e.target.value)}
-            aria-label="Thunderstore community"
-          >
-            {COMMUNITIES.map((c) => (
-              <option key={c.slug} value={c.slug}>{c.label}</option>
-            ))}
-          </select>
+          {COMMUNITIES.length > 1 && (
+            <select
+              value={community}
+              onChange={(e) => setCommunity(e.target.value)}
+              aria-label="Thunderstore community"
+            >
+              {COMMUNITIES.map((c) => (
+                <option key={c.slug} value={c.slug}>{c.label}</option>
+              ))}
+            </select>
+          )}
           {status?.stale && (
             <span className="status status--off" title="Thunderstore is unreachable — showing the last cached list">
               Offline · cached {relativeDate(new Date(status.fetchedAt).toISOString())}

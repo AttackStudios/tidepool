@@ -10,6 +10,14 @@ import type { BrowseQuery, InstallProgress, Settings } from '../shared/types'
 const api = {
   /** Renderer needs this to reserve room for the macOS window buttons. */
   platform: process.platform,
+  /**
+   * True only in an unpackaged build. Gates development affordances — chiefly
+   * the other-community picker, which would be baffling in a shipped app.
+   *
+   * Read from argv because main passes it via `additionalArguments`; the preload
+   * runs in the renderer process, where main's environment is not guaranteed.
+   */
+  isDev: !process.argv.includes('--tidepool-packaged'),
   detectGame: () => ipcRenderer.invoke(CHANNELS.detectGame),
   browse: (query: BrowseQuery, community?: string) =>
     ipcRenderer.invoke(CHANNELS.browse, query, community),
