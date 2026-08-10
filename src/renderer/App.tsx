@@ -100,11 +100,11 @@ export function App() {
           )}
           {status?.stale && (
             <span className="status status--off" title="Thunderstore is unreachable — showing the last cached list">
-              Offline · cached {relativeDate(new Date(status.fetchedAt).toISOString())}
+              Fogged in · cached {relativeDate(new Date(status.fetchedAt).toISOString())}
             </span>
           )}
           <button className="button--ghost" onClick={() => void refreshCatalog()} disabled={refreshing}>
-            {refreshing ? 'Refreshing…' : 'Refresh'}
+            {refreshing ? 'Reading swell…' : 'Refresh'}
           </button>
         </div>
       </header>
@@ -120,7 +120,7 @@ export function App() {
           className={tab === 'browse' ? 'tab tab--on' : 'tab'}
           onClick={() => setTab('browse')}
         >
-          Browse
+          Lineup
         </button>
         <button
           role="tab"
@@ -128,7 +128,7 @@ export function App() {
           className={tab === 'installed' ? 'tab tab--on' : 'tab'}
           onClick={() => setTab('installed')}
         >
-          Installed{current ? ` (${current.mods.length})` : ''}
+          Quiver{current ? ` (${current.mods.length})` : ''}
         </button>
       </nav>
 

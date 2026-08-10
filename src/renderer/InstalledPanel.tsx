@@ -61,7 +61,7 @@ export function InstalledPanel({
     <div className="installed">
       <div className="installed__head">
         <p className="muted count">
-          {mods.length} installed in “{profile.name}”
+          {mods.length} in “{profile.name}”
           {updates.length > 0 && ` · ${updates.length} with updates`}
         </p>
         <div className="installed__actions">
@@ -79,7 +79,7 @@ export function InstalledPanel({
       {error && <p className="error pad">{error}</p>}
 
       {mods.length === 0 ? (
-        <p className="muted pad">Nothing installed yet. Find something in Browse.</p>
+        <p className="muted pad">Empty quiver. Go pick something out of the lineup.</p>
       ) : (
         <ul className="installed__list">
           {mods.map((mod) => {
@@ -108,7 +108,7 @@ export function InstalledPanel({
                     <span className="card__version">{mod.version}</span>
                     {mod.viaDependency && <span className="tag">dependency</span>}
                     {!mod.enabled && <span className="tag tag--warn">disabled</span>}
-                    {update && <span className="tag tag--ok">→ {update.latest}</span>}
+                    {update && <span className="tag tag--ok">v{update.latest} ready</span>}
                   </div>
                 </div>
 

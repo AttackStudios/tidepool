@@ -51,7 +51,7 @@ export function GameBar({ profile }: { profile: Profile | null }) {
   return (
     <div className="gamebar">
       <div className="gamebar__info">
-        {game === undefined && <span className="muted">Looking for the game…</span>}
+        {game === undefined && <span className="muted">Scanning the coast…</span>}
 
         {game === null && (
           <span className="muted">
@@ -75,9 +75,9 @@ export function GameBar({ profile }: { profile: Profile | null }) {
           disabled={!direct}
           title={launch && !launch.canLaunch
             ? 'Direct launch is Windows-only — use “Via Steam” here'
-            : 'Start the game with this profile’s mods'}
+            : 'Paddle out with this profile’s mods'}
         >
-          ▶ Run
+          Drop In
         </button>
 
         <button

@@ -152,6 +152,27 @@ Browse -> install -> launch is complete.
 
 ### Visual design
 
+The UI is pixel art, matched to the game's own idiom. Measured against the artwork, its blocks run
+roughly 10px at 1080p — a native canvas near 192×108. Matching that literally for UI text would be
+unreadable, so the interface uses a **2px design pixel**: the same hard-edged language at a resolution
+you can actually read. Nothing is rounded, nothing is blurred, shadows are hard offsets, and every
+dimension is a multiple of 2px.
+
+**Two pixel faces, because one could not do the job.** Silkscreen has no true lowercase — every letter
+renders as a capital, which is a feature for chrome and a liability everywhere else, since mod
+identifiers are case-sensitive (`BepInEx-BepInExPack`) and paragraphs set in caps are miserable. So
+Silkscreen takes the display role and Departure Mono, which has real lowercase and a monospace rhythm
+suited to package names, takes the body. Both are OFL-licensed and vendored with their licences.
+
+Silkscreen also lacks `→ ✓ ▶ ✕ ←`, so none appear in the UI; the first-run tick is drawn in CSS, which
+suits the grid better anyway.
+
+The language is the game's too: **Lineup** for browsing, **Quiver** for what's installed, *Drop In* to
+play, *Flat today* when there's nothing, *Fogged in* when Thunderstore is unreachable. Destructive and
+functional verbs stay literal — Install, Remove, Update — because a stranger should never have to guess
+what a button does.
+
+
 Prismarine dark blues over a pixel-art surf backdrop, which fades to solid prismarine at every corner
 and edge so window chrome and text always sit on settled ground.
 

@@ -6,11 +6,13 @@ export function ModCard({
   mod,
   selected,
   installed,
+  installing,
   onSelect,
 }: {
   mod: PackageSummary
   selected: boolean
   installed: boolean
+  installing: boolean
   onSelect: (fullName: string) => void
 }) {
   // Package icons are third-party URLs and do 404. A broken one should fall back
@@ -40,7 +42,8 @@ export function ModCard({
           <div className="card__title">
             <span className="card__name">{mod.name}</span>
             <span className="card__version">{mod.latestVersion}</span>
-            {installed && <span className="tag tag--ok">installed</span>}
+            {installing && <span className="tag tag--ok is-working">working…</span>}
+            {installed && !installing && <span className="tag tag--ok">installed</span>}
             {mod.isDeprecated && <span className="tag tag--warn">deprecated</span>}
             {mod.isPinned && <span className="tag">pinned</span>}
           </div>

@@ -18,19 +18,19 @@ export function Welcome({
   const steps = [
     {
       done: Boolean(game),
-      title: 'Find your game',
+      title: 'Find your break',
       body: game
         ? `Found at ${game.root}`
         : 'TidePool reads Steam’s own records. If it hasn’t found Surf Sandbox, use “Locate game” above.',
     },
     {
       done: hasMods,
-      title: 'Install BepInEx, then some mods',
+      title: 'Wax up',
       body: 'Search for BepInExPack in Browse and install it — that’s the loader mods run on. Anything a mod needs is pulled in automatically.',
     },
     {
       done: false,
-      title: 'Hit Run',
+      title: 'Drop in',
       body: 'Starts the game with this profile’s mods. Or use “Via Steam” to keep the overlay and playtime.',
     },
   ]
@@ -38,17 +38,20 @@ export function Welcome({
   return (
     <section className="welcome">
       <div className="welcome__head">
-        <h2>Welcome to TidePool</h2>
+        <h2>Welcome to the lineup</h2>
         <button className="button--ghost" onClick={onDismiss}>Dismiss</button>
       </div>
       <p className="muted">
-        A mod manager for Surf Sandbox. Profiles keep separate sets of mods, and switching between them
-        never touches your game install — so going back to vanilla is always one click.
+        A mod manager for Surf Sandbox. Each profile is its own quiver — a separate set of mods.
+        Switching between them never touches your game install, so paddling back out clean is one click.
       </p>
       <ol className="welcome__steps">
         {steps.map((s) => (
           <li key={s.title} className={s.done ? 'is-done' : ''}>
-            <span className="welcome__tick" aria-hidden="true">{s.done ? '✓' : ''}</span>
+            <span
+              className={s.done ? 'welcome__tick is-done' : 'welcome__tick'}
+              aria-hidden="true"
+            />
             <div>
               <strong>{s.title}</strong>
               <p className="muted">{s.body}</p>

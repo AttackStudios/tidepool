@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { BrowsePage, Profile, Result, SortKey } from '../shared/types'
+import type { BrowsePage, InstallProgress, Profile, Result, SortKey } from '../shared/types'
 import { ModCard } from './ModCard'
 import { ModDetail } from './ModDetail'
 import { useDebounced } from './useDebounced'
@@ -34,6 +34,17 @@ export function ModBrowser({
   const [page, setPage] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
   const [state, setState] = useState<State>({ status: 'loading' })
+  // Progress carries the package being worked on, so the list can mark it too —
+  // feedback shouldn't only exist in the detail panel.
+  const [installing, setInstalling] = useState<string | null>(null)
+
+  useEffect(
+    () =>
+      window.tidepool.onInstallProgress((p: InstallProgress) =>
+        setInstalling(p.phase === 'done' || p.phase === 'failed' ? null : p.current),
+      ),
+    [],
+  )
 
   const searchBox = useRef<HTMLInputElement>(null)
   const listBox = useRef<HTMLDivElement>(null)
@@ -92,7 +103,7 @@ export function ModBrowser({
           ref={searchBox}
           className="search"
           type="search"
-          placeholder="Search mods…"
+          placeholder="Search the lineup…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search mods"
@@ -124,11 +135,11 @@ export function ModBrowser({
         </label>
       </div>
 
-      {state.status === 'loading' && <p className="muted pad">Loading catalog…</p>}
+      {state.status === 'loading' && <p className="muted pad">Paddling out…</p>}
 
       {state.status === 'no-community' && (
         <div className="empty">
-          <h2 className="empty__title">No mods yet</h2>
+          <h2 className="empty__title">Flat today</h2>
           <p className="muted">{state.message}</p>
           {window.tidepool.isDev ? (
             <p className="muted">
@@ -169,7 +180,7 @@ export function ModBrowser({
             </p>
 
             {result.items.length === 0 ? (
-              <p className="muted pad">Nothing matches that.</p>
+              <p className="muted pad">Flat — nothing out there matching that.</p>
             ) : (
               <ul className="cards">
                 {result.items.map((mod) => (
@@ -178,6 +189,7 @@ export function ModBrowser({
                     mod={mod}
                     selected={mod.fullName === selected}
                     installed={profile?.mods.some((m) => m.fullName === mod.fullName) ?? false}
+                    installing={installing === mod.fullName}
                     onSelect={setSelected}
                   />
                 ))}
