@@ -79,7 +79,7 @@ export function InstalledPanel({
       {error && <p className="error pad">{error}</p>}
 
       {mods.length === 0 ? (
-        <p className="muted pad">Empty quiver. Go pick something out of the lineup.</p>
+        <p className="muted pad">Nothing installed yet. Find something in Browse.</p>
       ) : (
         <ul className="installed__list">
           {mods.map((mod) => {

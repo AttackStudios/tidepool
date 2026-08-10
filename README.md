@@ -175,10 +175,10 @@ suited to package names, takes the body. Both are OFL-licensed and vendored with
 Silkscreen also lacks `→ ✓ ▶ ✕ ←`, so none appear in the UI; the first-run tick is drawn in CSS, which
 suits the grid better anyway.
 
-The language is the game's too: **Lineup** for browsing, **Quiver** for what's installed, *Drop In* to
-play, *Flat today* when there's nothing, *Fogged in* when Thunderstore is unreachable. Destructive and
-functional verbs stay literal — Install, Remove, Update — because a stranger should never have to guess
-what a button does.
+Some of the language is the game's too: *Drop In* to play, *Flat today* when there's nothing out there,
+*Fogged in* when Thunderstore is unreachable. Navigation and verbs stay literal — Browse, Installed,
+Install, Remove, Update — because a stranger should never have to guess where they are or what a button
+does. Theming the chrome is charm; theming the map is a tax on the reader.
 
 
 Prismarine dark blues over a pixel-art surf backdrop, which fades to solid prismarine at every corner

@@ -115,7 +115,7 @@ export function App() {
           className={tab === 'browse' ? 'tab tab--on' : 'tab'}
           onClick={() => setTab('browse')}
         >
-          Lineup
+          Browse
         </button>
         <button
           role="tab"
@@ -123,7 +123,7 @@ export function App() {
           className={tab === 'installed' ? 'tab tab--on' : 'tab'}
           onClick={() => setTab('installed')}
         >
-          Quiver{current ? ` (${current.mods.length})` : ''}
+          Installed{current ? ` (${current.mods.length})` : ''}
         </button>
       </nav>
 

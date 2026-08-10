@@ -117,7 +117,7 @@ export function ModBrowser({
           ref={searchBox}
           className="search"
           type="search"
-          placeholder="Search the lineup…"
+          placeholder="Search mods…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search mods"
@@ -205,7 +205,7 @@ export function ModBrowser({
             </p>
 
             {result.items.length === 0 ? (
-              <p className="muted pad">Flat — nothing out there matching that.</p>
+              <p className="muted pad">Nothing matches that.</p>
             ) : (
               <ul className="cards">
                 {result.items.map((mod) => (
