@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { InstalledMod, Profile, Result } from '../shared/types'
 import type { ModUpdate } from './types'
 import { toast, toastError } from './toast'
+import { RemoveButton } from './RemoveButton'
 
 export function InstalledPanel({
   profile,
@@ -126,19 +127,13 @@ export function InstalledPanel({
                       Update
                     </button>
                   )}
-                  <button
-                    className="button--danger"
-                    onClick={() =>
-                      void act(
-                        mod.fullName,
-                        () => window.tidepool.uninstall(profile.id, mod.fullName),
-                        `Removed ${mod.fullName}`,
-                      )
-                    }
+                  <RemoveButton
+                    profileId={profile.id}
+                    fullName={mod.fullName}
+                    community={community}
                     disabled={busy !== null}
-                  >
-                    Remove
-                  </button>
+                    onDone={() => { onChanged(); void check() }}
+                  />
                 </div>
               </li>
             )

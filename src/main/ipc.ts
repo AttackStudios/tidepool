@@ -6,6 +6,7 @@ import { inspectGameFolder } from './services/gamefolder'
 import { canLaunchDirectly, launchGame, steamRunUrl } from './services/launcher'
 import { findUpdates } from './services/updates'
 import { decodeProfile, encodeProfile, refsFor } from './services/profilecode'
+import { analyseRemoval } from './services/dependents'
 import type { LaunchMode } from './services/launcher'
 import { SettingsStore } from './services/settings'
 import { CommunityNotFoundError, ThunderstoreUnavailableError } from './services/thunderstore'
@@ -47,6 +48,7 @@ export const CHANNELS = {
   setModEnabled: 'mods:set-enabled',
   checkUpdates: 'mods:check-updates',
   catalogStatus: 'catalog:status',
+  analyseRemoval: 'mods:analyse-removal',
   exportProfile: 'profiles:export',
   importProfile: 'profiles:import',
 } as const
@@ -146,6 +148,16 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
   )
 
   /** The URL is built in main, so the renderer can never hand us an arbitrary protocol. */
+  ipcMain.handle(
+    CHANNELS.analyseRemoval,
+    (_e, profileId: string, fullName: string, community?: string) =>
+      attempt(async () => {
+        const profile = profiles.read(profileId)
+        if (!profile) throw new Error(`No such profile: ${profileId}`)
+        return analyseRemoval(profile, fullName, catalog, community)
+      }),
+  )
+
   ipcMain.handle(CHANNELS.exportProfile, (_e, profileId: string, community?: string) =>
     attempt(async () => {
       const profile = profiles.read(profileId)

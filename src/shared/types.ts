@@ -177,4 +177,6 @@ export interface Settings {
   gamePath: string | null
   community: string
   lastProfileId: string | null
+  /** Dismissed the first-run panel. */
+  seenWelcome: boolean
 }

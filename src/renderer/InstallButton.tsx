@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { InstallProgress, InstallResult, Profile, Result } from '../shared/types'
 import { toast, toastError } from './toast'
+import { RemoveButton } from './RemoveButton'
 
 const LABELS: Record<InstallProgress['phase'], string> = {
   resolving: 'Resolving…',
@@ -49,18 +50,14 @@ export function InstallButton({
     <>
       <div className="detail__actions">
         {installed ? (
-          <button
-            className="button--danger"
+          <RemoveButton
+            profileId={profile.id}
+            fullName={fullName}
+            community={community}
             disabled={busy}
-            onClick={() =>
-              void run(
-                () => window.tidepool.uninstall(profile.id, fullName),
-                () => toast(`Removed ${fullName}`),
-              )
-            }
-          >
-            {busy ? 'Removing…' : `Uninstall ${installed.version}`}
-          </button>
+            label={`Uninstall ${installed.version}`}
+            onDone={onChanged}
+          />
         ) : (
           <button
             disabled={busy || !versionRef}

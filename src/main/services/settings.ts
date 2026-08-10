@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: Settings = {
   // but that is chosen in the UI and only offered in unpackaged builds.
   community: DEFAULT_COMMUNITY,
   lastProfileId: null,
+  seenWelcome: false,
 }
 
 export class SettingsStore {
@@ -28,6 +29,7 @@ export class SettingsStore {
         gamePath: typeof p.gamePath === 'string' ? p.gamePath : null,
         community: typeof p.community === 'string' ? p.community : DEFAULT_SETTINGS.community,
         lastProfileId: typeof p.lastProfileId === 'string' ? p.lastProfileId : null,
+        seenWelcome: p.seenWelcome === true,
       }
     } catch {
       // Corrupt settings must never stop the app starting.

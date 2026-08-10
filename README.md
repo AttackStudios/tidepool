@@ -175,6 +175,13 @@ Interaction details that were audited rather than assumed:
   failures raise a longer-lived one — silence after clicking a button is indistinguishable from a hang.
 - **Broken package icons fall back** to the placeholder. Icons are third-party URLs and do 404.
 - **Paging returns you to the top** of the list, rather than leaving you halfway down the next page.
+- **Removing a mod says what it will break.** Uninstalling is otherwise silently destructive: pull out
+  a library and everything that needed it stays installed but broken, surfacing later as the game
+  misbehaving. TidePool checks first and names the dependents, and also flags dependencies left needed
+  by nothing. Verified against a real chain — removing BepInExPack warns that three mods will break;
+  removing the leaf mod breaks nothing but flags two now-orphaned dependencies.
+- **First run explains itself.** A dismissible panel with three steps that tick themselves off as they
+  are actually done, so it reads as progress rather than homework.
 
 The backdrop is smoothed rather than nearest-neighboured: at typical window sizes it is a downscale,
 where hard pixel edges only produce shimmer.

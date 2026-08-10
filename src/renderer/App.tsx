@@ -6,6 +6,8 @@ import { ModBrowser } from './ModBrowser'
 import { ProfileControls } from './ProfileControls'
 import { useProfiles } from './useProfiles'
 import { Toasts } from './toast'
+import { Welcome } from './Welcome'
+import type { GameInstall } from '../shared/types'
 
 const HOME_COMMUNITY = { slug: 'surf-sandbox', label: 'Surf Sandbox' }
 
@@ -32,6 +34,8 @@ export function App() {
   const [refreshing, setRefreshing] = useState(false)
   const [tab, setTab] = useState<'browse' | 'installed'>('browse')
   const [status, setStatus] = useState<{ packages: number; fetchedAt: number; stale: boolean } | null>(null)
+  const [showWelcome, setShowWelcome] = useState(false)
+  const [game, setGame] = useState<GameInstall | null | undefined>(undefined)
 
   const readStatus = useCallback(async () => {
     const res = await window.tidepool.catalogStatus(community)
@@ -41,8 +45,17 @@ export function App() {
 
   // Remember the community across restarts.
   useEffect(() => {
-    void window.tidepool.readSettings().then((s) => { if (s.community) setCommunity(s.community) })
+    void window.tidepool.readSettings().then((s) => {
+      if (s.community) setCommunity(s.community)
+      setShowWelcome(!s.seenWelcome)
+    })
+    void window.tidepool.detectGame().then(setGame)
   }, [])
+
+  const dismissWelcome = () => {
+    setShowWelcome(false)
+    void window.tidepool.writeSettings({ seenWelcome: true })
+  }
   useEffect(() => { void window.tidepool.writeSettings({ community }) }, [community])
 
   useEffect(() => { void readStatus() }, [readStatus])
@@ -118,6 +131,14 @@ export function App() {
           Installed{current ? ` (${current.mods.length})` : ''}
         </button>
       </nav>
+
+      {showWelcome && (
+        <Welcome
+          game={game}
+          hasMods={(current?.mods.length ?? 0) > 0}
+          onDismiss={dismissWelcome}
+        />
+      )}
 
       {tab === 'browse' ? (
         <ModBrowser community={community} profile={current} onChanged={() => void refresh()} />
