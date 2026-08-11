@@ -5,14 +5,37 @@ Everything in this folder is pre-written so launch day is paste-and-publish. Pla
 
 ## Before the day
 
-- [ ] `gh auth refresh -s workflow`, then commit `.github/workflows/build.yml` (currently untracked)
+- [x] ~~`gh auth refresh -s workflow`, then commit the CI workflow~~ — done. `build.yml` is tracked and
+      green on every push; three jobs (check, windows, release).
 - [x] ~~Decide on code signing~~ — **decided: ship unsigned on day one.** Microsoft removed EV's
       instant SmartScreen bypass, so any new certificate starts with zero reputation and earns it
       through clean download volume. Signing on 25 Aug would cost money and still show the warning.
       The Steam guide documents the *More info → Run anyway* path. Get a certificate after launch so
       reputation starts building — see `code-signing.md`.
-- [ ] Flip the repo public: `gh repo edit AttackStudios/tidepool --visibility public --accept-visibility-change-consequences`
-- [ ] Message nocanwin about mod support. A planned modding API would delete most of the day.
+- [x] ~~Flip the repo public~~ — done, with description and ten discoverability topics
+      (`surf-sandbox`, `bepinex`, `thunderstore`, `mod-manager`, …).
+- [ ] **Message nocanwin about mod support.** A planned modding API would delete most of day one, and
+      arriving as someone who asked beats arriving as someone who didn't. Needs no computer — do it
+      from a phone.
+- [ ] **Install the release on a Windows machine and click through setup.** The binary is verified as a
+      real PE32 NSIS installer and CI builds it reproducibly, but no human has run it. It is the only
+      step in the whole pipeline still untested.
+
+## Verified state (11 Aug 2026)
+
+Audited rather than remembered:
+
+| Item | Result |
+| --- | --- |
+| CI workflow tracked, latest `main` run | green |
+| Typecheck | clean |
+| Tests | 168 passing, 20 files |
+| Public release downloadable unauthenticated | `v0.1.0-rc.5`, prerelease, 2 assets |
+| `npm run launch:check` | correctly blocks unfilled placeholders |
+| Every placeholder documented | yes |
+| Font licences vendored | Silkscreen OFL + Departure Mono |
+| Secrets in a now-public repo | none |
+| Working tree | clean, nothing unpushed |
 
 ## Release process (rehearsed 9 Aug 2026)
 
@@ -27,8 +50,9 @@ CI then checks, builds on Windows, and publishes a GitHub release with the insta
 attached. Tags containing `-rc`, `-beta` or `-alpha` are marked prerelease automatically. The version
 in the artifact names comes from the tag, so they always agree with the release.
 
-Verified end to end on `v0.1.0-rc.3`: three jobs green, release published, and the downloaded
-`TidePool-Setup-0.1.0-rc.3.exe` confirmed as a real PE32 NSIS installer.
+Verified end to end three times, most recently on `v0.1.0-rc.5`. The downloaded installer was
+confirmed to be a real PE32 NSIS binary with the expected contents — though see the unticked item
+above: nobody has actually run it.
 
 ## Hour by hour
 
