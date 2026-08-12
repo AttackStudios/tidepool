@@ -64,6 +64,7 @@ jobs:
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
 
       - name: Open the notification issue
+        id: issue
         if: steps.check.outputs.live == 'yes' && steps.existing.outputs.count == '0'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -103,9 +104,39 @@ jobs:
             echo '```'
           } > issue.md
 
-          gh issue create --repo "$GITHUB_REPOSITORY" \
+          # Assign and mention: both notify regardless of watch settings, whereas a
+          # plain issue only notifies if you happen to be watching All Activity.
+          echo "" >> issue.md
+          echo "cc @${GITHUB_REPOSITORY_OWNER}" >> issue.md
+
+          URL=$(gh issue create --repo "$GITHUB_REPOSITORY" \
             --title "Surf Sandbox demo is live - start triage" \
-            --body-file issue.md
+            --assignee "$GITHUB_REPOSITORY_OWNER" \
+            --body-file issue.md)
+          echo "issue=$URL" >> "$GITHUB_OUTPUT"
+          echo "Opened $URL"
+
+      # Reaches a phone (and therefore a watch) far more reliably than email.
+      # Skipped silently when the secret is absent, so this is safe to leave in.
+      - name: Push to Discord
+        if: steps.check.outputs.live == 'yes' && steps.existing.outputs.count == '0'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          if [ -z "${WEBHOOK:-}" ]; then
+            echo "No DISCORD_WEBHOOK secret set — skipping push."
+            exit 0
+          fi
+          python3 - <<'PY' > payload.json
+          import json
+          print(json.dumps({
+            "content": "**Surf Sandbox demo is live.** Triage issue opened — "
+                       "first job is Mono vs IL2CPP.\n"
+                       "https://store.steampowered.com/app/4773830/"
+          }))
+          PY
+          curl -sS -X POST -H "Content-Type: application/json" \
+            -d @payload.json "$WEBHOOK" && echo "Pushed to Discord."
 
       - name: Summary
         run: |
