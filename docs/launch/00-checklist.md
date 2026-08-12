@@ -14,9 +14,12 @@ Everything in this folder is pre-written so launch day is paste-and-publish. Pla
       reputation starts building — see `code-signing.md`.
 - [x] ~~Flip the repo public~~ — done, with description and ten discoverability topics
       (`surf-sandbox`, `bepinex`, `thunderstore`, `mod-manager`, …).
-- [ ] **Message nocanwin about mod support.** A planned modding API would delete most of day one, and
-      arriving as someone who asked beats arriving as someone who didn't. Needs no computer — do it
-      from a phone.
+- [x] ~~Message nocanwin about mod support~~ — **decided against.** Shipping first and seeing how it
+      goes. Two consequences worth holding in mind: there's no shortcut if official mod hooks were
+      already planned, so day one assumes reverse-engineering; and nocanwin's first impression of this
+      project will be the mod scene itself rather than a message. That makes the norm already written
+      into the Steam guide — *never report a modded bug to the developer* — the thing carrying the
+      relationship. Worth repeating in Discord and in release notes rather than saying once.
 - [ ] **Install the release on a Windows machine and click through setup.** The binary is verified as a
       real PE32 NSIS installer and CI builds it reproducibly, but no human has run it. It is the only
       step in the whole pipeline still untested.
