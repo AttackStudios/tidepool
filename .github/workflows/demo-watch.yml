@@ -1,0 +1,112 @@
+name: demo-watch
+
+# Watches for the Surf Sandbox demo (Steam app 4773830) going public. A demo is a
+# Unity build of the same game, so the moment it exists the scripting-backend
+# question can be answered and the loader work can start — roughly two weeks
+# before the 25 Aug release.
+#
+# This lives in Actions rather than a scheduled cloud agent because that
+# environment's egress proxy blocks store.steampowered.com outright, so it could
+# never observe the thing it was watching. Actions runners have open egress and
+# gh preinstalled.
+
+on:
+  schedule:
+    - cron: '17 * * * *'   # hourly, off the :00 mark where every scheduled job piles up
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check whether the demo is public
+        id: check
+        run: |
+          set -euo pipefail
+          BODY=$(curl -sS --max-time 25 \
+            "https://store.steampowered.com/api/appdetails?appids=4773830&cc=us&l=en")
+          echo "$BODY" > demo.json
+
+          LIVE=$(python3 -c "
+          import json
+          d = json.load(open('demo.json'))
+          print('yes' if d.get('4773830', {}).get('success') else 'no')
+          ")
+          echo "live=$LIVE" >> "$GITHUB_OUTPUT"
+          echo "Demo public: $LIVE"
+
+          if [ "$LIVE" = "yes" ]; then
+            python3 -c "
+          import json
+          a = json.load(open('demo.json'))['4773830']['data']
+          rd = a.get('release_date', {})
+          print('name=%s' % a.get('name'))
+          print('type=%s' % a.get('type'))
+          print('release=%s' % rd.get('date'))
+          print('free=%s' % a.get('is_free'))
+          print('platforms=%s' % a.get('platforms'))
+          " > details.txt
+            cat details.txt
+          fi
+
+      # Without this the watcher would open a fresh issue every hour, for ever.
+      - name: Has it already been reported?
+        if: steps.check.outputs.live == 'yes'
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COUNT=$(gh issue list --repo "$GITHUB_REPOSITORY" --state all \
+            --search "Surf Sandbox demo is live in:title" --json number --jq 'length')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Open the notification issue
+        if: steps.check.outputs.live == 'yes' && steps.existing.outputs.count == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "The Surf Sandbox demo is now publicly downloadable:"
+            echo "https://store.steampowered.com/app/4773830/"
+            echo
+            echo '```'
+            cat details.txt
+            echo '```'
+            echo
+            echo "### Do this first"
+            echo
+            echo "Determine the scripting backend — it decides how much of day one is"
+            echo "reverse-engineering:"
+            echo
+            echo "- \`<Name>_Data/Managed/Assembly-CSharp.dll\` → **Mono**, decompiles readably in ILSpy or Rider"
+            echo "- \`GameAssembly.dll\` → **IL2CPP**, needs Il2CppDumper first (about a day more work)"
+            echo
+            echo "Also note the Unity version from \`globalgamemanagers\`, and whether Steamworks"
+            echo "assemblies are present — that decides the multiplayer transport."
+            echo
+            echo "### Why this matters"
+            echo
+            echo "A demo is a Unity build of the same game. Demo builds are usually"
+            echo "content-stripped but engine-identical, so the backend and core class structure"
+            echo "should match the full game. This unblocks most of the day-one plan in"
+            echo "\`docs/launch/00-checklist.md\` roughly two weeks before the 25 Aug release."
+            echo
+            echo "### Getting it onto macOS"
+            echo
+            echo "No Windows machine needed — force the platform type:"
+            echo
+            echo '```sh'
+            echo "steamcmd +@sSteamCmdForcePlatformType windows +login <user> +app_update 4773830 validate +quit"
+            echo '```'
+          } > issue.md
+
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Surf Sandbox demo is live - start triage" \
+            --body-file issue.md
+
+      - name: Summary
+        run: |
+          echo "Demo public: ${{ steps.check.outputs.live }}" >> "$GITHUB_STEP_SUMMARY"
