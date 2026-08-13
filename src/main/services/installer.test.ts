@@ -215,11 +215,11 @@ describe('Installer', () => {
     const installer = new Installer(new Catalog(), profiles, cache)
 
     const installed = await installer.installDirect(profile.id, {
-      fullName: 'AttackStudios-SurfMP', version: '1.0.0',
+      fullName: 'AttackStudioYT-SurfMP', version: '1.0.0',
       downloadUrl: 'https://example.test/surfmp.zip',
     })
 
-    expect(installed.fullName).toBe('AttackStudios-SurfMP')
+    expect(installed.fullName).toBe('AttackStudioYT-SurfMP')
     expect(existsSync(join(profiles.dir(profile.id), 'BepInEx/plugins/SurfMP.dll'))).toBe(true)
     // Records its files like any other install, so uninstall stays exact.
     expect(profiles.read(profile.id)!.mods[0]!.files).toHaveLength(1)
@@ -230,10 +230,10 @@ describe('Installer', () => {
     const profile = profiles.create('Test')
     const installer = new Installer(new Catalog(), profiles, cache)
     await installer.installDirect(profile.id, {
-      fullName: 'AttackStudios-SurfMP', version: '1.0.0',
+      fullName: 'AttackStudioYT-SurfMP', version: '1.0.0',
       downloadUrl: 'https://example.test/surfmp.zip',
     })
-    installer.uninstall(profile.id, 'AttackStudios-SurfMP')
+    installer.uninstall(profile.id, 'AttackStudioYT-SurfMP')
     expect(existsSync(join(profiles.dir(profile.id), 'BepInEx/plugins/SurfMP.dll'))).toBe(false)
   })
 
