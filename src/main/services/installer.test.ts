@@ -264,3 +264,41 @@ describe('Installer', () => {
       .toBe('REAL BYTES')
   })
 })
+
+describe('concurrent safety', () => {
+  it('serialises overlapping installs instead of losing one', async () => {
+    // Reachable in the UI: "Update all" while a Browse install is in flight.
+    // Both used to read the same starting profile, so the second write dropped
+    // whatever the first had added.
+    stubFetch(
+      [pkg('A-One', '1.0.0'), pkg('B-Two', '1.0.0')],
+      {
+        'https://example.test/A-One-1.0.0.zip': zipFor({ 'BepInEx/plugins/A.dll': 'a' }),
+        'https://example.test/B-Two-1.0.0.zip': zipFor({ 'BepInEx/plugins/B.dll': 'b' }),
+      },
+    )
+    const profile = profiles.create('Test')
+    const installer = new Installer(new Catalog(), profiles, cache)
+
+    await Promise.all([
+      installer.install(profile.id, ['A-One-1.0.0'], 'x'),
+      installer.install(profile.id, ['B-Two-1.0.0'], 'x'),
+    ])
+
+    const names = profiles.read(profile.id)!.mods.map((m) => m.fullName).sort()
+    expect(names).toEqual(['A-One', 'B-Two'])
+  })
+
+  it('a failed operation does not wedge the queue', async () => {
+    stubFetch([pkg('A-One', '1.0.0')], {
+      'https://example.test/A-One-1.0.0.zip': zipFor({ 'BepInEx/plugins/A.dll': 'a' }),
+    })
+    const profile = profiles.create('Test')
+    const installer = new Installer(new Catalog(), profiles, cache)
+
+    await expect(installer.install('does-not-exist', ['A-One-1.0.0'], 'x')).rejects.toThrow()
+    // The next operation on a real profile must still run.
+    await installer.install(profile.id, ['A-One-1.0.0'], 'x')
+    expect(profiles.read(profile.id)!.mods).toHaveLength(1)
+  })
+})

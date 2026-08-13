@@ -16,8 +16,10 @@ export function GameBar({ profile }: { profile: Profile | null }) {
   useEffect(() => { void refreshGame() }, [refreshGame])
 
   useEffect(() => {
-    if (!profile) return setLaunch(null)
-    void window.tidepool.launchOptions(profile.id).then(setLaunch)
+    if (!profile) { setLaunch(null); return }
+    let cancelled = false
+    void window.tidepool.launchOptions(profile.id).then((l) => { if (!cancelled) setLaunch(l) })
+    return () => { cancelled = true }
   }, [profile])
 
   const locate = async () => {

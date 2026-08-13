@@ -2,7 +2,7 @@
 import AdmZip from 'adm-zip'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import type { DependencyRef, PackageVersion } from '../../shared/types'
 
 /**
@@ -36,20 +36,43 @@ export async function downloadPackage(
 }
 
 /**
+ * Is `target` genuinely inside `root`?
+ *
+ * Archive entry names are attacker-controlled — anyone can upload a package —
+ * and a name like `BepInEx/../../../../Library/LaunchAgents/evil.plist` resolves
+ * clean outside the profile. That is Zip Slip, and for a tool whose whole job is
+ * unpacking downloaded archives it is arbitrary file write. Compare resolved
+ * paths rather than trusting the string.
+ */
+export function isInside(root: string, target: string): boolean {
+  const r = resolve(root)
+  const t = resolve(target)
+  return t === r || t.startsWith(r.endsWith(sep) ? r : r + sep)
+}
+
+/**
  * Thunderstore packages are not consistently laid out: some contain a
  * `BepInEx/plugins/...` tree, others just drop loose DLLs at the root. Normalise
  * both into the profile's plugin folder so mods land somewhere BepInEx looks.
+ *
+ * Returns null for anything that would land outside the profile, so a hostile
+ * archive is skipped rather than written.
  */
 export function targetPathFor(entryName: string, profileDir: string, modFolder: string): string | null {
   const normalised = entryName.replace(/\\/g, '/')
   if (normalised.endsWith('/')) return null
   // Skip Thunderstore's own metadata; it isn't part of the mod.
   if (/^(icon\.png|manifest\.json|README\.md|CHANGELOG\.md)$/i.test(normalised)) return null
+  // Absolute entries have no business in a mod archive.
+  if (normalised.startsWith('/') || /^[a-zA-Z]:/.test(normalised)) return null
 
   const bepInExAt = normalised.indexOf('BepInEx/')
-  if (bepInExAt !== -1) return join(profileDir, normalised.slice(bepInExAt))
+  const target =
+    bepInExAt !== -1
+      ? join(profileDir, normalised.slice(bepInExAt))
+      : join(profileDir, 'BepInEx', 'plugins', modFolder, normalised)
 
-  return join(profileDir, 'BepInEx', 'plugins', modFolder, normalised)
+  return isInside(profileDir, target) ? target : null
 }
 
 export function extractInto(zipPath: string, profileDir: string, ref: DependencyRef): string[] {

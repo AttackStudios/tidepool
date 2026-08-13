@@ -24,6 +24,28 @@ export type ProgressFn = (progress: InstallProgress) => void
 export const DISABLED_SUFFIX = '.disabled'
 
 export class Installer {
+  /**
+   * One promise chain per profile, so mutations queue instead of racing.
+   *
+   * Every mutating path is read-modify-write on profile.json. Two overlapping
+   * operations — "Update all" while an install runs from Browse, or an
+   * impatient double click — both read the same starting state and the second
+   * write silently discards the first's additions. Serialising per profile is
+   * enough; different profiles never touch the same file.
+   */
+  private locks = new Map<string, Promise<unknown>>()
+
+  private withLock<T>(profileId: string, fn: () => Promise<T> | T): Promise<T> {
+    const previous = this.locks.get(profileId) ?? Promise.resolve()
+    // Chain off the settled result so one failure doesn't wedge the queue.
+    const next = previous.then(fn, fn)
+    this.locks.set(
+      profileId,
+      next.catch(() => undefined),
+    )
+    return next
+  }
+
   constructor(
     private readonly catalog: Catalog,
     private readonly profiles: ProfileStore,
@@ -38,7 +60,16 @@ export class Installer {
    * order. Anything already present at the same version is skipped, so
    * installing two mods that share a dependency doesn't unpack it twice.
    */
-  async install(
+  install(
+    profileId: string,
+    refs: string[],
+    community?: string,
+    onProgress: ProgressFn = () => {},
+  ): Promise<InstallResult> {
+    return this.withLock(profileId, () => this.installLocked(profileId, refs, community, onProgress))
+  }
+
+  private async installLocked(
     profileId: string,
     refs: string[],
     community?: string,
@@ -115,7 +146,15 @@ export class Installer {
    * recording, replacing an older version, uninstall) is shared with the normal
    * path, so an Essentials mod behaves like any other once installed.
    */
-  async installDirect(
+  installDirect(
+    profileId: string,
+    mod: { fullName: string; version: string; downloadUrl: string },
+    onProgress: ProgressFn = () => {},
+  ): Promise<InstalledMod> {
+    return this.withLock(profileId, () => this.installDirectLocked(profileId, mod, onProgress))
+  }
+
+  private async installDirectLocked(
     profileId: string,
     mod: { fullName: string; version: string; downloadUrl: string },
     onProgress: ProgressFn = () => {},

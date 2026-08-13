@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cacheKey, targetPathFor } from './install'
+import { cacheKey, isInside, targetPathFor } from './install'
 import type { PackageVersion } from '../../shared/types'
 
 const version = (url: string): PackageVersion => ({
@@ -41,8 +41,46 @@ describe('targetPathFor', () => {
     expect(targetPathFor('plugins/', '/p', 'Owner-Mod')).toBeNull()
   })
 
+  it('refuses entries that would escape the profile directory', () => {
+    // Zip Slip. Archive names are attacker-controlled and this tool exists to
+    // unpack downloaded archives, so an unchecked `..` is arbitrary file write.
+    for (const evil of [
+      '../../../../../../tmp/pwned.dll',
+      'BepInEx/../../../../../../tmp/pwned.dll',
+      'BepInEx/plugins/../../../../../../../tmp/pwned.dll',
+      'BepInEx/core/../../../../Library/LaunchAgents/evil.plist',
+      'BepInEx\\..\\..\\..\\evil.dll',
+    ]) {
+      expect(targetPathFor(evil, '/p/profiles/default', 'Owner-Mod'), evil).toBeNull()
+    }
+  })
+
+  it('refuses absolute entry names', () => {
+    expect(targetPathFor('/etc/passwd', '/p', 'Owner-Mod')).toBeNull()
+    expect(targetPathFor('C:/Windows/System32/evil.dll', '/p', 'Owner-Mod')).toBeNull()
+  })
+
+  it('still allows a harmless .. that stays inside', () => {
+    // Over-blocking would break legitimate archives, so only escapes are refused.
+    expect(targetPathFor('BepInEx/plugins/sub/../Thing.dll', '/p', 'Owner-Mod'))
+      .toBe('/p/BepInEx/plugins/Thing.dll')
+  })
+
   it('normalises Windows separators found in zip entries', () => {
     expect(targetPathFor('BepInEx\\plugins\\Thing.dll', '/p', 'Owner-Mod'))
       .toBe('/p/BepInEx/plugins/Thing.dll')
+  })
+})
+
+describe('isInside', () => {
+  it('accepts a path within the root', () => {
+    expect(isInside('/p', '/p/BepInEx/plugins/x.dll')).toBe(true)
+    expect(isInside('/p', '/p')).toBe(true)
+  })
+  it('rejects escapes and sibling directories', () => {
+    expect(isInside('/p', '/p/../q/x.dll')).toBe(false)
+    expect(isInside('/p', '/other/x.dll')).toBe(false)
+    // A prefix match on the string alone would wrongly accept this one.
+    expect(isInside('/p', '/pwned/x.dll')).toBe(false)
   })
 })

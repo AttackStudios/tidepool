@@ -28,10 +28,13 @@ export function EssentialDetail({
   const [progress, setProgress] = useState<InstallProgress | null>(null)
 
   useEffect(() => {
+    let cancelled = false
     setMod(undefined)
-    void window.tidepool.essentialDetail(summary.fullName).then((r: Result<EssentialMod | null>) =>
-      setMod(r.ok ? r.data : null),
-    )
+    void window.tidepool.essentialDetail(summary.fullName).then((r: Result<EssentialMod | null>) => {
+      // Clicking through entries quickly can land an older response last.
+      if (!cancelled) setMod(r.ok ? r.data : null)
+    })
+    return () => { cancelled = true }
   }, [summary.fullName])
 
   useEffect(() => window.tidepool.onInstallProgress(setProgress), [])

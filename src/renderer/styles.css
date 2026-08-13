@@ -537,3 +537,15 @@ button:disabled {
 .sourcetab--on {
   background: var(--accent); color: var(--accent-ink); border-color: var(--accent-deep);
 }
+
+/* ---------- crash screen ---------- */
+
+.crash { max-width: 62ch; margin: 0 auto; padding: 48px 24px; }
+.crash h1 { font-family: var(--display); font-size: var(--f-title); margin: 0 0 12px; color: var(--error); }
+.crash p { font-size: var(--f-micro); line-height: 1.7; }
+.crash__detail {
+  background: var(--abyss); border: var(--px) solid var(--line);
+  padding: 10px; font-size: var(--f-micro); overflow-x: auto; white-space: pre-wrap;
+  word-break: break-word; margin: 14px 0;
+}
+.crash__actions { display: flex; gap: 8px; flex-wrap: wrap; }
