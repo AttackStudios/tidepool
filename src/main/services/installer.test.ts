@@ -209,6 +209,44 @@ describe('Installer', () => {
     expect(existsSync(join(dir, 'BepInEx/plugins/Top.dll.disabled'))).toBe(false)
   })
 
+  it('installs straight from a URL, for curated Essentials entries', async () => {
+    stubFetch([], { 'https://example.test/surfmp.zip': zipFor({ 'BepInEx/plugins/SurfMP.dll': 'mp' }) })
+    const profile = profiles.create('Test')
+    const installer = new Installer(new Catalog(), profiles, cache)
+
+    const installed = await installer.installDirect(profile.id, {
+      fullName: 'AttackStudios-SurfMP', version: '1.0.0',
+      downloadUrl: 'https://example.test/surfmp.zip',
+    })
+
+    expect(installed.fullName).toBe('AttackStudios-SurfMP')
+    expect(existsSync(join(profiles.dir(profile.id), 'BepInEx/plugins/SurfMP.dll'))).toBe(true)
+    // Records its files like any other install, so uninstall stays exact.
+    expect(profiles.read(profile.id)!.mods[0]!.files).toHaveLength(1)
+  })
+
+  it('a URL-installed mod uninstalls like any other', async () => {
+    stubFetch([], { 'https://example.test/surfmp.zip': zipFor({ 'BepInEx/plugins/SurfMP.dll': 'mp' }) })
+    const profile = profiles.create('Test')
+    const installer = new Installer(new Catalog(), profiles, cache)
+    await installer.installDirect(profile.id, {
+      fullName: 'AttackStudios-SurfMP', version: '1.0.0',
+      downloadUrl: 'https://example.test/surfmp.zip',
+    })
+    installer.uninstall(profile.id, 'AttackStudios-SurfMP')
+    expect(existsSync(join(profiles.dir(profile.id), 'BepInEx/plugins/SurfMP.dll'))).toBe(false)
+  })
+
+  it('rejects a direct install whose reference is unusable', async () => {
+    stubFetch([], {})
+    const profile = profiles.create('Test')
+    await expect(
+      new Installer(new Catalog(), profiles, cache).installDirect(profile.id, {
+        fullName: 'nonsense', version: 'not-a-version', downloadUrl: 'https://x/y.zip',
+      }),
+    ).rejects.toThrow(/not a usable package reference/i)
+  })
+
   it('refuses to install into a profile that does not exist', async () => {
     stubFetch([pkg('A-Top', '1.0.0')], {})
     await expect(

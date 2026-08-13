@@ -15,6 +15,12 @@ import { buildLaunchPlan, steamLaunchOptions } from './services/launch'
 import { Catalog } from './services/catalog'
 import { IndexCache } from './services/indexcache'
 import { GameNotOnGameBananaError, fetchMods, findGameId } from './services/gamebanana'
+import {
+  EssentialsUnavailableError,
+  fetchEssentials,
+  findEssential,
+  toSummary as essentialToSummary,
+} from './services/essentials'
 import { Installer } from './services/installer'
 import type {
   BrowseQuery,
@@ -48,6 +54,8 @@ export const CHANNELS = {
   launchViaSteam: 'launch:steam',
   setModEnabled: 'mods:set-enabled',
   checkUpdates: 'mods:check-updates',
+  essentialDetail: 'essentials:detail',
+  installEssential: 'essentials:install',
   catalogStatus: 'catalog:status',
   analyseRemoval: 'mods:analyse-removal',
   exportProfile: 'profiles:export',
@@ -58,6 +66,8 @@ export const CHANNELS = {
 function toFailure(error: unknown): Failure {
   if (error instanceof GameNotOnGameBananaError)
     return { ok: false, reason: 'no-community', message: error.message }
+  if (error instanceof EssentialsUnavailableError)
+    return { ok: false, reason: 'unavailable', message: error.message }
   if (error instanceof CommunityNotFoundError)
     return { ok: false, reason: 'no-community', message: error.message }
   if (error instanceof ThunderstoreUnavailableError)
@@ -220,6 +230,12 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
 
   ipcMain.handle(CHANNELS.browse, (_e, query: BrowseQuery, community?: string) =>
     attempt(async () => {
+      if (query.source === 'essentials') {
+        const mods = await fetchEssentials()
+        const items = mods.map(essentialToSummary)
+        return { items, total: items.length, page: 0, pageSize: items.length || 1, categories: [] }
+      }
+
       if (query.source !== 'gamebanana') return catalog.browse(query, community)
 
       gameBananaId ??= await findGameId()

@@ -107,6 +107,63 @@ export class Installer {
   }
 
   /**
+   * Install a single mod straight from a URL.
+   *
+   * Curated Essentials entries are fetched from a manifest rather than a package
+   * index, so there is no dependency graph to resolve — the manifest author is
+   * responsible for listing what a mod needs. Everything downstream (file
+   * recording, replacing an older version, uninstall) is shared with the normal
+   * path, so an Essentials mod behaves like any other once installed.
+   */
+  async installDirect(
+    profileId: string,
+    mod: { fullName: string; version: string; downloadUrl: string },
+    onProgress: ProgressFn = () => {},
+  ): Promise<InstalledMod> {
+    const profile = this.profiles.read(profileId)
+    if (!profile) throw new Error(`No such profile: ${profileId}`)
+
+    const ref = parseRef(`${mod.fullName}-${mod.version}`)
+    if (!ref) throw new Error(`Not a usable package reference: ${mod.fullName}-${mod.version}`)
+
+    const profileDir = this.profiles.dir(profileId)
+    const already = profile.mods.find((m) => m.fullName === ref.fullName)
+
+    onProgress({ phase: 'downloading', current: ref.fullName, completed: 0, total: 1 })
+    const zip = await downloadPackage(
+      {
+        full_name: `${mod.fullName}-${mod.version}`,
+        name: ref.name,
+        version_number: mod.version,
+        download_url: mod.downloadUrl,
+        dependencies: [],
+        file_size: 0,
+      },
+      this.cacheDir,
+      this.fetchImpl,
+    )
+
+    onProgress({ phase: 'extracting', current: ref.fullName, completed: 0, total: 1 })
+    if (already) this.removeFiles(profileDir, already.files)
+    const written = extractInto(zip, profileDir, ref)
+
+    const installed: InstalledMod = {
+      fullName: ref.fullName,
+      version: ref.version,
+      enabled: true,
+      installedAt: new Date().toISOString(),
+      files: written.map((f) => relative(profileDir, f)),
+      viaDependency: false,
+    }
+    this.profiles.setMods(profileId, [
+      ...profile.mods.filter((m) => m.fullName !== ref.fullName),
+      installed,
+    ])
+    onProgress({ phase: 'done', current: null, completed: 1, total: 1 })
+    return installed
+  }
+
+  /**
    * Enable or disable a mod without uninstalling it.
    *
    * BepInEx only loads `.dll` files from `plugins`, so suffixing them is enough

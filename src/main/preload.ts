@@ -44,6 +44,9 @@ const api = {
   launchGame: (profileId: string, mode?: 'modded' | 'vanilla') =>
     ipcRenderer.invoke(CHANNELS.launchGame, profileId, mode),
   launchViaSteam: () => ipcRenderer.invoke(CHANNELS.launchViaSteam),
+  essentialDetail: (id: string) => ipcRenderer.invoke(CHANNELS.essentialDetail, id),
+  installEssential: (profileId: string, id: string) =>
+    ipcRenderer.invoke(CHANNELS.installEssential, profileId, id),
   analyseRemoval: (profileId: string, fullName: string, community?: string) =>
     ipcRenderer.invoke(CHANNELS.analyseRemoval, profileId, fullName, community),
   exportProfile: (profileId: string, community?: string) =>

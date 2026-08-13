@@ -521,3 +521,19 @@ button:disabled {
 .tag.is-working { animation: blink 900ms steps(2, end) infinite; }
 @keyframes blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { .tag.is-working { animation: none; } }
+
+/* ---------- source tabs ---------- */
+
+.sourcetabs { display: flex; gap: 0; }
+.sourcetab {
+  font-family: var(--display);
+  background: var(--mid); color: var(--ink-2);
+  border: var(--px) solid var(--line); border-right-width: 0;
+  padding: 6px 10px; font-size: var(--f-micro); box-shadow: none;
+}
+.sourcetab:last-child { border-right-width: var(--px); }
+.sourcetab:hover:not(:disabled) { background: var(--shelf); color: var(--ink); }
+.sourcetab:active { transform: none; }
+.sourcetab--on {
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent-deep);
+}

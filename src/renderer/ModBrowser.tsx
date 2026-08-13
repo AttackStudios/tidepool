@@ -5,6 +5,7 @@ import { ModDetail } from './ModDetail'
 import { useDebounced } from './useDebounced'
 
 const SOURCES: { id: SourceId; label: string }[] = [
+  { id: 'essentials', label: 'Essentials' },
   { id: 'thunderstore', label: 'Thunderstore' },
   { id: 'gamebanana', label: 'GameBanana' },
 ]
@@ -32,7 +33,7 @@ export function ModBrowser({
   profile: Profile | null
   onChanged: () => void
 }) {
-  const [source, setSource] = useState<SourceId>('thunderstore')
+  const [source, setSource] = useState<SourceId>('essentials')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortKey | null>(null)
   const [category, setCategory] = useState<string | null>(null)
@@ -106,13 +107,19 @@ export function ModBrowser({
   return (
     <div className="browser">
       <div className="browser__controls">
-        <select
-          value={source}
-          onChange={(e) => setSource(e.target.value as SourceId)}
-          aria-label="Mod source"
-        >
-          {SOURCES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-        </select>
+        <div className="sourcetabs" role="tablist" aria-label="Mod source">
+          {SOURCES.map((s) => (
+            <button
+              key={s.id}
+              role="tab"
+              aria-selected={source === s.id}
+              className={source === s.id ? 'sourcetab sourcetab--on' : 'sourcetab'}
+              onClick={() => setSource(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
         <input
           ref={searchBox}
           className="search"
@@ -121,11 +128,11 @@ export function ModBrowser({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search mods"
-          disabled={source === 'gamebanana'}
-          title={source === 'gamebanana' ? 'GameBanana pages its own listings; search isn’t wired up yet' : undefined}
+          disabled={source !== 'thunderstore'}
+          title={source !== 'thunderstore' ? 'Search applies to the Thunderstore catalogue' : undefined}
         />
         <select
-          disabled={source === 'gamebanana'}
+          disabled={source !== 'thunderstore'}
           value={sort ?? ''}
           onChange={(e) => setSort((e.target.value || null) as SortKey | null)}
           aria-label="Sort by"
@@ -137,7 +144,7 @@ export function ModBrowser({
           value={category ?? ''}
           onChange={(e) => setCategory(e.target.value || null)}
           aria-label="Filter by category"
-          disabled={source === 'gamebanana' || !result || result.categories.length === 0}
+          disabled={source !== 'thunderstore' || !result || result.categories.length === 0}
         >
           <option value="">All categories</option>
           {result?.categories.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -145,7 +152,7 @@ export function ModBrowser({
         <label className="check">
           <input
             type="checkbox"
-            disabled={source === 'gamebanana'}
+            disabled={source !== 'thunderstore'}
             checked={includeDeprecated}
             onChange={(e) => setIncludeDeprecated(e.target.checked)}
           />
@@ -192,6 +199,12 @@ export function ModBrowser({
       {result && (
         <div className="browser__body">
           <div className="browser__list" ref={listBox}>
+            {source === 'essentials' && (
+              <p className="muted count">
+                Mods we build and vouch for. This list is fetched fresh each time, so entries
+                appear here the moment they ship — nothing to update.
+              </p>
+            )}
             {source === 'gamebanana' && (
               <p className="muted count">
                 GameBanana submissions carry no dependency data and often ship several alternative

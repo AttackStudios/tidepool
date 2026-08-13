@@ -58,6 +58,8 @@ export interface PackageSummary {
   dateUpdated: string
   packageUrl: string | null
   source: SourceId
+  /** Curated entries not yet shipped show in the list but cannot be installed. */
+  planned?: boolean
   /**
    * Whether TidePool can install this itself.
    *
@@ -69,7 +71,7 @@ export interface PackageSummary {
 }
 
 /** Where a listing came from. */
-export type SourceId = 'thunderstore' | 'gamebanana'
+export type SourceId = 'essentials' | 'thunderstore' | 'gamebanana'
 
 export type SortKey = 'relevance' | 'downloads' | 'rating' | 'updated' | 'name'
 

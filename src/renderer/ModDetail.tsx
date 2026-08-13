@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { PackageSummary, PackageVersion, Profile, Resolution, Result } from '../shared/types'
 import { compactNumber, relativeDate } from './format'
 import { InstallButton } from './InstallButton'
+import { EssentialDetail } from './EssentialDetail'
 
 interface Detail {
   summary: import('../shared/types').PackageSummary
@@ -23,6 +24,17 @@ export function ModDetail({
   profile: Profile | null
   onChanged: () => void
 }) {
+  // Curated entries have their own detail, including ones not yet shipped.
+  if (listed && listed.source === 'essentials') {
+    return (
+      <EssentialDetail
+        summary={listed}
+        profile={profile}
+        onChanged={onChanged}
+      />
+    )
+  }
+
   // GameBanana has no per-package detail we can install from, so the listing row
   // is all there is — render that and hand off to the browser.
   if (listed && !listed.installable) {
