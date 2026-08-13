@@ -1,11 +1,14 @@
-name: demo-watch
+name: release-watch
 
-# Watches for the Surf Sandbox demo (Steam app 4773830) going public. A demo is a
-# Unity build of the same game, so the moment it exists the scripting-backend
-# question can be answered and the loader work can start — roughly two weeks
-# before the 25 Aug release.
+# Watches for Surf Sandbox (Steam app 4480760) going purchasable.
 #
-# This lives in Actions rather than a scheduled cloud agent because that
+# This originally watched the demo (app 4773830), hoping for an early Unity build
+# to start the loader work against. nocanwin has confirmed that demo was built for
+# Next Fest and was pulled after a couple of weeks, so it is not coming back —
+# day one is genuinely day one. Repointed at the full game instead, which at least
+# tells us the moment it is actually buyable rather than trusting the store date.
+#
+# It lives in Actions rather than a scheduled cloud agent because that
 # environment's egress proxy blocks store.steampowered.com outright, so it could
 # never observe the thing it was watching. Actions runners have open egress and
 # gh preinstalled.
@@ -22,26 +25,29 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Check whether the demo is public
+      - name: Check whether the game is purchasable
         id: check
         run: |
           set -euo pipefail
           BODY=$(curl -sS --max-time 25 \
-            "https://store.steampowered.com/api/appdetails?appids=4773830&cc=us&l=en")
+            "https://store.steampowered.com/api/appdetails?appids=4480760&cc=us&l=en")
           echo "$BODY" > demo.json
 
+          # The store page already exists, so "success" is not the signal here.
+          # coming_soon flipping false is what marks the game as actually released.
           LIVE=$(python3 -c "
           import json
-          d = json.load(open('demo.json'))
-          print('yes' if d.get('4773830', {}).get('success') else 'no')
+          d = json.load(open('demo.json')).get('4480760', {})
+          rd = d.get('data', {}).get('release_date', {}) if d.get('success') else {}
+          print('no' if not d.get('success') or rd.get('coming_soon', True) else 'yes')
           ")
           echo "live=$LIVE" >> "$GITHUB_OUTPUT"
-          echo "Demo public: $LIVE"
+          echo "Released: $LIVE"
 
           if [ "$LIVE" = "yes" ]; then
             python3 -c "
           import json
-          a = json.load(open('demo.json'))['4773830']['data']
+          a = json.load(open('demo.json'))['4480760']['data']
           rd = a.get('release_date', {})
           print('name=%s' % a.get('name'))
           print('type=%s' % a.get('type'))
@@ -60,7 +66,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           COUNT=$(gh issue list --repo "$GITHUB_REPOSITORY" --state all \
-            --search "Surf Sandbox demo is live in:title" --json number --jq 'length')
+            --search "Surf Sandbox is out in:title" --json number --jq 'length')
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
 
       - name: Open the notification issue
@@ -70,8 +76,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           {
-            echo "The Surf Sandbox demo is now publicly downloadable:"
-            echo "https://store.steampowered.com/app/4773830/"
+            echo "Surf Sandbox is released and purchasable:"
+            echo "https://store.steampowered.com/app/4480760/"
             echo
             echo '```'
             cat details.txt
@@ -90,17 +96,15 @@ jobs:
             echo
             echo "### Why this matters"
             echo
-            echo "A demo is a Unity build of the same game. Demo builds are usually"
-            echo "content-stripped but engine-identical, so the backend and core class structure"
-            echo "should match the full game. This unblocks most of the day-one plan in"
-            echo "\`docs/launch/00-checklist.md\` roughly two weeks before the 25 Aug release."
+            echo "Follow \`docs/launch/00-checklist.md\` from H+0:00. The launch copy is written"
+            echo "and \`npm run launch:check\` will refuse to let a placeholder ship."
             echo
             echo "### Getting it onto macOS"
             echo
             echo "No Windows machine needed — force the platform type:"
             echo
             echo '```sh'
-            echo "steamcmd +@sSteamCmdForcePlatformType windows +login <user> +app_update 4773830 validate +quit"
+            echo "steamcmd +@sSteamCmdForcePlatformType windows +login <user> +app_update 4480760 validate +quit"
             echo '```'
           } > issue.md
 
@@ -110,7 +114,7 @@ jobs:
           echo "cc @${GITHUB_REPOSITORY_OWNER}" >> issue.md
 
           URL=$(gh issue create --repo "$GITHUB_REPOSITORY" \
-            --title "Surf Sandbox demo is live - start triage" \
+            --title "Surf Sandbox is out - start triage" \
             --assignee "$GITHUB_REPOSITORY_OWNER" \
             --body-file issue.md)
           echo "issue=$URL" >> "$GITHUB_OUTPUT"
@@ -130,9 +134,9 @@ jobs:
           python3 - <<'PY' > payload.json
           import json
           print(json.dumps({
-            "content": "**Surf Sandbox demo is live.** Triage issue opened — "
+            "content": "**Surf Sandbox is out.** Triage issue opened — "
                        "first job is Mono vs IL2CPP.\n"
-                       "https://store.steampowered.com/app/4773830/"
+                       "https://store.steampowered.com/app/4480760/"
           }))
           PY
           curl -sS -X POST -H "Content-Type: application/json" \
@@ -140,4 +144,4 @@ jobs:
 
       - name: Summary
         run: |
-          echo "Demo public: ${{ steps.check.outputs.live }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Released: ${{ steps.check.outputs.live }}" >> "$GITHUB_STEP_SUMMARY"
