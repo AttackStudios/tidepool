@@ -7,6 +7,9 @@ import { canLaunchDirectly, launchGame, steamRunUrl } from './services/launcher'
 import { findUpdates } from './services/updates'
 import { decodeProfile, encodeProfile, refsFor } from './services/profilecode'
 import { analyseRemoval } from './services/dependents'
+import { buildSupportBundle, readLog } from './services/logs'
+import { UPDATE_CHANNEL, quitAndInstall } from './services/updates-app'
+import { app } from 'electron'
 import type { LaunchMode } from './services/launcher'
 import { SettingsStore } from './services/settings'
 import { CommunityNotFoundError, ThunderstoreUnavailableError } from './services/thunderstore'
@@ -54,6 +57,11 @@ export const CHANNELS = {
   launchViaSteam: 'launch:steam',
   setModEnabled: 'mods:set-enabled',
   checkUpdates: 'mods:check-updates',
+  readLog: 'logs:read',
+  supportBundle: 'logs:bundle',
+  openLogFolder: 'logs:reveal',
+  installUpdate: 'app:install-update',
+  appVersion: 'app:version',
   essentialDetail: 'essentials:detail',
   installEssential: 'essentials:install',
   catalogStatus: 'catalog:status',

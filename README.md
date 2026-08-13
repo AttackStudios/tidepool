@@ -294,6 +294,32 @@ actually chose.
   downgrade, since running ahead of the catalog is normal after a package is pulled. Verified live by
   installing BepInExPack 5.4.2100, detecting 5.4.2305, applying it, and re-checking to zero.
 
+### Staying current
+
+The app updates itself from GitHub releases via `electron-updater`. Without this, whatever build
+someone first downloads is the build they keep — which matters most on launch day, when the first
+release will need patching within hours and the people on it are the early adopters most likely to
+write mods.
+
+Two deliberate choices. A build that is itself a prerelease follows the prerelease channel, so someone
+on `0.1.0-rc.5` is offered `rc.6` rather than being told they are current until a stable ships. And the
+UI stays silent until an update is actually ready, then shows one button — a permanent "you're up to
+date" badge is noise, and installing silently while someone is mid-install is worse.
+
+CI ships `latest.yml` alongside the installers; without that manifest in the release the updater has
+nothing to poll and the feature is silently dead.
+
+### Logs and support bundles
+
+The Logs tab reads `BepInEx/LogOutput.log`, colours errors and warnings, filters to errors only, and
+reveals the file. Only the tail of a large log is read, since real BepInEx logs reach tens of megabytes.
+
+**Copy support bundle** puts the whole picture on the clipboard: app version and platform, game path
+and backend, profile and mod list with disabled/dependency state, and the last errors from the log.
+The Discord rules and ticket flow both ask users for exactly this, and the app already knew where all
+of it lived — making someone go hunting for a log file was needless friction, and what came back was
+usually incomplete anyway.
+
 ### Packaging
 
 ```sh

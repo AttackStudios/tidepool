@@ -24,7 +24,8 @@
     "build:dev": "npm run build:main && npm run build:renderer:dev"
   },
   "dependencies": {
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.5.16",
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
@@ -103,6 +104,13 @@
       "shortcutName": "TidePool",
       "uninstallDisplayName": "TidePool Mod Manager",
       "artifactName": "TidePool-Setup-${version}.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "AttackStudios",
+        "repo": "tidepool"
+      }
+    ]
   }
 }

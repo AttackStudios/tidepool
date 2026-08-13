@@ -48,6 +48,7 @@ jobs:
           path: |
             release/*.exe
             release/*.zip
+            release/latest*.yml
           if-no-files-found: error
 
   # Cutting the release from the runner keeps the installer off anyone's laptop:

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, nativeImage, shell } from 'electron'
 import { join } from 'node:path'
 import { registerIpc } from './ipc'
+import { UPDATE_CHANNEL, initAutoUpdate, quitAndInstall } from './services/updates-app'
 
 const APP_NAME = 'TidePool'
 const isDev = !app.isPackaged
@@ -23,6 +24,8 @@ function resource(...parts: string[]): string {
   // Packaged builds run from dist/main; in dev the repo root is two levels up.
   return join(__dirname, '..', '..', ...parts)
 }
+
+let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -47,6 +50,9 @@ function createWindow(): void {
       additionalArguments: app.isPackaged ? [PACKAGED_FLAG] : [],
     },
   })
+
+  mainWindow = win
+  win.on('closed', () => { if (mainWindow === win) mainWindow = null })
 
   // The renderer's <title> would otherwise overwrite the window title on load.
   win.on('page-title-updated', (event) => event.preventDefault())
@@ -111,6 +117,7 @@ void app.whenReady().then(() => {
     join(app.getPath('userData'), 'settings.json'),
   )
   createWindow()
+  initAutoUpdate(() => mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -44,6 +44,17 @@ const api = {
   launchGame: (profileId: string, mode?: 'modded' | 'vanilla') =>
     ipcRenderer.invoke(CHANNELS.launchGame, profileId, mode),
   launchViaSteam: () => ipcRenderer.invoke(CHANNELS.launchViaSteam),
+  appVersion: () => ipcRenderer.invoke(CHANNELS.appVersion),
+  installUpdate: () => ipcRenderer.invoke(CHANNELS.installUpdate),
+  /** Subscribe to updater state. Returns an unsubscribe function. */
+  onUpdateState: (handler: (state: unknown) => void) => {
+    const listener = (_e: unknown, state: unknown) => handler(state)
+    ipcRenderer.on('app:update-state', listener)
+    return () => { ipcRenderer.removeListener('app:update-state', listener) }
+  },
+  readLog: (profileId: string) => ipcRenderer.invoke(CHANNELS.readLog, profileId),
+  supportBundle: (profileId: string) => ipcRenderer.invoke(CHANNELS.supportBundle, profileId),
+  openLogFolder: (profileId: string) => ipcRenderer.invoke(CHANNELS.openLogFolder, profileId),
   essentialDetail: (id: string) => ipcRenderer.invoke(CHANNELS.essentialDetail, id),
   installEssential: (profileId: string, id: string) =>
     ipcRenderer.invoke(CHANNELS.installEssential, profileId, id),

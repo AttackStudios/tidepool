@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { relativeDate } from './format'
 import { GameBar } from './GameBar'
 import { InstalledPanel } from './InstalledPanel'
+import { LogPanel } from './LogPanel'
 import { ModBrowser } from './ModBrowser'
 import { ProfileControls } from './ProfileControls'
 import { useProfiles } from './useProfiles'
 import { Toasts } from './toast'
+import { UpdateChip } from './UpdateChip'
 import mark from './assets/mark.png'
 import { HOME_COMMUNITY, communitiesFor } from '../shared/communities'
 import { Welcome } from './Welcome'
@@ -27,7 +29,7 @@ const COMMUNITIES = __TIDEPOOL_DEV__
 export function App() {
   const [community, setCommunity] = useState(HOME_COMMUNITY.slug)
   const [refreshing, setRefreshing] = useState(false)
-  const [tab, setTab] = useState<'browse' | 'installed'>('browse')
+  const [tab, setTab] = useState<'browse' | 'installed' | 'logs'>('browse')
   const [status, setStatus] = useState<{ packages: number; fetchedAt: number; stale: boolean } | null>(null)
   const [showWelcome, setShowWelcome] = useState(false)
   const [game, setGame] = useState<GameInstall | null | undefined>(undefined)
@@ -75,6 +77,7 @@ export function App() {
         </div>
 
         <div className="topbar__right">
+          <UpdateChip />
           <ProfileControls
             profiles={profiles}
             current={current}
@@ -125,6 +128,14 @@ export function App() {
         >
           Installed{current ? ` (${current.mods.length})` : ''}
         </button>
+        <button
+          role="tab"
+          aria-selected={tab === 'logs'}
+          className={tab === 'logs' ? 'tab tab--on' : 'tab'}
+          onClick={() => setTab('logs')}
+        >
+          Logs
+        </button>
       </nav>
 
       {showWelcome && (
@@ -135,15 +146,13 @@ export function App() {
         />
       )}
 
-      {tab === 'browse' ? (
+      {tab === 'browse' && (
         <ModBrowser community={community} profile={current} onChanged={() => void refresh()} />
-      ) : (
-        <InstalledPanel
-          profile={current}
-          community={community}
-          onChanged={() => void refresh()}
-        />
       )}
+      {tab === 'installed' && (
+        <InstalledPanel profile={current} community={community} onChanged={() => void refresh()} />
+      )}
+      {tab === 'logs' && <LogPanel profile={current} />}
     </div>
   )
 }
