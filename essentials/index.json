@@ -3,9 +3,9 @@
   "note": "Curated first-party mods, fetched at runtime by TidePool. Editing this file changes what the Essentials tab shows without shipping a new app build - which is how a 'planned' entry becomes installable later.",
   "mods": [
     {
-      "id": "AttackStudios-SurfMP",
+      "id": "AttackStudioYT-SurfMP",
       "name": "SurfMP",
-      "owner": "AttackStudios",
+      "owner": "AttackStudioYT",
       "summary": "Multiplayer for Surf Sandbox. Share a lineup with friends.",
       "description": "Adds multiplayer to Surf Sandbox: sit in the same lineup as your friends, watch each other take off, and trade waves.\n\nThe host runs the wave simulation and broadcasts it, so everyone is looking at the same ocean rather than hoping two machines drift to the same answer. Everything else - your surfer, your board, your position - is simulated locally and synced.\n\nUses Steam's peer-to-peer networking, so there is no port forwarding and no server to run. Invite through Steam and paddle out.",
       "status": "planned",
@@ -13,7 +13,9 @@
       "downloadUrl": null,
       "icon": "https://raw.githubusercontent.com/AttackStudios/tidepool/main/essentials/icons/surfmp.png",
       "homepage": "https://github.com/AttackStudios/tidepool",
-      "categories": ["Multiplayer"],
+      "categories": [
+        "Multiplayer"
+      ],
       "dependencies": []
     }
   ]

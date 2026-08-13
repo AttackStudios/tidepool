@@ -7,7 +7,7 @@ const ok = (body: unknown) =>
   ({ ok: true, status: 200, json: async () => body }) as unknown as Response
 
 const base = {
-  id: 'AttackStudios-SurfMP', name: 'SurfMP', owner: 'AttackStudios',
+  id: 'AttackStudioYT-SurfMP', name: 'SurfMP', owner: 'AttackStudioYT',
   summary: 'Multiplayer for Surf Sandbox.', description: 'Long text.',
   status: 'planned', version: null, downloadUrl: null,
   icon: 'https://example.test/i.png', homepage: 'https://example.test',
@@ -16,7 +16,7 @@ const base = {
 
 describe('parseMod', () => {
   it('parses a planned entry', () => {
-    expect(parseMod(base)).toMatchObject({ id: 'AttackStudios-SurfMP', status: 'planned' })
+    expect(parseMod(base)).toMatchObject({ id: 'AttackStudioYT-SurfMP', status: 'planned' })
   })
 
   it('accepts a released entry that has a download', () => {
@@ -97,7 +97,7 @@ describe('fetchEssentials', () => {
 describe('findEssential', () => {
   it('finds by id and returns null for anything else', async () => {
     const fetchImpl = (async () => ok({ mods: [base] })) as unknown as typeof fetch
-    expect((await findEssential('AttackStudios-SurfMP', { fetchImpl }))?.name).toBe('SurfMP')
+    expect((await findEssential('AttackStudioYT-SurfMP', { fetchImpl }))?.name).toBe('SurfMP')
     expect(await findEssential('nope', { fetchImpl })).toBeNull()
   })
 })

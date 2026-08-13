@@ -56,7 +56,7 @@ export function parseMod(value: unknown): EssentialMod | null {
   return {
     id: m.id,
     name: m.name,
-    owner: typeof m.owner === 'string' ? m.owner : 'AttackStudios',
+    owner: typeof m.owner === 'string' ? m.owner : 'AttackStudioYT',
     summary: typeof m.summary === 'string' ? m.summary : '',
     description: typeof m.description === 'string' ? m.description : '',
     // A released entry with no download is a manifest mistake; treat it as
