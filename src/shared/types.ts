@@ -194,4 +194,6 @@ export interface Settings {
   lastProfileId: string | null
   /** Dismissed the first-run panel. */
   seenWelcome: boolean
+  /** Manual beach-save folder override, for when detection misses. */
+  beachPath: string | null
 }

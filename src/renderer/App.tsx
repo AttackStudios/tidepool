@@ -3,6 +3,7 @@ import { relativeDate } from './format'
 import { GameBar } from './GameBar'
 import { InstalledPanel } from './InstalledPanel'
 import { LogPanel } from './LogPanel'
+import { BeachPanel } from './BeachPanel'
 import { ModBrowser } from './ModBrowser'
 import { ProfileControls } from './ProfileControls'
 import { useProfiles } from './useProfiles'
@@ -29,7 +30,7 @@ const COMMUNITIES = __TIDEPOOL_DEV__
 export function App() {
   const [community, setCommunity] = useState(HOME_COMMUNITY.slug)
   const [refreshing, setRefreshing] = useState(false)
-  const [tab, setTab] = useState<'browse' | 'installed' | 'logs'>('browse')
+  const [tab, setTab] = useState<'browse' | 'installed' | 'beaches' | 'logs'>('browse')
   const [status, setStatus] = useState<{ packages: number; fetchedAt: number; stale: boolean } | null>(null)
   const [showWelcome, setShowWelcome] = useState(false)
   const [game, setGame] = useState<GameInstall | null | undefined>(undefined)
@@ -130,6 +131,14 @@ export function App() {
         </button>
         <button
           role="tab"
+          aria-selected={tab === 'beaches'}
+          className={tab === 'beaches' ? 'tab tab--on' : 'tab'}
+          onClick={() => setTab('beaches')}
+        >
+          Beaches
+        </button>
+        <button
+          role="tab"
           aria-selected={tab === 'logs'}
           className={tab === 'logs' ? 'tab tab--on' : 'tab'}
           onClick={() => setTab('logs')}
@@ -152,6 +161,7 @@ export function App() {
       {tab === 'installed' && (
         <InstalledPanel profile={current} community={community} onChanged={() => void refresh()} />
       )}
+      {tab === 'beaches' && <BeachPanel />}
       {tab === 'logs' && <LogPanel profile={current} />}
     </div>
   )

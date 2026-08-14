@@ -309,6 +309,26 @@ date" badge is noise, and installing silently while someone is mid-install is wo
 CI ships `latest.yml` alongside the installers; without that manifest in the release the updater has
 nothing to poll and the feature is silently dead.
 
+### Beaches
+
+Surf Sandbox saves each beach as a local JSON file, and there is no Steam Workshop — the developer
+confirmed both, and said the files can be shared manually. That makes beach sharing the one feature
+here that needs **no BepInEx, no decompiling and no code injection**: it is file management, so it can
+work on the day the game ships rather than after a loader exists.
+
+The Beaches tab finds the save folder, lists what is there, and shares any beach as a code that
+carries the save itself, so the recipient needs nothing else. Import writes alongside existing saves
+and **never overwrites one** — silently replacing somebody's beach would be unforgivable.
+
+Two things make this survive an unknown format. The schema is not knowable before release, so a beach
+is treated as opaque bytes and only a display name is guessed at, trying several plausible keys and
+falling back to the file name. And the save folder is found by searching Unity's user-data roots for a
+directory that both mentions the game and actually contains JSON, because the company and product
+folder names are the developer's choice. A manual override covers the rest.
+
+Codes arrive from strangers, so an imported filename is stripped of any path before it is written —
+a code is not allowed to choose where a file lands.
+
 ### Logs and support bundles
 
 The Logs tab reads `BepInEx/LogOutput.log`, colours errors and warnings, filters to errors only, and

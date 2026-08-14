@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
   community: DEFAULT_COMMUNITY,
   lastProfileId: null,
   seenWelcome: false,
+  beachPath: null,
 }
 
 export class SettingsStore {
@@ -30,6 +31,7 @@ export class SettingsStore {
         community: typeof p.community === 'string' ? p.community : DEFAULT_SETTINGS.community,
         lastProfileId: typeof p.lastProfileId === 'string' ? p.lastProfileId : null,
         seenWelcome: p.seenWelcome === true,
+        beachPath: typeof p.beachPath === 'string' ? p.beachPath : null,
       }
     } catch {
       // Corrupt settings must never stop the app starting.

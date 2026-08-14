@@ -44,6 +44,12 @@ const api = {
   launchGame: (profileId: string, mode?: 'modded' | 'vanilla') =>
     ipcRenderer.invoke(CHANNELS.launchGame, profileId, mode),
   launchViaSteam: () => ipcRenderer.invoke(CHANNELS.launchViaSteam),
+  listBeaches: () => ipcRenderer.invoke(CHANNELS.listBeaches),
+  shareBeach: (fileName: string) => ipcRenderer.invoke(CHANNELS.shareBeach, fileName),
+  importBeach: (code: string) => ipcRenderer.invoke(CHANNELS.importBeach, code),
+  deleteBeach: (fileName: string) => ipcRenderer.invoke(CHANNELS.deleteBeach, fileName),
+  pickBeachFolder: () => ipcRenderer.invoke(CHANNELS.pickBeachFolder),
+  revealBeaches: () => ipcRenderer.invoke(CHANNELS.revealBeaches),
   appVersion: () => ipcRenderer.invoke(CHANNELS.appVersion),
   installUpdate: () => ipcRenderer.invoke(CHANNELS.installUpdate),
   /** Subscribe to updater state. Returns an unsubscribe function. */

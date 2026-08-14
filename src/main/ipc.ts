@@ -8,6 +8,9 @@ import { findUpdates } from './services/updates'
 import { decodeProfile, encodeProfile, refsFor } from './services/profilecode'
 import { analyseRemoval } from './services/dependents'
 import { buildSupportBundle, readLog } from './services/logs'
+import {
+  decodeBeach, deleteBeach, encodeBeach, findBeachDir, importBeach, readBeaches,
+} from './services/beaches'
 import { UPDATE_CHANNEL, quitAndInstall } from './services/updates-app'
 import { app } from 'electron'
 import type { LaunchMode } from './services/launcher'
@@ -60,6 +63,12 @@ export const CHANNELS = {
   readLog: 'logs:read',
   supportBundle: 'logs:bundle',
   openLogFolder: 'logs:reveal',
+  listBeaches: 'beaches:list',
+  shareBeach: 'beaches:share',
+  importBeach: 'beaches:import',
+  deleteBeach: 'beaches:delete',
+  pickBeachFolder: 'beaches:pick',
+  revealBeaches: 'beaches:reveal',
   installUpdate: 'app:install-update',
   appVersion: 'app:version',
   essentialDetail: 'essentials:detail',
