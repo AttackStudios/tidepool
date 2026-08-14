@@ -13,7 +13,7 @@ import type {
   InstallResult,
   InstalledMod,
 } from '../../shared/types'
-import { parseRef } from '../../shared/deps'
+import { compareVersions, parseRef } from '../../shared/deps'
 import type { Catalog } from './catalog'
 import type { ProfileStore } from './profiles'
 import { downloadPackage, extractInto } from './install'
@@ -22,6 +22,30 @@ export type ProgressFn = (progress: InstallProgress) => void
 
 /** Suffix applied to a disabled mod's DLLs so BepInEx stops loading them. */
 export const DISABLED_SUFFIX = '.disabled'
+
+/**
+ * Reduce an install order to one entry per package, keeping the newest version.
+ *
+ * Order is preserved: a package keeps the position of its first appearance, so
+ * dependencies still come before the things that need them.
+ */
+export function collapseByPackage(order: DependencyRef[]): DependencyRef[] {
+  const best = new Map<string, DependencyRef>()
+  for (const ref of order) {
+    const existing = best.get(ref.fullName)
+    if (!existing || compareVersions(ref.version, existing.version) > 0) {
+      best.set(ref.fullName, ref)
+    }
+  }
+  const seen = new Set<string>()
+  const out: DependencyRef[] = []
+  for (const ref of order) {
+    if (seen.has(ref.fullName)) continue
+    seen.add(ref.fullName)
+    out.push(best.get(ref.fullName)!)
+  }
+  return out
+}
 
 export class Installer {
   /**
@@ -87,12 +111,19 @@ export class Installer {
     const existing = new Map(profile.mods.map((m) => [m.fullName, m]))
     const profileDir = this.profiles.dir(profileId)
 
+    // resolve() can return one package twice when a pinned version and a
+    // dependency's version disagree — it reports that in `conflicts` but still
+    // lists both. Installing both wrote two entries for the same mod, which is
+    // how an imported profile ended up showing BepInExPack at two versions,
+    // each offering the other's update. Take the highest and install once.
+    const order = collapseByPackage(resolution.order)
+
     const installed: InstalledMod[] = []
     const skipped: string[] = []
-    const total = resolution.order.length
+    const total = order.length
     let completed = 0
 
-    for (const ref of resolution.order) {
+    for (const ref of order) {
       const already = existing.get(ref.fullName)
       if (already && already.version === ref.version) {
         skipped.push(`${ref.fullName}-${ref.version}`)

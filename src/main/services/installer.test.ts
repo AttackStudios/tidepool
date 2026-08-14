@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Catalog } from './catalog'
-import { Installer } from './installer'
+import { Installer, collapseByPackage } from './installer'
 import { ProfileStore } from './profiles'
 import type { Package } from '../../shared/types'
 
@@ -300,5 +300,75 @@ describe('concurrent safety', () => {
     // The next operation on a real profile must still run.
     await installer.install(profile.id, ['A-One-1.0.0'], 'x')
     expect(profiles.read(profile.id)!.mods).toHaveLength(1)
+  })
+})
+
+describe('collapseByPackage', () => {
+  const ref = (fullName: string, version: string) => ({
+    owner: fullName.split('-')[0]!, name: fullName.split('-')[1]!, fullName, version,
+  })
+
+  it('keeps only the newest version of a package', () => {
+    const out = collapseByPackage([ref('A-Pack', '5.4.2100'), ref('A-Pack', '5.4.2305')])
+    expect(out).toHaveLength(1)
+    expect(out[0]!.version).toBe('5.4.2305')
+  })
+
+  it('compares numerically, not lexically', () => {
+    const out = collapseByPackage([ref('A-Pack', '1.10.0'), ref('A-Pack', '1.9.0')])
+    expect(out[0]!.version).toBe('1.10.0')
+  })
+
+  it('keeps dependencies before their dependents', () => {
+    // Collapsing must not reorder, or a mod installs before what it needs.
+    const out = collapseByPackage([
+      ref('Lib-Core', '1.0.0'), ref('App-Thing', '1.0.0'), ref('Lib-Core', '2.0.0'),
+    ])
+    expect(out.map((r) => r.fullName)).toEqual(['Lib-Core', 'App-Thing'])
+    expect(out[0]!.version).toBe('2.0.0')
+  })
+
+  it('leaves an order with no duplicates alone', () => {
+    const input = [ref('A-One', '1.0.0'), ref('B-Two', '1.0.0')]
+    expect(collapseByPackage(input)).toEqual(input)
+  })
+})
+
+describe('duplicate packages', () => {
+  it('installs one entry when a pin and a dependency disagree on version', async () => {
+    // Exactly the imported-profile case: the code pins BepInExPack 5.4.2100
+    // while another mod requires 5.4.2305, so resolve() returned both and the
+    // profile ended up listing the same pack twice, each offering the other's
+    // update.
+    const pack2100 = pkg('BepInEx-BepInExPack', '5.4.2100')
+    const pack2305 = pkg('BepInEx-BepInExPack', '5.4.2305')
+    const both = { ...pack2305, versions: [...pack2100.versions, ...pack2305.versions] }
+    stubFetch(
+      [both, pkg('Some-Mod', '1.0.0', ['BepInEx-BepInExPack-5.4.2305'])],
+      {
+        'https://example.test/BepInEx-BepInExPack-5.4.2100.zip': zipFor({ 'BepInEx/core/Old.dll': 'o' }),
+        'https://example.test/BepInEx-BepInExPack-5.4.2305.zip': zipFor({ 'BepInEx/core/New.dll': 'n' }),
+        'https://example.test/Some-Mod-1.0.0.zip': zipFor({ 'BepInEx/plugins/Mod.dll': 'm' }),
+      },
+    )
+    const profile = profiles.create('Imported')
+    await new Installer(new Catalog(), profiles, cache)
+      .install(profile.id, ['BepInEx-BepInExPack-5.4.2100', 'Some-Mod-1.0.0'], 'x')
+
+    const mods = profiles.read(profile.id)!.mods
+    const packs = mods.filter((m) => m.fullName === 'BepInEx-BepInExPack')
+    expect(packs).toHaveLength(1)
+    expect(packs[0]!.version).toBe('5.4.2305')
+  })
+
+  it('a profile can never persist two entries for one package', () => {
+    const profile = profiles.create('Test')
+    profiles.setMods(profile.id, [
+      { fullName: 'A-Pack', version: '1.0.0', enabled: true, installedAt: 'a', files: [] },
+      { fullName: 'A-Pack', version: '2.0.0', enabled: true, installedAt: 'b', files: [] },
+    ])
+    const mods = profiles.read(profile.id)!.mods
+    expect(mods).toHaveLength(1)
+    expect(mods[0]!.version).toBe('2.0.0')
   })
 })

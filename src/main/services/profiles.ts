@@ -110,7 +110,12 @@ export class ProfileStore {
   setMods(id: string, mods: InstalledMod[]): Profile | null {
     const profile = this.read(id)
     if (!profile) return null
-    const updated = { ...profile, mods }
+    // A profile must never hold two entries for the same package: the UI keys
+    // updates and removal by name, so a duplicate makes both ambiguous. Last
+    // write wins, which matches "the install that just finished".
+    const byName = new Map<string, InstalledMod>()
+    for (const mod of mods) byName.set(mod.fullName, mod)
+    const updated = { ...profile, mods: [...byName.values()] }
     this.write(updated)
     return updated
   }
