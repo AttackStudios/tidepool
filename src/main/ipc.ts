@@ -1,5 +1,5 @@
 /** IPC surface exposed to the renderer. Keep this the only channel list. */
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 import { findGameInstall } from './services/steam'
 import { inspectGameFolder } from './services/gamefolder'
@@ -12,7 +12,6 @@ import {
   decodeBeach, deleteBeach, encodeBeach, findBeachDir, importBeach, readBeaches,
 } from './services/beaches'
 import { UPDATE_CHANNEL, quitAndInstall } from './services/updates-app'
-import { app } from 'electron'
 import type { LaunchMode } from './services/launcher'
 import { SettingsStore } from './services/settings'
 import { CommunityNotFoundError, ThunderstoreUnavailableError } from './services/thunderstore'
@@ -315,4 +314,114 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
     // Only ever open http(s) — the renderer must not be able to launch anything else.
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
   })
+
+  // ---- logs -------------------------------------------------------------
+
+  ipcMain.handle(CHANNELS.readLog, (_e, profileId: string) =>
+    attempt(async () => readLog(profiles.dir(profileId), resolveGame()?.root ?? null)),
+  )
+
+  ipcMain.handle(CHANNELS.supportBundle, (_e, profileId: string) =>
+    attempt(async () =>
+      buildSupportBundle({
+        profile: profiles.read(profileId),
+        game: resolveGame(),
+        log: readLog(profiles.dir(profileId), resolveGame()?.root ?? null),
+        appVersion: app.getVersion(),
+        platform: process.platform,
+      }),
+    ),
+  )
+
+  ipcMain.handle(CHANNELS.openLogFolder, (_e, profileId: string) =>
+    attempt(async () => {
+      const log = readLog(profiles.dir(profileId), resolveGame()?.root ?? null)
+      if (log.path) shell.showItemInFolder(log.path)
+      else await shell.openPath(profiles.dir(profileId))
+      return true
+    }),
+  )
+
+  // ---- beaches ----------------------------------------------------------
+
+  const beachDir = () => findBeachDir(process.platform, undefined, settings.read().beachPath)
+
+  ipcMain.handle(CHANNELS.listBeaches, () =>
+    attempt(async () => {
+      const dir = beachDir()
+      return { dir, beaches: dir ? readBeaches(dir) : [] }
+    }),
+  )
+
+  ipcMain.handle(CHANNELS.shareBeach, (_e, fileName: string) =>
+    attempt(async () => {
+      const dir = beachDir()
+      if (!dir) throw new Error('No beach folder found yet.')
+      const beach = readBeaches(dir).find((b) => b.fileName === fileName)
+      if (!beach) throw new Error(`No beach called ${fileName}`)
+      return encodeBeach(beach)
+    }),
+  )
+
+  ipcMain.handle(CHANNELS.importBeach, (_e, code: string) =>
+    attempt(async () => {
+      const dir = beachDir()
+      if (!dir) throw new Error('No beach folder found yet - set it in the Beaches tab.')
+      const decoded = decodeBeach(code)
+      return { path: importBeach(dir, decoded), name: decoded.name }
+    }),
+  )
+
+  ipcMain.handle(CHANNELS.deleteBeach, (_e, fileName: string) =>
+    attempt(async () => {
+      const dir = beachDir()
+      if (!dir) throw new Error('No beach folder found yet.')
+      deleteBeach(dir, fileName)
+      return readBeaches(dir)
+    }),
+  )
+
+  ipcMain.handle(CHANNELS.pickBeachFolder, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const picked = await (win
+      ? dialog.showOpenDialog(win, { properties: ['openDirectory'] })
+      : dialog.showOpenDialog({ properties: ['openDirectory'] }))
+    const chosen = picked.filePaths[0]
+    if (!picked.canceled && chosen) settings.write({ beachPath: chosen })
+    return { ok: true as const, data: beachDir() }
+  })
+
+  ipcMain.handle(CHANNELS.revealBeaches, () =>
+    attempt(async () => {
+      const dir = beachDir()
+      if (dir) await shell.openPath(dir)
+      return Boolean(dir)
+    }),
+  )
+
+  // ---- essentials -------------------------------------------------------
+
+  ipcMain.handle(CHANNELS.essentialDetail, (_e, id: string) => attempt(() => findEssential(id)))
+
+  ipcMain.handle(CHANNELS.installEssential, (event, profileId: string, id: string) =>
+    attempt(async () => {
+      const mod = await findEssential(id)
+      if (!mod) throw new Error(`No Essentials entry called ${id}`)
+      if (mod.status !== 'released' || !mod.downloadUrl || !mod.version) {
+        throw new Error(`${mod.name} isn't released yet, so there's nothing to install.`)
+      }
+      return installer.installDirect(
+        profileId,
+        { fullName: mod.id, version: mod.version, downloadUrl: mod.downloadUrl },
+        (progress) => {
+          if (!event.sender.isDestroyed()) event.sender.send(CHANNELS.installProgress, progress)
+        },
+      )
+    }),
+  )
+
+  // ---- app --------------------------------------------------------------
+
+  ipcMain.handle(CHANNELS.appVersion, () => app.getVersion())
+  ipcMain.handle(CHANNELS.installUpdate, () => quitAndInstall())
 }
