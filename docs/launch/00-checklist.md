@@ -24,6 +24,29 @@ Everything in this folder is pre-written so launch day is paste-and-publish. Pla
       real PE32 NSIS installer and CI builds it reproducibly, but no human has run it. It is the only
       step in the whole pipeline still untested.
 
+## Confirmed by nocanwin (13 Aug 2026)
+
+Asked directly in their Discord, so these are answers rather than assumptions:
+
+- **No mod hooks planned** ("not at the moment"). Day one is full reverse-engineering; there is no
+  official API to build on and no shortcut.
+- **No Steam Workshop.**
+- **Beaches are saved as local JSON files**, and the developer explicitly said they can be shared
+  manually. That is the important one — see below.
+
+### Why the beach format changes the plan
+
+Sharing beaches needs **no BepInEx, no decompiling and no code injection**. It is file management,
+which is exactly what TidePool already does well. Consequences:
+
+- It can ship on **day one**, before any code mod exists, and probably before anyone else has a
+  working loader.
+- With no Workshop, there is a real gap and no incumbent filling it.
+- The developer has effectively blessed manual sharing, so this stays firmly on the friendly side.
+
+Unknown until release: the save directory and the JSON schema. Unity writes user data to
+`%USERPROFILE%/AppData/LocalLow/<Company>/<Product>` on Windows, so that is where to look first.
+
 ## Verified state (11 Aug 2026)
 
 Audited rather than remembered:
