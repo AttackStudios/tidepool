@@ -209,7 +209,7 @@ footer{margin:72px 0 0; padding:24px 0 0; border-top:1px solid var(--rule);
     <div><dt>Release</dt><dd class="hot">Aug 25, 2026</dd></div>
     <div><dt>Runway</dt><dd>17 days</dd></div>
     <div><dt>Engine</dt><dd>Unity</dd></div>
-    <div><dt>Backend</dt><dd>Unknown</dd></div>
+    <div><dt>Backend</dt><dd>IL2CPP</dd></div>
     <div><dt>Platform</dt><dd class="hot">Windows only</dd></div>
     <div><dt>Anti-cheat</dt><dd>None listed</dd></div>
     <div><dt>Level editor</dt><dd>Ships with</dd></div>
@@ -258,21 +258,18 @@ footer{margin:72px 0 0; padding:24px 0 0; border-top:1px solid var(--rule);
       <h3>Triage, patch, publish</h3>
       <p>The whole day hinges on one question answered in the first five minutes, so it comes first.</p>
 
-      <div class="fork">
-        <div class="branch easy">
-          <span class="k">If you find</span>
-          <h4><code>Assembly-CSharp.dll</code></h4>
-          <p class="verdict">MONO — writing patches same day</p>
-          <p>In <code>SurfSandbox_Data/Managed/</code>. Decompiles to readable C# in dnSpy or ILSpy with real
-          method and field names. Drop in BepInEx and you're patching within the hour.</p>
-        </div>
-        <div class="branch hard">
-          <span class="k">If you find</span>
-          <h4><code>GameAssembly.dll</code></h4>
-          <p class="verdict">IL2CPP — add ~1 day of scaffolding</p>
-          <p>Alongside <code>il2cpp_data/</code>. AOT-compiled to native; needs Il2CppDumper or Cpp2IL to
-          recover metadata, then BepInEx 6 with Il2CppInterop. Still very much doable.</p>
-        </div>
+      <div class="thesis">
+        <span class="tag">Settled — confirmed by the developer</span>
+        <p>The fork below is closed: the build is <strong>IL2CPP</strong>. nocanwin confirmed it directly —
+        <em>"IL2CPP helps, but unity's job system does the heavy lifting."</em> That is the harder of the two
+        answers, but knowing it eleven days early is worth more than the day it costs.</p>
+        <p>So: <strong>BepInEx 6</strong>, not 5. No <code>Assembly-CSharp.dll</code> and no readable
+        decompile — recovering names means Il2CppDumper or Cpp2IL against <code>GameAssembly.dll</code>
+        first, then patching through Il2CppInterop. Doorstop 4's argument names are the right ones, which
+        TidePool already defaults to.</p>
+        <p>The job-system remark cuts the other way, favourably. Burst-compiled jobs suggest the wave state
+        is a contiguous <code>NativeArray&lt;float&gt;</code> heightfield — precisely the shape the
+        multiplayer broadcast plan wants.</p>
       </div>
 
       <div class="hours">

@@ -28,6 +28,8 @@ Everything in this folder is pre-written so launch day is paste-and-publish. Pla
 
 Asked directly in their Discord, so these are answers rather than assumptions:
 
+- **The build is IL2CPP.** Confirmed directly: *"IL2CPP helps, but unity's job system does the heavy
+  lifting."* This was the single biggest unknown and it is the harder of the two answers — see below.
 - **No mod hooks planned** ("not at the moment"). Day one is full reverse-engineering; there is no
   official API to build on and no shortcut.
 - **No Steam Workshop.**
@@ -82,9 +84,27 @@ above: nobody has actually run it.
 
 ## Hour by hour
 
+### What IL2CPP means
+
+The Mono-versus-IL2CPP fork is closed, so day one no longer branches — but it landed on the slower
+side. Concretely:
+
+- **BepInEx 6 (IL2CPP branch)**, not BepInEx 5. Different pack, different install.
+- **No readable decompile.** `Assembly-CSharp.dll` does not exist. Recovering type and method names
+  needs Il2CppDumper or Cpp2IL against `GameAssembly.dll` and `global-metadata.dat` first, and the
+  result is less pleasant to read than Mono output. Budget roughly an extra day.
+- **Patching goes through Il2CppInterop**, which generates managed proxy assemblies on first run.
+- **Doorstop 4 argument names are the right ones** — `--doorstop-enabled` and
+  `--doorstop-target-assembly`. TidePool already defaults to those, so nothing changes there.
+
+The job-system remark matters for multiplayer too. If the wave simulation runs as Burst-compiled jobs
+then its state is very likely a contiguous `NativeArray<float>` heightfield, which is *good* news for
+the broadcast plan — contiguous floats are exactly what you want to ship over the wire. Reading it
+from an IL2CPP patch is fiddlier than from Mono, but the shape of the data is favourable.
+
 | When | Do |
 | --- | --- |
-| H+0:00 | Install. Check `Assembly-CSharp.dll` (Mono) vs `GameAssembly.dll` (IL2CPP). Note the Unity version in `globalgamemanagers`. Confirm whether Steamworks assemblies are present — that decides multiplayer transport. |
+| H+0:00 | Install. Confirm `GameAssembly.dll` and `global-metadata.dat` are present (IL2CPP is expected, not in doubt). Note the Unity version in `globalgamemanagers`. Check whether Steamworks assemblies are present — that decides multiplayer transport. |
 | H+0:15 | Point TidePool at the folder. It reads Steam's app manifest, so detection should just work; if not, use **Locate game**. Confirm the backend chip reads mono or il2cpp. |
 | H+0:30 | Install BepInEx for the matching backend and architecture. Confirm it injects and writes `LogOutput.log`. |
 | H+1:00 | Decompile. Find the wave/water simulation and how its state is stored, and the surfer controller. Everything downstream depends on those two. |
@@ -98,8 +118,8 @@ above: nobody has actually run it.
 
 | Placeholder | Where it comes from |
 | --- | --- |
-| `{{BACKEND}}` | mono or il2cpp, from the H+0:00 check |
-| `{{BEPINEX_VERSION}}` | 5.x for Mono, 6.x for IL2CPP |
+| `IL2CPP` | mono or il2cpp, from the H+0:00 check |
+| `6 (IL2CPP)` | 5.x for Mono, 6.x for IL2CPP |
 | `{{TIDEPOOL_VERSION}}` | the tag you ship |
 | `{{RELEASE_URL}}` | `https://github.com/AttackStudios/tidepool/releases/tag/v{{TIDEPOOL_VERSION}}` |
 | `{{DISCORD_INVITE}}` | your server's permanent invite |

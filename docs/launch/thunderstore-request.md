@@ -15,10 +15,10 @@ until the GitHub release is live, because that link is what satisfies both crite
 **Steam:** https://store.steampowered.com/app/4480760/Surf_Sandbox/
 **App ID:** 4480760
 **Developer:** nocanwin
-**Engine:** Unity ({{BACKEND}} backend)
+**Engine:** Unity (IL2CPP backend)
 **Released:** 25 August 2026
 
-**Mod loader:** BepInEx {{BEPINEX_VERSION}}, confirmed working — the game loads plugins and writes
+**Mod loader:** BepInEx 6 (IL2CPP), confirmed working — the game loads plugins and writes
 `LogOutput.log` normally. No anti-cheat or third-party DRM.
 
 **Ready to upload:**

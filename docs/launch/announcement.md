@@ -10,8 +10,8 @@
 > **Download:** {{RELEASE_URL}}
 > **Guide:** {{STEAM_GUIDE_URL}}
 >
-> Windows installer or portable build. The game's backend is **{{BACKEND}}**, so we're on BepInEx
-> {{BEPINEX_VERSION}}.
+> Windows installer or portable build. The game's backend is **IL2CPP**, so we're on BepInEx
+> 6 (IL2CPP).
 >
 > If you want to write mods, everything you need is in the repo and we'll help in #help. If you find a
 > bug in TidePool, open a ticket — please don't take modded bugs to nocanwin.
