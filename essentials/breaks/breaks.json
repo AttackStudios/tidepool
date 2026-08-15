@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "note": "Source data for the break pack. Each entry is a cross-section of the sea floor: depth in metres against distance from shore in metres, running from the beach outward. Surf Sandbox is 2.5D and lets you shape the ocean bottom contours, so a cross-section is the whole story — what a wave does is decided almost entirely by how fast the bottom rises under it.",
+  "accuracy": "The profiles are stylised, not surveyed. They reproduce the CHARACTER of each break — how abruptly the bottom rises, over what distance, and at what final depth — from published descriptions and charts. They are not navigational data and should not be treated as such. What matters for a wave sim is the gradient, and that is what these get right.",
+  "howToConvert": "tools/build-breaks.mjs maps these onto whatever contour format the game saves, once that is known. Only the mapping needs writing; the surf research is done.",
+  "breaks": [
+    {
+      "id": "pipeline",
+      "name": "Pipeline",
+      "location": "Ehukai Beach, Oahu, Hawaii",
+      "hand": "left",
+      "character": "Deep water runs almost to the beach, then hits a shallow lava reef shelf like a wall. The swell has no warning and no time to shoal gently, so it jacks and throws top-to-bottom. Short, violent, hollow.",
+      "whatMakesIt": "The abruptness. Roughly 10 m to 3 m over about 40 m of distance — the fastest transition of any beach-accessible wave on earth.",
+      "idealSwell": { "directionDeg": 315, "periodSec": 14, "heightM": 3.0 },
+      "profile": [[0,0],[30,1.5],[60,2.5],[90,3.0],[110,3.2],[150,9.0],[220,14.0],[320,22.0]],
+      "tags": ["reef", "barrel", "heavy"]
+    },
+    {
+      "id": "teahupoo",
+      "name": "Teahupo'o",
+      "location": "Tahiti, French Polynesia",
+      "hand": "left",
+      "character": "The most extreme gradient in surfing. Open ocean ends in a coral shelf under half a metre of water, so the wave draws water off the reef in front of itself and breaks below the level of the sea behind it. Thick, square, and far heavier than its height suggests.",
+      "whatMakesIt": "Depth going from tens of metres to under a metre across roughly 30 m. The wave has nowhere to put its energy but up and over.",
+      "idealSwell": { "directionDeg": 200, "periodSec": 16, "heightM": 3.5 },
+      "profile": [[0,0],[40,1.0],[70,0.6],[100,0.5],[130,4.0],[160,20.0],[200,60.0],[280,120.0]],
+      "tags": ["reef", "slab", "barrel", "heavy"]
+    },
+    {
+      "id": "nazare",
+      "name": "Nazaré",
+      "location": "Praia do Norte, Portugal",
+      "hand": "both",
+      "character": "A submarine canyon runs almost to the shore and funnels swell energy into a single point, while the swell either side travels over shallower ground and arrives slower. The two converge and stack into a peak far larger than the open-ocean swell.",
+      "whatMakesIt": "Refraction, not shoaling. The canyon focuses energy the way a lens focuses light — the profile here is the canyon axis, which stays deep almost to the beach.",
+      "idealSwell": { "directionDeg": 290, "periodSec": 18, "heightM": 6.0 },
+      "profile": [[0,0],[50,6.0],[120,25.0],[220,70.0],[350,150.0],[500,300.0],[700,600.0]],
+      "tags": ["canyon", "big-wave", "peak"]
+    },
+    {
+      "id": "jeffreys-bay",
+      "name": "Jeffreys Bay",
+      "location": "Eastern Cape, South Africa",
+      "hand": "right",
+      "character": "A long point. Swell wraps around a headland and peels down a gently tapering reef and sand bottom, so the wave breaks progressively along its length instead of all at once. Fast, but a wall rather than a pit.",
+      "whatMakesIt": "A shallow gradient held over hundreds of metres. Nothing about it is abrupt — the length is the point.",
+      "idealSwell": { "directionDeg": 200, "periodSec": 14, "heightM": 2.5 },
+      "profile": [[0,0],[60,1.2],[140,2.0],[240,2.8],[380,3.6],[550,5.0],[800,9.0]],
+      "tags": ["point", "long", "fast"]
+    },
+    {
+      "id": "skeleton-bay",
+      "name": "Skeleton Bay",
+      "location": "Namibia",
+      "hand": "left",
+      "character": "A sand spit built by longshore drift into an almost perfectly uniform taper. The wave peels for well over a kilometre without changing character, which is why the rides are the longest filmed anywhere.",
+      "whatMakesIt": "Uniformity. The bottom is sand, and the angle barely varies along its whole length.",
+      "idealSwell": { "directionDeg": 220, "periodSec": 13, "heightM": 2.0 },
+      "profile": [[0,0],[80,1.0],[180,1.6],[300,2.2],[450,2.9],[650,4.0],[900,6.5]],
+      "tags": ["sand", "point", "long", "barrel"]
+    },
+    {
+      "id": "mavericks",
+      "name": "Mavericks",
+      "location": "Half Moon Bay, California",
+      "hand": "right",
+      "character": "A rock ramp rising out of very deep, very cold water half a mile offshore. Long-period North Pacific swell trips over it all at once and stands up into a broad, heavy face.",
+      "whatMakesIt": "A ramp rather than a shelf — steep, but sustained, so the wave has size and mass rather than pure hollowness.",
+      "idealSwell": { "directionDeg": 290, "periodSec": 18, "heightM": 5.0 },
+      "profile": [[0,0],[100,4.0],[250,7.0],[400,8.5],[600,14.0],[900,30.0],[1300,55.0]],
+      "tags": ["reef", "big-wave", "cold"]
+    },
+    {
+      "id": "puerto-escondido",
+      "name": "Puerto Escondido",
+      "location": "Zicatela, Oaxaca, Mexico",
+      "hand": "both",
+      "character": "A beach break with a steep sand shelf and no reef to organise it. Peaks shift, close out without warning, and hit with real weight. The Mexican Pipeline, but sand, so it is never the same twice.",
+      "whatMakesIt": "A steep sand gradient close to shore, plus an offshore trench that lets swell arrive with its energy intact.",
+      "idealSwell": { "directionDeg": 200, "periodSec": 16, "heightM": 3.5 },
+      "profile": [[0,0],[25,2.0],[50,3.5],[80,4.5],[130,10.0],[220,25.0],[350,45.0]],
+      "tags": ["beach-break", "sand", "heavy", "shifting"]
+    },
+    {
+      "id": "the-ripple",
+      "name": "The Ripple",
+      "location": "Nowhere in particular",
+      "hand": "both",
+      "character": "A gentle sandbar in waist-deep water. Nothing here will hurt you. Included because a break pack that only ships slabs is no use to someone learning the controls.",
+      "whatMakesIt": "A long, shallow, forgiving gradient — the opposite of everything above.",
+      "idealSwell": { "directionDeg": 270, "periodSec": 9, "heightM": 0.8 },
+      "profile": [[0,0],[80,0.8],[180,1.4],[300,2.0],[450,2.8],[650,4.0],[900,6.0]],
+      "tags": ["beginner", "sand", "mellow"]
+    }
+  ]
+}

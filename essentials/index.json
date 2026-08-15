@@ -17,6 +17,22 @@
         "Multiplayer"
       ],
       "dependencies": []
+    },
+    {
+      "id": "AttackStudioYT-BreakPack",
+      "name": "Break Pack",
+      "owner": "AttackStudioYT",
+      "summary": "Eight real waves, recreated from their actual sea-floor shape.",
+      "description": "Pipeline, Teahupo'o, Nazare, Jeffreys Bay, Skeleton Bay, Mavericks, Puerto Escondido - and one gentle sandbar to learn on.\n\nThese are not drawn by eye. Each break is built from a cross-section of its real sea floor, because what a wave does is decided almost entirely by how fast the bottom rises underneath it. Teahupo'o goes from open ocean to half a metre of reef in about thirty metres, which is why it breaks below sea level. Skeleton Bay barely changes angle for a kilometre, which is why the rides never end.\n\nThe profiles are stylised rather than surveyed - they reproduce each wave's character, not navigational depths.\n\nNo loader needed: beaches are ordinary save files, so this installs and works without BepInEx.",
+      "status": "planned",
+      "version": null,
+      "downloadUrl": null,
+      "icon": null,
+      "homepage": "https://github.com/AttackStudios/tidepool/tree/main/essentials/breaks",
+      "categories": [
+        "Beaches"
+      ],
+      "dependencies": []
     }
   ]
 }

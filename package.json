@@ -21,7 +21,8 @@
     "dist": "npm run build && electron-builder --mac --win --publish never",
     "launch:check": "node tools/check-launch-copy.mjs",
     "build:renderer:dev": "vite build --mode development",
-    "build:dev": "npm run build:main && npm run build:renderer:dev"
+    "build:dev": "npm run build:main && npm run build:renderer:dev",
+    "breaks": "npm run build:main && node tools/build-breaks.mjs"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
