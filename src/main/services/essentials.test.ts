@@ -47,6 +47,19 @@ describe('parseMod', () => {
 })
 
 describe('toSummary', () => {
+  it('claims no downloads, rating or pinning', () => {
+    // Those are Thunderstore concepts. A curated entry showing "0 downloads"
+    // and a "pinned" badge reads as a broken row rather than a considered one.
+    const s = toSummary(parseMod(base)!)
+    expect(s.downloads).toBe(0)
+    expect(s.rating).toBe(0)
+    expect(s.isPinned).toBe(false)
+  })
+
+  it('leaves the version blank while a mod is unreleased', () => {
+    expect(toSummary(parseMod(base)!).latestVersion).toBe('')
+  })
+
   it('marks a planned mod as not installable', () => {
     const s = toSummary(parseMod(base)!)
     expect(s.installable).toBe(false)

@@ -79,11 +79,14 @@ export function toSummary(mod: EssentialMod): PackageSummary {
     description: mod.summary || mod.description.split('\n')[0] || '',
     icon: mod.icon,
     latestVersion: mod.version ?? '',
+    // Downloads, ratings and pinning are Thunderstore concepts. A curated entry
+    // has none of them, and rendering zeroes as "0 downloads" or a stray
+    // "pinned" badge is worse than showing nothing.
     downloads: 0,
     rating: 0,
     categories: mod.categories,
     isDeprecated: false,
-    isPinned: true,
+    isPinned: false,
     isNsfw: false,
     dateUpdated: '',
     packageUrl: mod.homepage,

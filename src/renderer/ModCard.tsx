@@ -41,7 +41,8 @@ export function ModCard({
         <div className="card__body">
           <div className="card__title">
             <span className="card__name">{mod.name}</span>
-            <span className="card__version">{mod.latestVersion}</span>
+            {mod.latestVersion && <span className="card__version">{mod.latestVersion}</span>}
+            {mod.planned && <span className="tag tag--warn">in development</span>}
             {mod.source === 'gamebanana' && <span className="tag">GameBanana</span>}
             {installing && <span className="tag tag--ok is-working">working…</span>}
             {installed && !installing && <span className="tag tag--ok">installed</span>}
@@ -51,7 +52,7 @@ export function ModCard({
           <p className="card__desc">{mod.description || 'No description.'}</p>
           <div className="card__meta">
             <span>{mod.owner}</span>
-            <span>{compactNumber(mod.downloads)} downloads</span>
+            {mod.downloads > 0 && <span>{compactNumber(mod.downloads)} downloads</span>}
             {mod.rating > 0 && <span>{compactNumber(mod.rating)} likes</span>}
             {mod.dateUpdated && <span>{relativeDate(mod.dateUpdated)}</span>}
           </div>
