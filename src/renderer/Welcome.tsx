@@ -6,6 +6,9 @@ import type { GameInstall } from '../shared/types'
  * Shown until dismissed, and it reflects real state rather than a fixed script —
  * a step already done is ticked, so it reads as progress rather than homework.
  */
+/** 25 August 2026, the day Surf Sandbox releases. */
+const RELEASE_DAY = Date.UTC(2026, 7, 25)
+
 export function Welcome({
   game,
   hasMods,
@@ -15,23 +18,34 @@ export function Welcome({
   hasMods: boolean
   onDismiss: () => void
 }) {
+  // Before release there is genuinely nothing to install. Telling someone to go
+  // and install BepInExPack when no community exists is how they conclude the
+  // app is broken rather than early.
+  const gameOut = Date.now() >= RELEASE_DAY
+
   const steps = [
     {
       done: Boolean(game),
       title: 'Find your game',
       body: game
         ? `Found at ${game.root}`
-        : 'TidePool reads Steam’s own records. If it hasn’t found Surf Sandbox, use “Locate game” above.',
+        : gameOut
+          ? 'TidePool reads Steam’s own records. If it hasn’t found Surf Sandbox, use “Locate game” above.'
+          : 'Surf Sandbox isn’t out until 25 August 2026, so there’s nothing to find yet.',
     },
     {
       done: hasMods,
-      title: 'Install BepInEx, then some mods',
-      body: 'Search for BepInExPack in Browse and install it — that’s the loader mods run on. Anything a mod needs is pulled in automatically.',
+      title: 'Install some mods',
+      body: gameOut
+        ? 'Search for BepInExPack in Browse and install it — that’s the loader mods run on. Anything a mod needs is pulled in automatically.'
+        : 'Nothing to install yet — mods appear once people start publishing them. TidePool checks fresh every time, so there’s nothing for you to update.',
     },
     {
       done: false,
       title: 'Drop in',
-      body: 'Starts the game with this profile’s mods. Or use “Via Steam” to keep the overlay and playtime.',
+      body: gameOut
+        ? 'Starts the game with this profile’s mods. Or use “Via Steam” to keep the overlay and playtime.'
+        : 'Once the game is out, this starts it with your mods loaded.',
     },
   ]
 
