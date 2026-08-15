@@ -27,7 +27,7 @@
       "status": "planned",
       "version": null,
       "downloadUrl": null,
-      "icon": null,
+      "icon": "https://raw.githubusercontent.com/AttackStudios/tidepool/main/essentials/icons/breakpack.png",
       "homepage": "https://github.com/AttackStudios/tidepool/tree/main/essentials/breaks",
       "categories": [
         "Beaches"
