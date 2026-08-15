@@ -72,7 +72,20 @@ jobs:
           ls -la dist-release
           PRERELEASE=""
           case "${GITHUB_REF_NAME}" in *-rc*|*-beta*|*-alpha*) PRERELEASE="--prerelease" ;; esac
-          gh release create "${GITHUB_REF_NAME}" dist-release/* \
-            --title "TidePool ${GITHUB_REF_NAME}" \
-            --notes-file docs/launch/release-notes.md \
-            $PRERELEASE
+
+          # Idempotent on purpose. A re-run, or a tag that was moved after a
+          # first build already published, would otherwise fail with "a release
+          # with the same tag name already exists" -- leaving a release standing
+          # that contains the wrong build.
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            echo "Release exists; replacing its assets with this build."
+            gh release upload "${GITHUB_REF_NAME}" dist-release/* --clobber
+            gh release edit "${GITHUB_REF_NAME}" \
+              --title "TidePool ${GITHUB_REF_NAME}" \
+              --notes-file docs/launch/release-notes.md
+          else
+            gh release create "${GITHUB_REF_NAME}" dist-release/* \
+              --title "TidePool ${GITHUB_REF_NAME}" \
+              --notes-file docs/launch/release-notes.md \
+              $PRERELEASE
+          fi
