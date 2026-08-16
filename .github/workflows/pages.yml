@@ -37,6 +37,8 @@ jobs:
           test -f site/index.html
           test -f site/styles.css
           test -f site/app.js
+          test -f site/download.html
+          test -f site/download.js
           # A missing asset shows up as a broken hero image rather than an error,
           # so fail the deploy instead of shipping it.
           for f in icon.png social.png surf.jpg surfmp.png breakpack.png \

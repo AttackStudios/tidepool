@@ -350,3 +350,48 @@ img { max-width: 100%; display: block; }
   .scrollcue span:last-child { animation: none; }
   .btn:active, .support:active { transform: none; }
 }
+
+/* ---------- download page ---------- */
+
+.dlhero { text-align: center; padding: 52px 0 34px; border-bottom: var(--px) solid var(--line-dim); }
+.dlhero__icon { width: 108px; height: 108px; margin: 0 auto 20px; image-rendering: pixelated; box-shadow: var(--shadow); }
+.dlhero__title { font-family: var(--display); font-size: var(--f-title); margin: 0 0 10px; color: var(--accent); }
+.dlhero__sub { color: var(--ink-2); max-width: 54ch; margin: 0 auto 14px; }
+.dlhero__ver { font-family: var(--display); font-size: var(--f-micro); color: var(--ink-3); }
+.dlhero__ver--pre { color: var(--warn); }
+
+.dlmain { padding: 40px 20px 70px; }
+
+.dlgrid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.dlcard {
+  display: block; text-decoration: none; color: inherit;
+  background: var(--panel); border: var(--px) solid var(--line);
+  padding: 16px; box-shadow: var(--shadow-sm);
+}
+.dlcard:hover { background: var(--panel-hi); border-color: var(--accent); }
+.dlcard:active { transform: translate(2px, 2px); box-shadow: none; }
+.dlcard__top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.dlcard__title { font-family: var(--display); font-size: var(--f-micro); color: var(--ink); }
+.dlcard__size { font-size: 11px; color: var(--ink-3); }
+.dlcard__sub { color: var(--ink-2); font-size: var(--f-micro); margin: 8px 0 10px; }
+.dlcard__file { font-size: 10px; color: var(--ink-3); margin: 0 0 14px; word-break: break-all; }
+.dlcard__go {
+  display: inline-block; font-family: var(--display); font-size: 10px;
+  background: var(--accent); color: var(--accent-ink);
+  border: var(--px) solid var(--accent-deep); padding: 7px 12px;
+}
+
+.lockcard {
+  background: var(--panel); border: var(--px) solid var(--line);
+  padding: 34px 24px; text-align: center; box-shadow: var(--shadow);
+}
+.lockcard__lock { font-size: 30px; filter: grayscale(1) opacity(0.75); }
+.lockcard h2 { font-family: var(--display); font-size: var(--f-head); color: var(--accent); margin: 14px 0 10px; }
+.lockcard p { color: var(--ink-2); max-width: 52ch; margin: 0 auto 22px; }
+
+.notes { margin-top: 54px; }
+.notes h2 { font-family: var(--display); font-size: var(--f-head); color: var(--ink); margin: 0 0 18px; }
+.notes__grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+.note { background: var(--deep); border: var(--px) solid var(--line-dim); padding: 16px; }
+.note h3 { font-family: var(--display); font-size: var(--f-micro); color: var(--accent); margin: 0 0 8px; }
+.note p { color: var(--ink-2); font-size: var(--f-micro); margin: 0; line-height: 1.7; }

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Download TidePool</title>
+<meta name="description" content="Download TidePool — the free, open-source mod manager for Surf Sandbox. Windows installer, portable build, and macOS." />
+<meta property="og:title" content="Download TidePool" />
+<meta property="og:description" content="Windows installer, portable build, and macOS. Free and open source." />
+<meta property="og:image" content="https://attackstudios.github.io/tidepool/assets/social.png" />
+<meta property="og:url" content="https://attackstudios.github.io/tidepool/download.html" />
+<meta name="theme-color" content="#06171d" />
+<link rel="icon" href="./assets/icon.png" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav__inner">
+    <a href="./"><img class="nav__mark bevel" src="./assets/icon.png" alt="TidePool" /></a>
+    <div class="nav__links">
+      <a class="navlink" href="./">Home</a>
+      <a class="navlink" href="./#features">Features</a>
+      <a class="navlink" href="./#beaches">Beaches</a>
+      <a class="navlink is-on" href="./download.html">Download</a>
+    </div>
+    <div class="nav__spacer"></div>
+    <a class="navlink navlink--cta" href="https://github.com/AttackStudios/tidepool" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</nav>
+
+<header class="dlhero">
+  <div class="wrap">
+    <img class="dlhero__icon bevel" src="./assets/icon.png" alt="" width="512" height="512" />
+    <h1 class="dlhero__title">DOWNLOAD TIDEPOOL</h1>
+    <p class="dlhero__sub">
+      Free and open source. Pick your platform &mdash; the file downloads straight from here.
+    </p>
+    <p class="dlhero__ver" id="version">Checking for the latest build&hellip;</p>
+  </div>
+</header>
+
+<main class="wrap dlmain">
+
+  <!-- Filled in by download.js from the GitHub release, so it keeps working
+       when 1.0 ships without anyone editing a URL. -->
+  <div id="options" class="dlgrid" hidden></div>
+
+  <div id="locked" class="lockcard">
+    <span class="lockcard__lock" aria-hidden="true">&#128274;</span>
+    <h2>Not out yet</h2>
+    <p>
+      TidePool 1.0 lands the same day Surf Sandbox does &mdash; <strong>25 August 2026</strong>.
+      Downloads unlock here the moment it ships.
+    </p>
+    <div class="dl">
+      <a class="btn btn--discord" href="https://discord.gg/RRu3gevbXS" target="_blank" rel="noopener">
+        Join the Discord for the ping
+      </a>
+      <a class="btn btn--ghost" href="https://github.com/AttackStudios/tidepool" target="_blank" rel="noopener">
+        <span>Read the source<span class="btn__sub">Or build it yourself</span></span>
+      </a>
+    </div>
+  </div>
+
+  <section class="notes">
+    <h2>Before you install</h2>
+    <div class="notes__grid">
+      <div class="note">
+        <h3>Windows will warn you</h3>
+        <p>
+          The build is unsigned, so SmartScreen shows a blue box on first run. Choose
+          <em>More info &rarr; Run anyway</em>. Microsoft removed the instant bypass that code
+          signing used to buy, so a certificate would cost money and still show the same prompt
+          until download volume builds reputation.
+        </p>
+      </div>
+      <div class="note">
+        <h3>Installer or portable?</h3>
+        <p>
+          The installer sets up shortcuts and keeps itself updated. The portable zip runs from a
+          folder and touches nothing else &mdash; handy on a shared machine, but it will not
+          auto-update.
+        </p>
+      </div>
+      <div class="note">
+        <h3>About the macOS build</h3>
+        <p>
+          Surf Sandbox is a Windows game, so the macOS build exists for development rather than
+          play. You can browse mods and manage profiles, but there is no game for it to launch.
+        </p>
+      </div>
+      <div class="note">
+        <h3>What it needs</h3>
+        <p>
+          Windows 10 or later, 64-bit. About 250&nbsp;MB of disk. No account, no telemetry, and it
+          never touches your game install &mdash; mods live inside profiles.
+        </p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__bar">
+      <span>&copy; 2026 AttackStudioYT. Not affiliated with nocanwin or Surf Sandbox.</span>
+      <span><a href="./">Back to the site</a></span>
+    </div>
+  </div>
+</footer>
+
+<a class="support" href="https://discord.com/channels/1536003130188111963/1536004851471753296" target="_blank" rel="noopener" title="Get help in #help on Discord">
+  <span>&#9993;</span><span>Support</span>
+</a>
+
+<script src="./download.js?v=1"></script>
+</body>
+</html>
