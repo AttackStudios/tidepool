@@ -27,16 +27,8 @@
     }, 3000)
   }
 
-  // ---- download button follows the visitor's platform ---------------------
-
-  var primary = document.getElementById('dl-primary')
-  if (primary && /Mac|iPhone|iPad/.test(navigator.platform || '')) {
-    var label = primary.querySelector('span')
-    if (label) {
-      label.innerHTML =
-        'Download for macOS<span class="btn__sub">Surf Sandbox itself is Windows only</span>'
-    }
-  }
+  // The download buttons are locked until 1.0 ships, so there is no
+  // platform-specific label to swap in yet. Restore this when they unlock.
 
   // ---- nav highlights the section you are actually looking at -------------
 
