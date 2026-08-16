@@ -39,7 +39,7 @@ jobs:
           test -f site/app.js
           # A missing asset shows up as a broken hero image rather than an error,
           # so fail the deploy instead of shipping it.
-          for f in icon.png surf.jpg surfmp.png breakpack.png \
+          for f in icon.png social.png surf.jpg surfmp.png breakpack.png \
                    Silkscreen-Regular.ttf DepartureMono-Regular.woff2; do
             test -f "site/assets/$f" || { echo "missing asset: $f"; exit 1; }
           done
