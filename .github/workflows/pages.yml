@@ -1,0 +1,53 @@
+name: pages
+
+# Deploys the landing page in site/ to GitHub Pages. Kept separate from the
+# build workflow so a site tweak does not run a Windows build, and a failing
+# app build does not block the site.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; the newest wins.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Sanity-check the site
+        run: |
+          set -euo pipefail
+          test -f site/index.html
+          test -f site/styles.css
+          test -f site/app.js
+          # A missing asset shows up as a broken hero image rather than an error,
+          # so fail the deploy instead of shipping it.
+          for f in icon.png surf.jpg surfmp.png breakpack.png \
+                   Silkscreen-Regular.ttf DepartureMono-Regular.woff2; do
+            test -f "site/assets/$f" || { echo "missing asset: $f"; exit 1; }
+          done
+          echo "site looks complete"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

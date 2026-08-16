@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TidePool — Mod Manager for Surf Sandbox</title>
+<meta name="description" content="Free, open-source mod manager for Surf Sandbox. Browse and install mods with dependencies handled, keep separate profiles, share beaches, and launch straight from the app." />
+<meta property="og:title" content="TidePool — Mod Manager for Surf Sandbox" />
+<meta property="og:description" content="Browse and install mods with dependencies handled, keep separate profiles, share beaches, and launch straight from the app." />
+<meta property="og:image" content="./assets/icon.png" />
+<meta property="og:type" content="website" />
+<meta name="theme-color" content="#06171d" />
+<link rel="icon" href="./assets/icon.png" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav__inner">
+    <img class="nav__mark bevel" src="./assets/icon.png" alt="TidePool" />
+    <div class="nav__links">
+      <a class="navlink is-on" href="#top">Home</a>
+      <a class="navlink" href="#features">Features</a>
+      <a class="navlink" href="#beaches">Beaches</a>
+      <a class="navlink" href="#download">Download</a>
+    </div>
+    <div class="nav__spacer"></div>
+    <a class="navlink navlink--cta" href="https://github.com/AttackStudios/tidepool" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <span class="hero__badge">Surf Sandbox releases 25 Aug 2026</span>
+
+    <img class="hero__icon bevel" src="./assets/icon.png" alt="TidePool" width="512" height="512" />
+
+    <h1 class="hero__title">
+      <span class="rank">#1 Surf Sandbox</span>
+      <span class="hero__swap" id="swap" aria-live="polite">Launcher</span>
+    </h1>
+
+    <p class="hero__sub">
+      Free and open source. Install mods without thinking about dependencies, keep separate
+      profiles so vanilla is always one click away, and share your beaches with a code.
+    </p>
+
+    <div class="dl">
+      <a class="btn" id="dl-primary" href="https://github.com/AttackStudios/tidepool/releases/latest" target="_blank" rel="noopener">
+        <span>Download for Windows<span class="btn__sub">Installer &middot; free forever</span></span>
+      </a>
+      <a class="btn btn--ghost" href="https://github.com/AttackStudios/tidepool/releases/latest" target="_blank" rel="noopener">
+        <span>All downloads<span class="btn__sub">Portable &amp; macOS</span></span>
+      </a>
+    </div>
+    <p class="hero__note">Unsigned build &mdash; Windows will ask. Choose <em>More info &rarr; Run anyway</em>.</p>
+
+    <div class="plinth">
+      <a class="btn btn--discord" href="https://discord.gg/RRu3gevbXS" target="_blank" rel="noopener">Join the Discord</a>
+      <p class="plinth__credit">Built by <strong>AttackStudioYT</strong> &middot; MIT licensed &middot; not affiliated with nocanwin</p>
+      <div class="scrollcue">
+        <span>Scroll to explore the manager</span>
+        <span>&#9662;</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="section" id="features">
+  <div class="wrap section__grid">
+    <div class="section__copy">
+      <p class="eyebrow">Browse and install</p>
+      <h2>MANAGER</h2>
+      <p>
+        Search Thunderstore, pick a mod, press install. Dependencies are resolved and installed in
+        the right order, and the panel shows exactly what will land before you commit to anything.
+      </p>
+      <ul class="points">
+        <li><span class="tick"></span><span><b>Dependencies handled.</b> Installing one mod brings everything it needs, in the correct order.</span></li>
+        <li><span class="tick"></span><span><b>Three sources.</b> Curated Essentials, all of Thunderstore, and GameBanana listings.</span></li>
+        <li><span class="tick"></span><span><b>Updates.</b> Per mod or all at once, and it never offers you a downgrade.</span></li>
+        <li><span class="tick"></span><span><b>Works offline.</b> The package list is cached, so a dropped connection shows a stale list rather than an error.</span></li>
+      </ul>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="mock__bar"><span class="mock__dot"></span><span class="mock__title">TidePool</span></div>
+      <div class="mock__tabs">
+        <span class="mock__tab is-on">Browse</span><span class="mock__tab">Installed</span>
+        <span class="mock__tab">Beaches</span><span class="mock__tab">Logs</span>
+      </div>
+      <div class="mock__body">
+        <div class="row row--on">
+          <img class="row__icon" src="./assets/surfmp.png" alt="" />
+          <div class="row__body">
+            <div class="row__name">SurfMP <span class="chip chip--warn">in development</span></div>
+            <div class="row__meta">AttackStudioYT &middot; Multiplayer</div>
+          </div>
+          <span class="row__btn">Install</span>
+        </div>
+        <div class="row">
+          <img class="row__icon" src="./assets/breakpack.png" alt="" />
+          <div class="row__body">
+            <div class="row__name">Break Pack <span class="chip chip--warn">in development</span></div>
+            <div class="row__meta">AttackStudioYT &middot; Beaches</div>
+          </div>
+          <span class="row__btn">Install</span>
+        </div>
+        <div class="row">
+          <span class="row__icon"></span>
+          <div class="row__body">
+            <div class="row__name">BepInExPack <span class="chip chip--ok">installed</span></div>
+            <div class="row__meta">BepInEx &middot; 5 dependencies resolved</div>
+          </div>
+          <span class="row__btn row__btn--ghost">Remove</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--alt section--flip">
+  <div class="wrap section__grid">
+    <div class="section__copy">
+      <p class="eyebrow">Keep your setups apart</p>
+      <h2 class="tone-foam">PROFILES</h2>
+      <p>
+        Every profile is its own set of mods with its own BepInEx folder. Switching between them
+        never touches your game install, so getting back to vanilla is always one click &mdash; and
+        you can hand a whole setup to a friend as a code.
+      </p>
+      <ul class="points">
+        <li><span class="tick"></span><span><b>Your install stays clean.</b> Mods live in the profile, not the game folder.</span></li>
+        <li><span class="tick"></span><span><b>Share a setup as a code.</b> No account, no server. A five-mod profile fits in about 230 characters.</span></li>
+        <li><span class="tick"></span><span><b>Toggle without uninstalling.</b> Turn a mod off, keep its settings.</span></li>
+        <li><span class="tick"></span><span><b>Told before you break things.</b> Removing a mod warns you what depends on it.</span></li>
+      </ul>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="mock__bar"><span class="mock__dot"></span><span class="mock__title">Installed &mdash; &ldquo;Big Wave Day&rdquo;</span></div>
+      <div class="mock__body">
+        <div class="row"><span class="switch"></span><div class="row__body"><div class="row__name">BepInEx-BepInExPack</div><div class="row__meta">5.4.2305</div></div><span class="chip chip--ok">v5.4.2400 ready</span></div>
+        <div class="row"><span class="switch"></span><div class="row__body"><div class="row__name">Evaisa-LethalLib</div><div class="row__meta">1.2.0 &middot; dependency</div></div><span class="row__btn row__btn--ghost">Remove</span></div>
+        <div class="row"><span class="switch switch--off"></span><div class="row__body"><div class="row__name">Owner-BiggerBarrels</div><div class="row__meta">0.4.1 <span class="chip">disabled</span></div></div><span class="row__btn row__btn--ghost">Remove</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="beaches">
+  <div class="wrap section__grid">
+    <div class="section__copy">
+      <p class="eyebrow">No Workshop? No problem</p>
+      <h2>BEACHES</h2>
+      <p>
+        Surf Sandbox saves every beach you build as a plain file, and there is no Steam Workshop to
+        trade them through. TidePool finds them, lists them, and turns any one into a code that
+        carries the whole beach &mdash; so sending someone your break is one paste.
+      </p>
+      <ul class="points">
+        <li><span class="tick"></span><span><b>Needs no mod loader.</b> Beaches are save files, so this works without BepInEx.</span></li>
+        <li><span class="tick"></span><span><b>Nothing gets overwritten.</b> An imported beach lands beside your own, never on top of it.</span></li>
+        <li><span class="tick"></span><span><b>Finds the folder itself.</b> Or point it at one, if your saves live somewhere unusual.</span></li>
+      </ul>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="mock__bar"><span class="mock__dot"></span><span class="mock__title">Beaches &mdash; 4 saved</span></div>
+      <div class="mock__body">
+        <div class="row"><div class="row__body"><div class="row__name">Pipeline</div><div class="row__meta">reef &middot; barrel &middot; heavy</div></div><span class="row__btn">Share</span></div>
+        <div class="row"><div class="row__body"><div class="row__name">Teahupo&rsquo;o</div><div class="row__meta">slab &middot; breaks below sea level</div></div><span class="row__btn">Share</span></div>
+        <div class="row"><div class="row__body"><div class="row__name">Skeleton Bay</div><div class="row__meta">sand point &middot; very long</div></div><span class="row__btn">Share</span></div>
+        <div class="row row--on"><div class="row__body"><div class="row__name">The Ripple</div><div class="row__meta">beginner &middot; mellow</div></div><span class="row__btn">Share</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--alt section--flip">
+  <div class="wrap section__grid">
+    <div class="section__copy">
+      <p class="eyebrow">When something goes wrong</p>
+      <h2 class="tone-warn">LOGS</h2>
+      <p>
+        Mods break. When they do, the Logs tab shows the loader output with errors picked out, and
+        one button copies a support bundle &mdash; the log, your mod list, versions, the lot &mdash;
+        so asking for help is a single paste instead of ten messages.
+      </p>
+      <ul class="points">
+        <li><span class="tick"></span><span><b>Errors first.</b> Filter to just the failures instead of scrolling.</span></li>
+        <li><span class="tick"></span><span><b>One-click support bundle.</b> Everything a helper needs, already gathered.</span></li>
+        <li><span class="tick"></span><span><b>Launch vanilla.</b> The quickest way to prove whether a mod caused it.</span></li>
+      </ul>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="mock__bar"><span class="mock__dot"></span><span class="mock__title">Logs &mdash; 2 errors</span></div>
+      <div class="mock__body">
+        <div class="mock__log">
+          <p class="loginfo">[Info : BepInEx] Loading [SurfMP 0.1.0]</p>
+          <p class="loginfo">[Info : BepInEx] Loading [BreakPack 1.0.0]</p>
+          <p class="logwarn">[Warning: BreakPack] Unknown contour key, skipping</p>
+          <p class="logerr">[Error : SurfMP] Failed to bind host socket</p>
+          <p class="logerr">[Error : SurfMP] Falling back to offline</p>
+        </div>
+        <div class="row"><div class="row__body"><div class="row__meta">Copy support bundle &middot; Show file &middot; Errors only</div></div><span class="row__btn">Copy</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <p class="eyebrow" style="text-align:center">Built properly</p>
+    <h2 style="text-align:center;font-family:var(--display);font-size:var(--f-title);color:var(--accent);margin:0 0 6px">NOT A WEEKEND HACK</h2>
+    <p style="text-align:center;color:var(--ink-2);max-width:56ch;margin:0 auto">
+      Open source, tested, and built in the open before the game even shipped.
+    </p>
+    <div class="stats">
+      <div class="stat"><div class="stat__n">258</div><div class="stat__l">automated tests</div></div>
+      <div class="stat"><div class="stat__n">3</div><div class="stat__l">mod sources</div></div>
+      <div class="stat"><div class="stat__n">MIT</div><div class="stat__l">licence</div></div>
+      <div class="stat"><div class="stat__n">&pound;0</div><div class="stat__l">forever</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="download">
+  <div class="wrap">
+    <h2>GET TIDEPOOL</h2>
+    <p>
+      Windows installer or a portable build. A macOS build exists for development, though Surf
+      Sandbox itself is Windows only.
+    </p>
+    <div class="dl">
+      <a class="btn" href="https://github.com/AttackStudios/tidepool/releases/latest" target="_blank" rel="noopener">
+        <span>Download for Windows<span class="btn__sub">Latest release</span></span>
+      </a>
+      <a class="btn btn--discord" href="https://discord.gg/RRu3gevbXS" target="_blank" rel="noopener">Join the Discord</a>
+    </div>
+    <p class="band__note">
+      The build is unsigned, so Windows SmartScreen will warn on first run &mdash; choose
+      <em>More info &rarr; Run anyway</em>. Source is on
+      <a href="https://github.com/AttackStudios/tidepool" target="_blank" rel="noopener">GitHub</a>
+      if you would rather build it yourself.
+    </p>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__grid">
+      <div>
+        <div class="footer__brand">
+          <img class="bevel" src="./assets/icon.png" alt="" />
+          <span>TidePool</span>
+        </div>
+        <p class="footer__blurb">The mod manager for Surf Sandbox. Free, open source, and built in the open.</p>
+      </div>
+      <div>
+        <h3>Product</h3>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#beaches">Beaches</a></li>
+          <li><a href="#download">Download</a></li>
+          <li><a href="https://github.com/AttackStudios/tidepool/releases" target="_blank" rel="noopener">Releases</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Community</h3>
+        <ul>
+          <li><a href="https://discord.gg/RRu3gevbXS" target="_blank" rel="noopener">Discord</a></li>
+          <li><a href="https://github.com/AttackStudios/tidepool/issues" target="_blank" rel="noopener">Report a bug</a></li>
+          <li><a href="https://store.steampowered.com/app/4480760/Surf_Sandbox/" target="_blank" rel="noopener">Surf Sandbox on Steam</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Project</h3>
+        <ul>
+          <li><a href="https://github.com/AttackStudios/tidepool" target="_blank" rel="noopener">Source code</a></li>
+          <li><a href="https://github.com/AttackStudios/tidepool/blob/main/LICENSE" target="_blank" rel="noopener">MIT licence</a></li>
+          <li><a href="./assets/Silkscreen-OFL.txt">Silkscreen (OFL)</a></li>
+          <li><a href="./assets/DepartureMono-LICENSE.txt">Departure Mono</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bar">
+      <span>&copy; 2026 AttackStudioYT. Not affiliated with nocanwin or Surf Sandbox.</span>
+      <span>Made for the lineup.</span>
+    </div>
+  </div>
+</footer>
+
+<a class="support" href="https://discord.gg/RRu3gevbXS" target="_blank" rel="noopener" title="Get help in #help on Discord">
+  <span>&#9993;</span><span>Support</span>
+</a>
+
+<script src="./app.js"></script>
+</body>
+</html>
