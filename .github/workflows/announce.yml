@@ -1,0 +1,91 @@
+name: announce
+
+# Posts a release to Discord when one is published.
+#
+# Releases are the event a community server actually wants; commits and issues
+# are noise there. If you do want those, Discord's native GitHub integration
+# handles them with no code — see docs/launch/discord-webhook.md.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to announce (for re-posting a release)'
+        required: true
+
+jobs:
+  discord:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Post to Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${WEBHOOK:-}" ]; then
+            echo "No DISCORD_WEBHOOK secret set — nothing to post to. Skipping."
+            exit 0
+          fi
+
+          # Read the release back from the API rather than trusting the event
+          # payload, so a manual re-post works identically to an automatic one.
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,body,isPrerelease,url,assets > release.json
+
+          python3 - <<'PY' > payload.json
+          import json, os
+
+          r = json.load(open('release.json'))
+          tag = r['tagName']
+          prerelease = r['isPrerelease']
+
+          # Trim the notes: Discord embeds cap at 4096 and a wall of text in a
+          # channel is worse than a link.
+          body = (r.get('body') or '').strip()
+          if len(body) > 1400:
+              body = body[:1400].rsplit('\n', 1)[0] + '\n\n…'
+
+          assets = [a for a in r.get('assets', []) if not a['name'].endswith('.yml')]
+          if assets:
+              lines = [f"[{a['name']}]({a['url']}) · {a['size'] // 1024 // 1024} MB" for a in assets]
+              body += '\n\n**Downloads**\n' + '\n'.join(lines)
+
+          payload = {
+              'username': 'TidePool',
+              'avatar_url': 'https://raw.githubusercontent.com/AttackStudios/tidepool/main/essentials/icons/surfmp.png',
+              # Prereleases are test builds; say so loudly rather than letting
+              # someone install one thinking it is the release.
+              'content': ('**Test build** — not the full release.' if prerelease
+                          else '@everyone'),
+              'embeds': [{
+                  'title': ('Pre-release: ' if prerelease else '') + (r.get('name') or tag),
+                  'url': r['url'],
+                  'description': body or 'No release notes.',
+                  # TidePool's accent, so the post looks like the product.
+                  'color': 0xf2b45a if prerelease else 0x3fd8e8,
+                  'thumbnail': {'url': 'https://attackstudios.github.io/tidepool/assets/icon.png'},
+                  'footer': {'text': 'tidepool · attackstudios.github.io/tidepool'},
+              }],
+          }
+          print(json.dumps(payload))
+          PY
+
+          code=$(curl -sS -o response.txt -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' \
+            -d @payload.json "$WEBHOOK")
+
+          # A silent failure here means a release nobody hears about, so make it
+          # fail the run rather than pass quietly.
+          if [ "$code" != "204" ] && [ "$code" != "200" ]; then
+            echo "Discord rejected the post (HTTP $code):"
+            cat response.txt
+            exit 1
+          fi
+          echo "Announced $TAG to Discord."
