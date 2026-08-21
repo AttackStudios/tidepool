@@ -395,3 +395,14 @@ img { max-width: 100%; display: block; }
 .note { background: var(--deep); border: var(--px) solid var(--line-dim); padding: 16px; }
 .note h3 { font-family: var(--display); font-size: var(--f-micro); color: var(--accent); margin: 0 0 8px; }
 .note p { color: var(--ink-2); font-size: var(--f-micro); margin: 0; line-height: 1.7; }
+
+/* ---------- Steam wishlist widget ---------- */
+
+.lockcard__aside { color: var(--ink-3); font-size: var(--f-micro); max-width: 50ch; margin: 0 auto 18px; }
+
+/* Steam's widget has a fixed 646px layout inside it, so let the container
+   scroll on narrow screens rather than letting it push the page sideways. */
+.steamwidget { max-width: 646px; margin: 0 auto 26px; overflow-x: auto; }
+.steamwidget iframe {
+  display: block; width: 646px; max-width: none; height: 190px; border: 0;
+}
