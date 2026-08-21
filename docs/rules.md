@@ -36,5 +36,5 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 Think we got a call wrong? Open a ticket in <#1536004851471753296> — no hard feelings.
 
-**[🌊  Download TidePool](https://attackstudios.github.io/tidepool/download.html)**
+**[🌊  Download TidePool](https://attackstudios.github.io/tidepool/?v=1)**
 -# Free and open source · Windows installer and portable build
