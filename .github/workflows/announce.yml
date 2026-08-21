@@ -59,7 +59,6 @@ jobs:
 
           payload = {
               'username': 'TidePool',
-              'avatar_url': 'https://attackstudios.github.io/tidepool/assets/bot.png',
               # Prereleases are test builds; say so loudly rather than letting
               # someone install one thinking it is the release.
               'content': ('**Test build** — not the full release.' if prerelease
