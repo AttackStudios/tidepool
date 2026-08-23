@@ -8,6 +8,7 @@
  */
 import { app, type BrowserWindow } from 'electron'
 import { autoUpdater } from 'electron-updater'
+import { isPrerelease } from '../../shared/version'
 
 export type UpdateState =
   | { status: 'idle' }
@@ -19,10 +20,9 @@ export type UpdateState =
 
 export const UPDATE_CHANNEL = 'app:update-state'
 
-/** Is this build itself a prerelease, e.g. 0.1.0-rc.5? */
-export function isPrerelease(version: string): boolean {
-  return version.includes('-')
-}
+// Imported and re-exported so the updater and the UI cannot drift apart on
+// what counts as a prerelease. The definition lives in shared/version.ts.
+export { isPrerelease }
 
 export function initAutoUpdate(getWindow: () => BrowserWindow | null): void {
   // An unpackaged run has no update to install and electron-updater throws.

@@ -11,6 +11,7 @@ import { Toasts } from './toast'
 import { UpdateChip } from './UpdateChip'
 import mark from './assets/mark.png'
 import { HOME_COMMUNITY, communitiesFor } from '../shared/communities'
+import { PrereleaseBadge } from './PrereleaseBadge'
 import { Welcome } from './Welcome'
 import type { GameInstall } from '../shared/types'
 
@@ -163,6 +164,8 @@ export function App() {
       )}
       {tab === 'beaches' && <BeachPanel />}
       {tab === 'logs' && <LogPanel profile={current} />}
+
+      <PrereleaseBadge />
     </div>
   )
 }

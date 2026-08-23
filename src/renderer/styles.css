@@ -572,3 +572,29 @@ button:disabled {
 .logline--info { color: var(--ink-2); }
 
 .beaches { flex: 1; overflow-y: auto; padding: 12px 16px 24px; }
+
+/* ---- Pre-release badge -------------------------------------------------- */
+/* Bottom left, above everything, but deliberately quiet: it must be readable
+   in a screenshot without competing with the thing being screenshotted. */
+.prerelease {
+  position: fixed;
+  left: var(--pad);
+  bottom: var(--pad);
+  z-index: 60;
+
+  /* Departure, not the display face: Silkscreen has no true lowercase, so
+     "rc.9" would render wrong in the one string that has to be exact. */
+  font-family: "Departure", ui-monospace, Menlo, monospace;
+  font-size: var(--f-micro);
+  letter-spacing: 0.02em;
+  color: var(--warn);
+
+  padding: 4px 8px;
+  background: var(--panel);
+  border: var(--px) solid var(--warn);
+  box-shadow: var(--shadow-sm);
+
+  /* Never intercept a click meant for the UI underneath. */
+  pointer-events: none;
+  user-select: none;
+}

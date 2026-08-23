@@ -24,6 +24,8 @@ jobs:
       - name: Post to Discord
         env:
           WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          WEBHOOK_BETA: ${{ secrets.DISCORD_WEBHOOK_BETA }}
+          BETA_ROLE_ID: ${{ secrets.BETA_ROLE_ID }}
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
@@ -40,7 +42,7 @@ jobs:
             --json tagName,name,body,isPrerelease,url,assets > release.json
 
           python3 - <<'PY' > payload.json
-          import json, os
+          import io, json, os
 
           r = json.load(open('release.json'))
           tag = r['tagName']
@@ -62,6 +64,11 @@ jobs:
           # has been waiting for, so it gets written copy rather than a changelog.
           launch = not prerelease and tag.lstrip('v').split('-')[0] == '1.0.0'
 
+          # Only pings if the role id is configured; an unset secret must not
+          # post a broken literal like "<@&>".
+          role = os.environ.get('BETA_ROLE_ID', '').strip()
+          mentions = {'parse': []}
+
           if launch:
               content = (
                   '@everyone\n'
@@ -82,37 +89,61 @@ jobs:
                   description += '\n**Downloads**\n' + downloads
               description += '\n\n[Full release notes](%s)' % r['url']
               color = 0x3fd8e8
+              mentions = {'parse': ['everyone']}
+          elif prerelease:
+              # Goes to the beta channel, which only Beta Testers can see.
+              content = (('<@&%s>\n' % role) if role else '') + '## 🧪  New beta build'
+              title = 'Beta build — ' + (r.get('name') or tag)
+              description = body or 'No notes for this build.'
+              if downloads:
+                  description += '\n\n**Downloads**\n' + downloads
+              description += (
+                  '\n\n-# Unfinished build. Export your profiles before installing it, '
+                  'and keep these files in this channel — they are not for sharing.'
+              )
+              color = 0xf2b45a
+              if role:
+                  mentions = {'parse': [], 'roles': [role]}
           else:
-              content = ('**Test build** — not the full release.' if prerelease
-                         else '@everyone')
-              title = ('Pre-release: ' if prerelease else '') + (r.get('name') or tag)
+              content = '@everyone'
+              title = r.get('name') or tag
               description = body or 'No release notes.'
               if downloads:
                   description += '\n\n**Downloads**\n' + downloads
-              # TidePool's accent, so the post looks like the product.
-              color = 0xf2b45a if prerelease else 0x3fd8e8
+              color = 0x3fd8e8
+              mentions = {'parse': ['everyone']}
 
           payload = {
-              'username': 'TidePool',
+              # No username/avatar override: each webhook carries its own
+              # identity, so the beta channel posts as TidePool Beta by itself.
               'content': content,
-              # Explicit rather than relying on Discord's default parse, so a
-              # test build can never ping the whole server by accident.
-              'allowed_mentions': {'parse': [] if prerelease else ['everyone']},
+              'allowed_mentions': mentions,
               'embeds': [{
                   'title': title,
                   'url': r['url'],
                   'description': description,
                   'color': color,
-                  'thumbnail': {'url': 'https://attackstudios.github.io/tidepool/assets/icon.png'},
                   'footer': {'text': 'tidepool · attackstudios.github.io/tidepool'},
               }],
           }
+          io.open('target.txt', 'w').write('beta' if prerelease else 'main')
           print(json.dumps(payload))
           PY
 
+          # Beta builds must not land in the public announcements channel.
+          if [ "$(cat target.txt)" = "beta" ]; then
+            TARGET="${WEBHOOK_BETA:-}"
+            if [ -z "$TARGET" ]; then
+              echo "Prerelease, but no DISCORD_WEBHOOK_BETA secret set. Skipping."
+              exit 0
+            fi
+          else
+            TARGET="$WEBHOOK"
+          fi
+
           code=$(curl -sS -o response.txt -w '%{http_code}' \
             -X POST -H 'Content-Type: application/json' \
-            -d @payload.json "$WEBHOOK")
+            -d @payload.json "$TARGET")
 
           # A silent failure here means a release nobody hears about, so make it
           # fail the run rather than pass quietly.
