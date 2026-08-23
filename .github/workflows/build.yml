@@ -89,3 +89,15 @@ jobs:
               --notes-file docs/launch/release-notes.md \
               $PRERELEASE
           fi
+
+      # Announced here rather than from an `on: release` workflow. GitHub will
+      # not raise workflow-triggering events for anything created with
+      # GITHUB_TOKEN, so a release published by this job never fires one -- the
+      # 1.0 announcement would simply never have posted.
+      - name: Announce to Discord
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK_BETA: ${{ secrets.DISCORD_WEBHOOK_BETA }}
+          BETA_ROLE_ID: ${{ secrets.BETA_ROLE_ID }}
+        run: python3 tools/announce.py "${GITHUB_REF_NAME}"
