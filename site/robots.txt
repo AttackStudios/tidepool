@@ -1,0 +1,6 @@
+# The audience arrives the day the game does, searching "Surf Sandbox mods".
+# Nothing here is private; crawl all of it.
+User-agent: *
+Allow: /
+
+Sitemap: https://attackstudios.github.io/tidepool/sitemap.xml
