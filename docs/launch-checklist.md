@@ -21,16 +21,28 @@ this state otherwise lives only in a chat log.
   `v1.0.1`/`v2.0.0` → announcements with `@everyone`; any prerelease → beta
   channel pinging the Beta Tester role only.
 
+- **The release pipeline, end to end** — `rc.9` tagged, built on Windows,
+  published with the version stamped from the tag, `latest.yml` correct, marked
+  prerelease, and announced to the beta channel by CI itself.
+
+## Fixed by rehearsing
+
+- **The 1.0 announcement would never have posted.** GitHub refuses to raise
+  workflow-triggering events for anything created with `GITHUB_TOKEN`, so the
+  release CI publishes could not start an `on: release` workflow. `announce.yml`
+  had only ever run because it was dispatched by hand, which hid the problem
+  completely. The announcer now lives in `tools/announce.py` and is called
+  directly from the build job. Verified: *"Announced v1.0.0-rc.9 to the beta
+  channel."*
+
 ## Not verified
 
-- **The stable release path has never run.** rc.7 and rc.8 were both
-  prereleases, so `isPrerelease=false` has never flowed through build → announce
-  → site unlock for real.
-- **The announce workflow has never executed in Actions with the new routing.**
-  Its code has only been run locally with simulated secrets.
-- **The prerelease badge has never appeared.** `package.json` is `0.0.1`, which
-  has no hyphen, so it correctly hides locally. It only renders on a
-  CI-stamped version like `1.0.0-rc.9`.
+- **The stable branch of the announcer has not run in CI.** Its prerelease
+  branch has, and they share one code path, so the remaining risk is the
+  `@everyone` mention and the launch copy — both verified locally.
+- **The prerelease badge has not been seen on screen.** It ships in the rc.9
+  installer; install it on Windows and it should read
+  `PreRelease Build (rc.9)` bottom left.
 - **The install pipeline has only ever seen Mono packs** from the borrowed
   Lethal Company catalogue. A BepInEx 6 IL2CPP pack is a different shape, and
   cannot be tested until the game exists.
