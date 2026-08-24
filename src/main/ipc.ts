@@ -171,8 +171,12 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
     attempt(async () => {
       const game = resolveGame()
       if (!game) throw new Error('No game folder set. Use "Locate game" to pick it.')
-      const plan = buildLaunchPlan(profiles.dir(profileId))
-      return launchGame(game.root, plan, mode)
+      // The plan must know the mode: a vanilla launch needs arguments that
+      // switch Doorstop off, not the modded arguments with the mode discarded
+      // later.
+      const profileDir = profiles.dir(profileId)
+      const plan = buildLaunchPlan(profileDir, { modded: mode !== 'vanilla' })
+      return launchGame(game.root, profileDir, plan, mode)
     }),
   )
 

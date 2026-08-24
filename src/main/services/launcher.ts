@@ -13,9 +13,11 @@
  *   applies whatever launch options are saved in Steam rather than ours.
  */
 import { spawn } from 'node:child_process'
+import { cpSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type { LaunchPlan } from './launch'
 import { inspectGameFolder } from './gamefolder'
+import { LOADER_STAGING } from './install'
 import { SURF_SANDBOX_APP_ID } from './steam'
 
 export type LaunchMode = 'modded' | 'vanilla' | 'steam'
@@ -25,6 +27,33 @@ export interface LaunchOutcome {
   mode: LaunchMode
   /** Why it couldn't start, for showing the user. */
   reason?: string
+}
+
+/**
+ * Copy a profile's staged loader files into the game folder.
+ *
+ * Windows loads `winhttp.dll` from the executable's own directory, and that DLL
+ * is what starts Doorstop, which starts BepInEx. Installing cannot put it there
+ * because a profile can be created before TidePool has located the game at all,
+ * so it is staged in the profile and placed here, at the one moment a game is
+ * known to exist.
+ *
+ * Returns the number of entries copied, or null when the profile has no loader
+ * staged — which means BepInEx was never installed, and launching modded would
+ * silently produce a vanilla game.
+ */
+export function placeLoader(profileDir: string, gameRoot: string): number | null {
+  const staged = join(profileDir, LOADER_STAGING)
+  if (!existsSync(staged)) return null
+  const entries = readdirSync(staged)
+  if (entries.length === 0) return null
+
+  for (const entry of entries) {
+    // Overwrites on purpose: switching profiles must replace the previous
+    // profile's loader rather than leave a stale one injecting itself.
+    cpSync(join(staged, entry), join(gameRoot, entry), { recursive: true, force: true })
+  }
+  return entries.length
 }
 
 export function canLaunchDirectly(platform: NodeJS.Platform = process.platform): boolean {
@@ -38,6 +67,7 @@ export function steamRunUrl(appId: string = SURF_SANDBOX_APP_ID): string {
 
 export function launchGame(
   gameRoot: string,
+  profileDir: string,
   plan: LaunchPlan,
   mode: LaunchMode = 'modded',
   platform: NodeJS.Platform = process.platform,
@@ -59,9 +89,20 @@ export function launchGame(
     return { started: false, mode, reason: `No executable found beside ${folder.dataDir}` }
   }
 
-  // Vanilla deliberately drops both the arguments and the Wine override, so
-  // nothing can quietly re-enable the loader.
-  const args = mode === 'vanilla' ? [] : plan.args
+  if (mode !== 'vanilla' && placeLoader(profileDir, gameRoot) === null) {
+    return {
+      started: false,
+      mode,
+      reason:
+        'This profile has no mod loader installed, so the game would start unmodded. ' +
+        'Install BepInEx from Browse, then launch again.',
+    }
+  }
+
+  // The plan already encodes the difference: a vanilla plan carries arguments
+  // that switch Doorstop off, rather than no arguments at all. Only the Wine
+  // override is dropped here.
+  const args = plan.args
   const env = mode === 'vanilla' ? {} : plan.env
 
   const child = spawnImpl(join(gameRoot, folder.executable), args, {

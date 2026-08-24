@@ -31,8 +31,18 @@ describe('wineEnv', () => {
 })
 
 describe('buildLaunchPlan', () => {
-  it('returns an empty plan when launching unmodded', () => {
-    expect(buildLaunchPlan('/p', { modded: false })).toEqual({ args: [], env: {} })
+  it('switches Doorstop off explicitly when launching unmodded', () => {
+    // Not an empty plan. With no arguments at all Doorstop reads
+    // doorstop_config.ini beside the game, where enabled is true — so a
+    // "vanilla" run would load BepInEx anyway and prove nothing.
+    expect(buildLaunchPlan('/p', { modded: false })).toEqual({
+      args: ['--doorstop-enabled', 'false'],
+      env: {},
+    })
+    expect(buildLaunchPlan('/p', { modded: false, doorstop: 3 })).toEqual({
+      args: ['--doorstop-enable', 'false'],
+      env: {},
+    })
   })
 })
 

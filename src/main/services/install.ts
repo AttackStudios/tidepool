@@ -58,6 +58,36 @@ export function isInside(root: string, target: string): boolean {
  * Returns null for anything that would land outside the profile, so a hostile
  * archive is skipped rather than written.
  */
+/**
+ * Files a loader pack ships that belong beside the game executable, not in a
+ * profile's plugin folder.
+ *
+ * `winhttp.dll` is the shim Windows loads into the game process; it is what
+ * starts Doorstop, which is what starts BepInEx. If it is not next to the exe
+ * then the launch arguments are read by nobody and the game runs vanilla —
+ * silently, and reporting a successful install. `dotnet/` is the runtime
+ * BepInEx 6 executes on, and `doorstop_config.ini` points at it.
+ */
+const LOADER_ROOT = /^(winhttp\.dll|doorstop_config\.ini|\.doorstop_version|dotnet\/.*)$/i
+
+/** Where a loader pack's game-root files are staged inside the profile. */
+export const LOADER_STAGING = '_loader'
+
+/**
+ * Strip a Thunderstore wrapper folder.
+ *
+ * Packages are published as `<PackageName>/<actual files>`, so an entry's own
+ * first segment is not meaningful. `BepInEx/` is never stripped — it is the
+ * destination, not a wrapper.
+ */
+function stripWrapper(path: string): string {
+  const slash = path.indexOf('/')
+  if (slash === -1) return path
+  const head = path.slice(0, slash)
+  if (head === 'BepInEx' || head === 'dotnet') return path
+  return path.slice(slash + 1)
+}
+
 export function targetPathFor(entryName: string, profileDir: string, modFolder: string): string | null {
   const normalised = entryName.replace(/\\/g, '/')
   if (normalised.endsWith('/')) return null
@@ -67,11 +97,21 @@ export function targetPathFor(entryName: string, profileDir: string, modFolder: 
   if (normalised.startsWith('/') || /^[a-zA-Z]:/.test(normalised)) return null
 
   const bepInExAt = normalised.indexOf('BepInEx/')
-  const target =
-    bepInExAt !== -1
-      ? join(profileDir, normalised.slice(bepInExAt))
-      : join(profileDir, 'BepInEx', 'plugins', modFolder, normalised)
+  if (bepInExAt !== -1) {
+    const target = join(profileDir, normalised.slice(bepInExAt))
+    return isInside(profileDir, target) ? target : null
+  }
 
+  // Staged rather than written to the game folder here, because installing is
+  // deliberately independent of the game — the profile may be built before
+  // TidePool has even located an install. Launching copies these across.
+  const inner = stripWrapper(normalised)
+  if (LOADER_ROOT.test(inner)) {
+    const target = join(profileDir, LOADER_STAGING, inner)
+    return isInside(profileDir, target) ? target : null
+  }
+
+  const target = join(profileDir, 'BepInEx', 'plugins', modFolder, normalised)
   return isInside(profileDir, target) ? target : null
 }
 

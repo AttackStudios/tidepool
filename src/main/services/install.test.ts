@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { cacheKey, isInside, targetPathFor } from './install'
+import { join } from 'node:path'
+import { cacheKey, isInside, LOADER_STAGING, targetPathFor } from './install'
 import type { PackageVersion } from '../../shared/types'
 
 const version = (url: string): PackageVersion => ({
@@ -82,5 +83,62 @@ describe('isInside', () => {
     expect(isInside('/p', '/other/x.dll')).toBe(false)
     // A prefix match on the string alone would wrongly accept this one.
     expect(isInside('/p', '/pwned/x.dll')).toBe(false)
+  })
+})
+
+
+describe('loader packs', () => {
+  // A BepInEx pack ships four things at its own root that belong beside the
+  // game executable, not in a profile. Filed as plugins they are inert, and the
+  // failure is silent: the install reports success and the game runs vanilla.
+  const pack = 'BepInEx-BepInExPack_IL2CPP-6.0.755'
+
+  it('stages the Doorstop shim instead of filing it as a plugin', () => {
+    const t = targetPathFor('BepInExPack/winhttp.dll', '/p', pack)
+    expect(t).toBe(join('/p', LOADER_STAGING, 'winhttp.dll'))
+    expect(t).not.toContain('plugins')
+  })
+
+  it('stages the Doorstop config and version marker', () => {
+    expect(targetPathFor('BepInExPack/doorstop_config.ini', '/p', pack)).toBe(
+      join('/p', LOADER_STAGING, 'doorstop_config.ini'),
+    )
+    expect(targetPathFor('BepInExPack/.doorstop_version', '/p', pack)).toBe(
+      join('/p', LOADER_STAGING, '.doorstop_version'),
+    )
+  })
+
+  it('stages the whole dotnet runtime BepInEx 6 executes on', () => {
+    expect(targetPathFor('BepInExPack/dotnet/coreclr.dll', '/p', pack)).toBe(
+      join('/p', LOADER_STAGING, 'dotnet', 'coreclr.dll'),
+    )
+  })
+
+  it('still puts the BepInEx tree itself in the profile', () => {
+    expect(targetPathFor('BepInExPack/BepInEx/core/BepInEx.Preloader.dll', '/p', pack)).toBe(
+      join('/p', 'BepInEx', 'core', 'BepInEx.Preloader.dll'),
+    )
+  })
+
+  it('does not mistake an ordinary mod\'s files for loader files', () => {
+    // A mod may legitimately ship a DLL by any name; only the loader's own
+    // root-level names are special, and only at the root.
+    expect(targetPathFor('MyMod/plugins/winhttp.dll', '/p', 'MyMod')).toContain('plugins')
+    expect(targetPathFor('MyMod/SomeMod.dll', '/p', 'MyMod')).toBe(
+      join('/p', 'BepInEx', 'plugins', 'MyMod', 'MyMod/SomeMod.dll'),
+    )
+  })
+
+  it('keeps traversal inside the profile, and refuses anything that leaves it', () => {
+    // Containment is the guarantee, not the absence of "..". A path that walks
+    // up and lands back inside is harmless and is kept.
+    expect(targetPathFor('BepInExPack/../../../../evil.dll', '/p', pack)).toBe('/p/evil.dll')
+    expect(targetPathFor('dotnet/../coreclr.dll', '/p', pack)).toBe(
+      join('/p', LOADER_STAGING, 'coreclr.dll'),
+    )
+    // Walking out of the profile entirely is refused, including via the staging
+    // route, which is a second join site and so a second chance to get it wrong.
+    expect(targetPathFor('dotnet/../../../../../../evil.dll', '/p', pack)).toBeNull()
+    expect(targetPathFor('BepInExPack/../../../../../../evil.dll', '/p', pack)).toBeNull()
   })
 })

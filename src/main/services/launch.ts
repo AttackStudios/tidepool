@@ -40,12 +40,24 @@ export function wineEnv(platform: NodeJS.Platform): Record<string, string> {
   return { WINEDLLOVERRIDES: 'winhttp.dll=n,b' }
 }
 
+/**
+ * Arguments that switch Doorstop **off**.
+ *
+ * Passing no arguments is not the same as passing "off". With none, Doorstop
+ * falls back to `doorstop_config.ini` beside the game, where `enabled` is true —
+ * so a vanilla launch would quietly load BepInEx anyway, which defeats the one
+ * thing a vanilla launch is for: telling whether a mod caused the problem.
+ */
+export function doorstopDisableArgs(version: DoorstopVersion): string[] {
+  return version === 4 ? ['--doorstop-enabled', 'false'] : ['--doorstop-enable', 'false']
+}
+
 export function buildLaunchPlan(
   profileDir: string,
   options: { doorstop?: DoorstopVersion; platform?: NodeJS.Platform; modded?: boolean } = {},
 ): LaunchPlan {
   const { doorstop = 4, platform = process.platform, modded = true } = options
-  if (!modded) return { args: [], env: {} }
+  if (!modded) return { args: doorstopDisableArgs(doorstop), env: {} }
   return { args: doorstopArgs(profileDir, doorstop), env: wineEnv(platform) }
 }
 
