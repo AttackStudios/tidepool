@@ -122,7 +122,7 @@ from an IL2CPP patch is fiddlier than from Mono, but the shape of the data is fa
 | `6 (IL2CPP)` | 5.x for Mono, 6.x for IL2CPP |
 | `{{TIDEPOOL_VERSION}}` | the tag you ship |
 | `{{RELEASE_URL}}` | `https://github.com/AttackStudios/tidepool/releases/tag/v{{TIDEPOOL_VERSION}}` |
-| `{{DISCORD_INVITE}}` | your server's permanent invite |
+| `https://discord.gg/RRu3gevbXS` | your server's permanent invite |
 | `{{STEAM_GUIDE_URL}}` | the guide's URL, once Steam has published it |
 | `{{FIRST_MOD_NAME}}` | the proof-of-life mod you ship at H+3:00 |
 | `{{FIRST_MOD_DESCRIPTION}}` | one line on what it does |

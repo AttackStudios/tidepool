@@ -25,7 +25,7 @@
 >
 > Download: {{RELEASE_URL}}
 > Step-by-step guide: {{STEAM_GUIDE_URL}}
-> Discord: {{DISCORD_INVITE}}
+> Discord: https://discord.gg/RRu3gevbXS
 >
 > Everything's MIT licensed. If you'd like to make mods, come say hello.
 

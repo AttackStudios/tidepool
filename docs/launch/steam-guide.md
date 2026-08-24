@@ -66,7 +66,7 @@ waste their time on problems they didn't cause. If a mod broke it, bring it to u
 
 ### Get help
 
-- Discord: {{DISCORD_INVITE}}
+- Discord: https://discord.gg/RRu3gevbXS
 - Issues: https://github.com/AttackStudios/tidepool/issues
 
 TidePool is free and open source, MIT licensed. Mods are made by the community — if you build one,
