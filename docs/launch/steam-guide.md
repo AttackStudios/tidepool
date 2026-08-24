@@ -28,9 +28,15 @@ game's executable.
 
 ### 3. Install the mod loader
 
-Mods need [BepInEx]({{RELEASE_URL}}), which loads them into the game. TidePool installs it for you:
-open **Browse**, find **BepInExPack**, and hit **Install**. Anything a mod depends on is pulled in
-automatically, so you never have to work out install order yourself.
+Mods need **BepInEx**, which loads them into the game. TidePool installs it for you: open **Browse**,
+make sure the source is **Essentials**, and hit **Install** on BepInEx. Anything a mod depends on is
+pulled in automatically, so you never have to work out install order yourself.
+
+<!-- The link here used to point at {{RELEASE_URL}}, which is TidePool's own release page, not
+     BepInEx. And it said to search Browse without naming a source. On day one the Thunderstore
+     source is empty, because the surf-sandbox community does not exist until Thunderstore approves
+     it -- so Essentials is the only source that can serve the loader. This step is a dead end
+     unless essentials/index.json actually carries a BepInEx entry. -->
 
 ### 4. Install a mod
 
