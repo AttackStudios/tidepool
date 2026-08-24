@@ -2,6 +2,10 @@
 
 **Goal:** on 25 August, know the toolchain works. Not learn it.
 
+> **Status: done.** Rehearsed 23 Aug against Among Us (IL2CPP, Unity 2022.3.44f1)
+> over SSH. The verified procedure is at the bottom under "What actually worked";
+> read that first — two of the obvious steps fail.
+
 M0 of the SurfMP plan gates everything else: find the wave heightfield, find the
 surfer controller. That work assumes a BepInEx 6 IL2CPP setup that has never been
 run. This rehearsal removes that assumption while it is still cheap to be wrong.
@@ -79,3 +83,43 @@ Two things come out of this that are worth keeping:
 - **A sharper M0.** If the wave state turns out to be unreadable on release day,
   the plan says stop and redesign before writing netcode. Having practised the
   search is what lets you make that call on day one instead of day four.
+
+
+## What actually worked
+
+Rehearsed on Among Us, 23 August 2026. Three things went wrong that would each
+have cost an hour on launch day.
+
+**1. Cpp2IL's "latest release" is three years stale and fails outright.**
+
+    Unsupported metadata version found! We support 24-29, got 31
+
+GitHub's `/releases/latest` endpoint *excludes pre-releases*, and Cpp2IL's real
+current build is a pre-release. The stable `2022.0.7` cannot read anything
+modern. Use the newest `2022.1.0-pre-release.*` instead. Surf Sandbox will
+almost certainly be metadata v31 too.
+
+**2. It hangs forever in a non-interactive shell.** When it cannot auto-locate
+the Code/Metadata Registration addresses it prompts, and over SSH that reads as
+an instant silent exit. `--disable-registration-prompts` is not optional.
+
+**3. `dotnet tool install -g ilspycmd` is broken upstream** — the published
+package is missing `DotnetToolSettings.xml`. Do not budget time for it.
+
+The command that works, and takes about ten seconds on a 46 MB `GameAssembly.dll`:
+
+    Cpp2IL.exe --game-path "<game folder>" --exe-name "<Name>" \
+               --skip-analysis --skip-metadata-txts \
+               --disable-registration-prompts \
+               --output-as dummydll --output-to out
+
+Then search the dump with `tools/asmgrep` (in this repo — `dotnet build -c
+Release`, no packages, `System.Reflection.Metadata` is in-box):
+
+    asmgrep out "^PlayerControl$" --fields     # a type and every field, typed
+    asmgrep out --fieldtype "^float\[\]$"      # every type owning a float[]
+
+That second form is the one that matters. M0 asks "where is the wave
+heightfield" — and a heightfield is a `float[]` or a `NativeArray<float>` on
+something with Wave, Ocean, or Water in its name. Searching by field *type*
+finds it even when the class is called something unexpected.
