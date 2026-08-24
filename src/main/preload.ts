@@ -43,7 +43,7 @@ const api = {
     ipcRenderer.invoke(CHANNELS.duplicateProfile, id, name),
   launchGame: (profileId: string, mode?: 'modded' | 'vanilla') =>
     ipcRenderer.invoke(CHANNELS.launchGame, profileId, mode),
-  launchViaSteam: () => ipcRenderer.invoke(CHANNELS.launchViaSteam),
+  launchViaSteam: (profileId: string) => ipcRenderer.invoke(CHANNELS.launchViaSteam, profileId),
   listBeaches: () => ipcRenderer.invoke(CHANNELS.listBeaches),
   shareBeach: (fileName: string) => ipcRenderer.invoke(CHANNELS.shareBeach, fileName),
   importBeach: (code: string) => ipcRenderer.invoke(CHANNELS.importBeach, code),

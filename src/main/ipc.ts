@@ -3,7 +3,7 @@ import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 import { findGameInstall } from './services/steam'
 import { inspectGameFolder } from './services/gamefolder'
-import { canLaunchDirectly, launchGame, steamRunUrl } from './services/launcher'
+import { canLaunchDirectly, launchGame, placeLoader, steamRunUrl } from './services/launcher'
 import { findUpdates } from './services/updates'
 import { decodeProfile, encodeProfile, refsFor } from './services/profilecode'
 import { analyseRemoval } from './services/dependents'
@@ -225,8 +225,20 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
       }),
   )
 
-  ipcMain.handle(CHANNELS.launchViaSteam, () =>
+  ipcMain.handle(CHANNELS.launchViaSteam, (_e, profileId: string) =>
     attempt(async () => {
+      // Steam starts the game without going through launchGame, so this is the
+      // only chance to put the loader beside the executable. Without it the
+      // game runs unmodded and reports nothing — the exact failure the direct
+      // route was fixed to avoid.
+      const game = resolveGame()
+      if (!game) throw new Error('No game folder set. Use "Locate game" to pick it.')
+      if (placeLoader(profiles.dir(profileId), game.root) === null) {
+        throw new Error(
+          'This profile has no mod loader installed, so Steam would start the game unmodded. ' +
+            'Install BepInEx from Browse, then try again.',
+        )
+      }
       await shell.openExternal(steamRunUrl())
       return { started: true, mode: 'steam' as const }
     }),
@@ -288,11 +300,20 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
   ipcMain.handle(CHANNELS.deleteProfile, (_e, id: string) => profiles.delete(id))
 
   ipcMain.handle(CHANNELS.launchOptions, (_e, profileId: string) => {
-    const plan = buildLaunchPlan(profiles.dir(profileId))
+    const profileDir = profiles.dir(profileId)
+    const plan = buildLaunchPlan(profileDir)
+
+    // Pasting these options into Steam means TidePool is never involved at
+    // launch, so the loader has to be in place before then. Best effort: the
+    // options are still worth showing when there is no game or no loader yet.
+    const game = resolveGame()
+    const loaderPlaced = game ? placeLoader(profileDir, game.root) !== null : false
+
     return {
       steam: steamLaunchOptions(plan),
       canLaunch: canLaunchDirectly(),
-      profileDir: profiles.dir(profileId),
+      profileDir,
+      loaderPlaced,
     }
   })
 

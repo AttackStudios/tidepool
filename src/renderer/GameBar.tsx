@@ -84,8 +84,8 @@ export function GameBar({ profile }: { profile: Profile | null }) {
 
         <button
           className="button--ghost"
-          onClick={() => void run(() => window.tidepool.launchViaSteam())}
-          disabled={!game}
+          onClick={() => profile && void run(() => window.tidepool.launchViaSteam(profile.id))}
+          disabled={!game || !profile}
           title="Hand off to Steam, keeping the overlay, playtime and cloud saves"
         >
           Via Steam

@@ -162,6 +162,12 @@ export interface LaunchInfo {
   /** Whether TidePool can start the game itself on this platform. */
   canLaunch: boolean
   profileDir: string
+  /**
+   * Whether the loader is now beside the executable, so options pasted into
+   * Steam will actually load something. False when no game is located yet, or
+   * the profile has no loader installed.
+   */
+  loaderPlaced: boolean
 }
 
 /** Outcome of resolving a set of requested mods against an index. */

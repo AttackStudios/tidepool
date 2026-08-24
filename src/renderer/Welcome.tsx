@@ -19,8 +19,13 @@ export function Welcome({
   onDismiss: () => void
 }) {
   // Before release there is genuinely nothing to install. Telling someone to go
-  // and install BepInExPack when no community exists is how they conclude the
-  // app is broken rather than early.
+  // and find a loader when no community exists is how they conclude the app is
+  // broken rather than early.
+  //
+  // After release the loader comes from Essentials, not Thunderstore: the
+  // surf-sandbox community does not exist until Thunderstore approves it, which
+  // takes days, so on day one Thunderstore is empty and Essentials is the only
+  // source that can serve one.
   const gameOut = Date.now() >= RELEASE_DAY
 
   const steps = [
@@ -37,7 +42,7 @@ export function Welcome({
       done: hasMods,
       title: 'Install some mods',
       body: gameOut
-        ? 'Search for BepInExPack in Browse and install it — that’s the loader mods run on. Anything a mod needs is pulled in automatically.'
+        ? 'Open Browse, pick the Essentials source, and install BepInEx — that’s the loader mods run on. Anything a mod needs is pulled in automatically.'
         : 'Nothing to install yet — mods appear once people start publishing them. TidePool checks fresh every time, so there’s nothing for you to update.',
     },
     {
