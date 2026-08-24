@@ -11,8 +11,8 @@ that have ready mods attached, so do this after the GitHub release exists.
 
 **Description for the request**
 
-> Surf Sandbox is a Unity surfing sim released 25 August 2026. It has no official mod support, but the
-> community has a working BepInEx 6 (IL2CPP) loader and an open-source mod manager (TidePool,
+> Surf Sandbox is a Unity surfing sim released 25 August 2026. It has no official mod support, but it
+> runs on BepInEx 6 (IL2CPP) and there is an open-source mod manager for it (TidePool,
 > https://github.com/AttackStudios/tidepool). There is no anti-cheat or third-party DRM. Mods ready to
 > upload: a packaged BepInEx loader and {{FIRST_MOD_NAME}}.
 

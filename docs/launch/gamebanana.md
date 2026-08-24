@@ -11,8 +11,9 @@ Submit Surf Sandbox as a new game.
 - **Homepage:** https://store.steampowered.com/app/4480760/Surf_Sandbox/
 - **Developer:** nocanwin
 - **Release:** 25 August 2026
-- **Why:** Unity title with a working BepInEx loader, an open-source mod manager, and a built-in level
-  editor that makes shareable custom breaks an obvious content category.
+- **Why:** Unity title running BepInEx 6 (IL2CPP), with an open-source mod manager and an in-game
+  break editor — "name your spot, restore the reef" — that makes shareable custom breaks an obvious
+  content category.
 
 ## 2. Submit TidePool as a Tool
 
