@@ -10,6 +10,7 @@ import { analyseRemoval } from './services/dependents'
 import { buildSupportBundle, readLog } from './services/logs'
 import {
   decodeBeach, deleteBeach, encodeBeach, findBeachDir, importBeach, readBeaches,
+  installBeachPack,
 } from './services/beaches'
 import { UPDATE_CHANNEL, quitAndInstall } from './services/updates-app'
 import type { LaunchMode } from './services/launcher'
@@ -26,6 +27,7 @@ import {
   findEssential,
   toSummary as essentialToSummary,
 } from './services/essentials'
+import { downloadPackage } from './services/install'
 import { Installer } from './services/installer'
 import type {
   BrowseQuery,
@@ -435,6 +437,40 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
       if (mod.status !== 'released' || !mod.downloadUrl || !mod.version) {
         throw new Error(`${mod.name} isn't released yet, so there's nothing to install.`)
       }
+      // Beaches are save files, not mods. Sending them through the mod
+      // installer would put them in a profile's BepInEx tree, where the game
+      // never looks — the install would report success and nothing would show
+      // up in-game. It is also why a beach pack needs no loader at all.
+      if (mod.categories.includes('Beaches')) {
+        const dir = beachDir()
+        if (!dir) {
+          throw new Error(
+            'Could not find the folder Surf Sandbox saves beaches in. Run the game once, ' +
+              'save a beach, and try again.',
+          )
+        }
+        event.sender.send(CHANNELS.installProgress, {
+          phase: 'downloading', current: mod.id, completed: 0, total: 1,
+        })
+        const zip = await downloadPackage(
+          {
+            full_name: `${mod.id}-${mod.version}`,
+            name: mod.name,
+            version_number: mod.version,
+            download_url: mod.downloadUrl,
+            dependencies: [],
+            file_size: 0,
+          },
+          cacheDir,
+          fetch,
+        )
+        const written = installBeachPack(zip, dir)
+        event.sender.send(CHANNELS.installProgress, {
+          phase: 'done', current: mod.id, completed: 1, total: 1,
+        })
+        return { fullName: mod.id, version: mod.version, files: written, enabled: true }
+      }
+
       return installer.installDirect(
         profileId,
         { fullName: mod.id, version: mod.version, downloadUrl: mod.downloadUrl },

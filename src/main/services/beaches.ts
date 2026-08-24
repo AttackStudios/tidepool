@@ -15,6 +15,7 @@ import {
 } from 'node:fs'
 import { basename, join } from 'node:path'
 import { gunzipSync, gzipSync } from 'node:zlib'
+import AdmZip from 'adm-zip'
 
 export const CODE_PREFIX = 'TPB1-'
 
@@ -239,4 +240,39 @@ export function deleteBeach(dir: string, fileName: string): void {
   // Only ever delete inside the beach folder.
   if (!target.startsWith(dir)) return
   rmSync(target, { force: true })
+}
+
+
+/**
+ * Install a pack of beaches from a downloaded archive.
+ *
+ * Beaches are not mods. They are save files the game reads from its own folder,
+ * so they must never go through the normal install path, which writes into a
+ * profile's BepInEx tree — somewhere the game will never look. This is why a
+ * beach pack needs no loader and works on a vanilla install.
+ *
+ * Entry names are deliberately flattened through `safeFileName`: an archive
+ * from a stranger has no business choosing a path.
+ */
+export function installBeachPack(zipPath: string, dir: string): string[] {
+  const zip = new AdmZip(zipPath)
+  const written: string[] = []
+
+  for (const entry of zip.getEntries()) {
+    if (entry.isDirectory) continue
+    const name = entry.entryName.replace(/\\/g, '/')
+    // Packaging metadata is not a beach.
+    if (/^(icon\.png|manifest\.json|README\.md|CHANGELOG\.md)$/i.test(name.split('/').pop() ?? '')) {
+      continue
+    }
+    if (!/\.json$/i.test(name)) continue
+
+    written.push(
+      importBeach(dir, {
+        fileName: name.split('/').pop() ?? 'beach.json',
+        contents: entry.getData().toString('utf8'),
+      }),
+    )
+  }
+  return written
 }

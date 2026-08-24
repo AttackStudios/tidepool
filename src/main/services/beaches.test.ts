@@ -1,10 +1,12 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import AdmZip from 'adm-zip'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   CODE_PREFIX, InvalidBeachCodeError, decodeBeach, deleteBeach, displayNameFor,
   encodeBeach, findBeachDir, importBeach, readBeaches, safeFileName, unitySaveRoots,
+  installBeachPack,
 } from './beaches'
 
 let dir: string
@@ -163,5 +165,51 @@ describe('deleteBeach', () => {
     deleteBeach(dir, '../keepme.json')
     expect(readFileSync(outside, 'utf8')).toBe('keep')
     rmSync(outside, { force: true })
+  })
+})
+
+
+describe('installBeachPack', () => {
+  // Beaches are save files, not mods. Sending them through the normal install
+  // path would put them in a profile's BepInEx tree, where the game never looks
+  // — the pack would install "successfully" and nothing would appear in-game.
+  const packZip = (entries: Record<string, string>): string => {
+    const zip = new AdmZip()
+    for (const [name, body] of Object.entries(entries)) zip.addFile(name, Buffer.from(body))
+    const file = join(mkdtempSync(join(tmpdir(), 'tp-bp-')), 'pack.zip')
+    zip.writeZip(file)
+    return file
+  }
+
+  it('writes every beach into the save folder', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tp-bd-'))
+    const zip = packZip({ 'pipeline.json': '{"name":"Pipeline"}', 'nazare.json': '{"name":"Nazare"}' })
+    const written = installBeachPack(zip, dir)
+    expect(written).toHaveLength(2)
+    expect(readdirSync(dir).sort()).toEqual(['nazare.json', 'pipeline.json'])
+  })
+
+  it('skips packaging metadata and anything that is not a beach', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tp-bd2-'))
+    const zip = packZip({
+      'reef.json': '{}', 'manifest.json': '{}', 'icon.png': 'x', 'README.md': 'x', 'notes.txt': 'x',
+    })
+    installBeachPack(zip, dir)
+    expect(readdirSync(dir)).toEqual(['reef.json'])
+  })
+
+  it('flattens paths, so an archive cannot choose where its files land', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tp-bd3-'))
+    const zip = packZip({ '../../escape.json': '{}', 'nested/deep/reef.json': '{}' })
+    installBeachPack(zip, dir)
+    expect(readdirSync(dir).sort()).toEqual(['escape.json', 'reef.json'])
+  })
+
+  it('never overwrites a beach the player already has', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tp-bd4-'))
+    writeFileSync(join(dir, 'reef.json'), 'MINE')
+    installBeachPack(packZip({ 'reef.json': '{"name":"theirs"}' }), dir)
+    expect(readFileSync(join(dir, 'reef.json'), 'utf8')).toBe('MINE')
+    expect(readdirSync(dir)).toContain('reef (2).json')
   })
 })
