@@ -8,6 +8,8 @@
  * Pure functions — no spawning here — so the argument shapes stay testable.
  */
 
+import { LOADER_STAGING } from './install'
+
 export type DoorstopVersion = 3 | 4
 
 export interface LaunchPlan {
@@ -22,10 +24,39 @@ export interface LaunchPlan {
  * silent: the game simply starts unmodded, which is a miserable thing to debug.
  */
 export function doorstopArgs(profileDir: string, version: DoorstopVersion): string[] {
-  const preloader = `${profileDir}/BepInEx/core/BepInEx.Preloader.dll`
-  return version === 4
-    ? ['--doorstop-enabled', 'true', '--doorstop-target-assembly', preloader]
-    : ['--doorstop-enable', 'true', '--doorstop-target', preloader]
+  if (version === 3) {
+    // BepInEx 5 / Mono. One managed preloader, nothing else to point at.
+    return [
+      '--doorstop-enable',
+      'true',
+      '--doorstop-target',
+      `${profileDir}/BepInEx/core/BepInEx.Preloader.dll`,
+    ]
+  }
+
+  // BepInEx 6 / IL2CPP. Three things differ from the Mono case, and all three
+  // are taken from the pack's own doorstop_config.ini rather than guessed:
+  //
+  //   target_assembly = BepInEx\core\BepInEx.Unity.IL2CPP.dll
+  //   coreclr_path    = dotnet\coreclr.dll
+  //   corlib_dir      = dotnet
+  //
+  // The entry point is NOT called BepInEx.Preloader.dll — that is the Mono
+  // name, and no such file exists in an IL2CPP pack. And IL2CPP runs on a
+  // bundled CoreCLR, so Doorstop has to be told where that runtime is; without
+  // those two paths it has nothing to execute the preloader on.
+  return [
+    '--doorstop-enabled',
+    'true',
+    '--doorstop-target-assembly',
+    `${profileDir}/BepInEx/core/BepInEx.Unity.IL2CPP.dll`,
+    // Names, not the descriptions in Doorstop's README, which has these two
+    // transposed: -coreclr-path takes the DLL, -corlib-dir takes the folder.
+    '--doorstop-clr-runtime-coreclr-path',
+    `${profileDir}/${LOADER_STAGING}/dotnet/coreclr.dll`,
+    '--doorstop-clr-corlib-dir',
+    `${profileDir}/${LOADER_STAGING}/dotnet`,
+  ]
 }
 
 /**

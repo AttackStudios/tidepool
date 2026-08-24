@@ -3,10 +3,12 @@ import { buildLaunchPlan, doorstopArgs, steamLaunchOptions, wineEnv } from './la
 
 describe('doorstopArgs', () => {
   it('uses Doorstop 4 flag names for BepInEx 6', () => {
-    expect(doorstopArgs('/p', 4)).toEqual([
-      '--doorstop-enabled', 'true',
-      '--doorstop-target-assembly', '/p/BepInEx/core/BepInEx.Preloader.dll',
-    ])
+    const args = doorstopArgs('/p', 4)
+    expect(args.slice(0, 2)).toEqual(['--doorstop-enabled', 'true'])
+    expect(args).toContain('--doorstop-target-assembly')
+    // The Doorstop 3 spellings must not appear; the wrong pair fails silently.
+    expect(args).not.toContain('--doorstop-enable')
+    expect(args).not.toContain('--doorstop-target')
   })
 
   it('uses the different Doorstop 3 flag names for BepInEx 5', () => {
@@ -16,6 +18,23 @@ describe('doorstopArgs', () => {
       '--doorstop-enable', 'true',
       '--doorstop-target', '/p/BepInEx/core/BepInEx.Preloader.dll',
     ])
+  })
+
+  it('targets the IL2CPP entry point, which is not called Preloader', () => {
+    // BepInEx.Preloader.dll is the Mono name and ships in no IL2CPP pack.
+    // Pointing Doorstop at a file that does not exist fails silently.
+    const args = doorstopArgs('/p', 4)
+    expect(args).toContain('/p/BepInEx/core/BepInEx.Unity.IL2CPP.dll')
+    expect(args.join(' ')).not.toContain('BepInEx.Preloader.dll')
+  })
+
+  it('tells Doorstop where the bundled CoreCLR is', () => {
+    // IL2CPP has no Mono runtime to borrow, so BepInEx 6 ships its own .NET.
+    // Without these Doorstop has nothing to run the preloader on.
+    const args = doorstopArgs('/p', 4)
+    const at = (flag: string) => args[args.indexOf(flag) + 1]
+    expect(at('--doorstop-clr-runtime-coreclr-path')).toBe('/p/_loader/dotnet/coreclr.dll')
+    expect(at('--doorstop-clr-corlib-dir')).toBe('/p/_loader/dotnet')
   })
 })
 
@@ -56,6 +75,8 @@ describe('steamLaunchOptions', () => {
 
   it('quotes arguments containing spaces', () => {
     const opts = steamLaunchOptions(buildLaunchPlan('/Program Files/p', { platform: 'win32' }))
-    expect(opts).toContain('"/Program Files/p/BepInEx/core/BepInEx.Preloader.dll"')
+    expect(opts).toContain('"/Program Files/p/BepInEx/core/BepInEx.Unity.IL2CPP.dll"')
+    // The CoreCLR paths carry the same space and need the same treatment.
+    expect(opts).toContain('"/Program Files/p/_loader/dotnet"')
   })
 })
