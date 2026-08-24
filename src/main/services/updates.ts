@@ -2,6 +2,7 @@
 import type { InstalledMod, Profile } from '../../shared/types'
 import { compareVersions } from '../../shared/deps'
 import type { Catalog } from './catalog'
+import { CommunityNotFoundError, ThunderstoreUnavailableError } from './thunderstore'
 
 export interface ModUpdate {
   fullName: string
@@ -27,7 +28,24 @@ export async function findUpdates(
   const updates: ModUpdate[] = []
 
   for (const mod of profile.mods) {
-    const detail = await catalog.detail(mod.fullName, community)
+    let detail
+    try {
+      detail = await catalog.detail(mod.fullName, community)
+    } catch (error) {
+      // There is no catalogue to compare against. On release day that is the
+      // normal state: the Thunderstore community does not exist until it is
+      // approved, and anything installed from Essentials was never a
+      // Thunderstore package anyway. "No updates" is the honest answer; an
+      // error here would greet a first-time user with a broken-looking
+      // Installed tab on a perfectly good install.
+      if (
+        error instanceof CommunityNotFoundError ||
+        error instanceof ThunderstoreUnavailableError
+      ) {
+        return updates
+      }
+      throw error
+    }
     const latest = detail?.latest?.version_number
     if (!latest) continue
     if (compareVersions(latest, mod.version) <= 0) continue

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Catalog } from './catalog'
 import { findUpdates, isOutdated } from './updates'
+import { CommunityNotFoundError, ThunderstoreUnavailableError } from './thunderstore'
 import type { InstalledMod, Package, Profile } from '../../shared/types'
 
 const version = (full: string, v: string) => ({
@@ -72,5 +73,38 @@ describe('findUpdates', () => {
       profile([mod('Owner-Dep', '1.0.0', { viaDependency: true })]), new Catalog(), 'x',
     )
     expect(updates[0]?.viaDependency).toBe(true)
+  })
+})
+
+
+describe('when there is no catalogue to compare against', () => {
+  const profile = {
+    id: 'default', name: 'Default',
+    mods: [{ fullName: 'BepInEx-BepInExPack_IL2CPP', version: '6.0.755', files: [], enabled: true }],
+  } as unknown as Profile
+
+  // Release day: the Thunderstore community does not exist until approved, and
+  // BepInEx came from Essentials so it was never a Thunderstore package. An
+  // error here shows a first-time user a broken Installed tab on a good install.
+  it('reports no updates when the community does not exist', async () => {
+    const catalog = {
+      detail: async () => { throw new CommunityNotFoundError('surf-sandbox') },
+    } as unknown as Catalog
+    await expect(findUpdates(profile, catalog, 'surf-sandbox')).resolves.toEqual([])
+  })
+
+  it('reports no updates when Thunderstore is unreachable', async () => {
+    const catalog = {
+      detail: async () => { throw new ThunderstoreUnavailableError('503') },
+    } as unknown as Catalog
+    await expect(findUpdates(profile, catalog)).resolves.toEqual([])
+  })
+
+  // A real bug must still surface rather than being read as "up to date".
+  it('still throws on anything else', async () => {
+    const catalog = {
+      detail: async () => { throw new TypeError('undefined is not a function') },
+    } as unknown as Catalog
+    await expect(findUpdates(profile, catalog)).rejects.toThrow(TypeError)
   })
 })
