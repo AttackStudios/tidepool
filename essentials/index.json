@@ -3,6 +3,22 @@
   "note": "Curated first-party mods, fetched at runtime by TidePool. Editing this file changes what the Essentials tab shows without shipping a new app build - which is how a 'planned' entry becomes installable later.",
   "mods": [
     {
+      "id": "BepInEx-BepInExPack_IL2CPP",
+      "name": "BepInEx (IL2CPP)",
+      "owner": "BepInEx",
+      "summary": "The mod loader. Install this first - almost every mod needs it.",
+      "description": "BepInEx pack for IL2CPP x64 Unity games. Preconfigured and ready to use.\n\nThis is the loader that runs mods. Surf Sandbox has no official mod support, so nothing else here works without it - TidePool installs it into whichever profile you are using, so switching back to vanilla is always one click.\n\nPinned to 6.0.755, the build Thunderstore serves to every other IL2CPP game. Pinned rather than floating so a new upstream build cannot change what installs underneath you mid-session.",
+      "status": "released",
+      "version": "6.0.755",
+      "downloadUrl": "https://thunderstore.io/package/download/BepInEx/BepInExPack_IL2CPP/6.0.755/",
+      "icon": "https://gcdn.thunderstore.io/live/repository/icons/BepInEx-BepInExPack_IL2CPP-6.0.755.png",
+      "homepage": "https://github.com/BepInEx/BepInEx",
+      "categories": [
+        "Loader"
+      ],
+      "dependencies": []
+    },
+    {
       "id": "AttackStudioYT-SurfMP",
       "name": "SurfMP",
       "owner": "AttackStudioYT",
