@@ -59,7 +59,7 @@
       "summary": "Nine real waves, recreated from their actual sea-floor shape.",
       "description": "Pipeline, Teahupo'o, Nazare, Jeffreys Bay, Skeleton Bay, Mavericks, Puerto Escondido, Pleasure Point - and one gentle sandbar to learn on.\n\nThese are not drawn by eye. Each break is built from a cross-section of its real sea floor, because what a wave does is decided almost entirely by how fast the bottom rises underneath it. Teahupo'o goes from open ocean to half a metre of reef in about thirty metres, which is why it breaks below sea level. Skeleton Bay barely changes angle for a kilometre, which is why the rides never end.\n\nMost profiles are stylised - they reproduce each wave's character rather than navigational depths. Pleasure Point is the exception: it is measured, sampled from NOAA's CUDEM model along the line a refracted swell actually travels into the point.\n\nNo loader needed: beaches are ordinary save files, so this installs and works without BepInEx.",
       "status": "released",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "downloadUrl": "https://github.com/AttackStudios/tidepool/releases/download/break-pack-1.0.0/break-pack.zip",
       "icon": "https://raw.githubusercontent.com/AttackStudios/tidepool/main/essentials/icons/breakpack.png",
       "homepage": "https://github.com/AttackStudios/tidepool/tree/main/essentials/breaks",

@@ -42,46 +42,35 @@ export const TIDE = 1.0
 export const METRES_PER_UNIT = 15
 
 /**
- * How much of the game's depth range a break's deepest point should reach.
+ * The depth envelope the game's own levels use.
  *
- * A single metres-per-unit scale across every break is physically honest and
- * unplayable. Pleasure Point only reaches 2.8 m in its first 320 m — that is
- * genuinely what the seabed does there — and at 15 m per unit it came out
- * knee-deep, so the game stands you up instead of letting you surf.
+ * Measured from the shipped presets rather than reasoned about. Their deepest
+ * points sit at 0.40 (Waikiki) to 0.60 (Kewalo, Makaha, Bellows), with only
+ * Sunset reaching 1.00 — and every one of them carries a long stretch of dry
+ * beach: Waikiki is 0.35 *above* the waterline sixty metres out.
  *
- * So each break is scaled to its own depth instead. The shape is what carries a
- * break's character — where it shoals, how abruptly — and shape survives
- * scaling. Absolute depth does not survive being unsurfable.
- *
- * Just under 1.0 because the game clamps there, and a profile that flatlines at
- * the floor loses the outer part of its shape.
+ * Filling the level with deep water was the mistake. A wave breaks by shoaling
+ * into shallow water; with none, nothing breaks and there is nothing to ride.
+ * Lifting the profiles off the floor to make them "deep enough" removed the one
+ * feature that makes surf.
  */
-const DEPTH_TARGET = 0.95
+const DEEPEST = 0.6
+
+/** How far the shore sits above the waterline, matching the presets' beaches. */
+const BEACH_HEIGHT = 0.25
+
+/** Metres of dry beach before the water starts. The presets run 40-80. */
+const BEACH_M = 55
 
 /**
- * The shallowest water a break is allowed to have, outside its beach.
+ * Swell, as the presets use it.
  *
- * Scaling alone was not enough. A real gentle profile still spends most of its
- * length in water the game treats as standing depth, so Pleasure Point stayed
- * unsurfable even once its deepest point reached the bottom of the range.
- *
- * So the whole profile is lifted off the floor: depths map onto
- * [MIN_DEPTH, DEPTH_TARGET] rather than [0, DEPTH_TARGET]. Relative shape is
- * untouched — the difference between a slab and a ramp is the gradient, not the
- * offset — and everything is deep enough to ride. Tune later against how the
- * waves actually feel; playable first.
+ * They run 0.50 to 1.00 over 0.40-0.60 of water — swell comparable to, or
+ * greater than, the depth it breaks in. Ours were scaled off wave height in
+ * metres and came out at 0.25-0.41, far too small to break on anything.
  */
-const MIN_DEPTH = 0.45
-
-/**
- * Dry beach in front of the waterline.
- *
- * Our profiles start at the shoreline; the game's presets all begin above the
- * tide. Without a little land the level starts at a wall of water. Matches the
- * presets' modest rise rather than inventing terrain.
- */
-const BEACH_M = 8
-const BEACH_RISE = 3 * QUANTUM
+const SWELL_MIN = 0.55
+const SWELL_MAX = 1.0
 
 const quantise = (v) => Math.round(v / QUANTUM) * QUANTUM
 
@@ -97,58 +86,40 @@ function depthAt(profile, x) {
 }
 
 export function toBeachFile(brk) {
-  // Scaled to the deepest point the level actually reaches — measured across the
-  // window the game samples, not the whole profile.
-  //
-  // The profiles run out to a couple of kilometres, but a level is 321 samples
-  // at one metre each. Scaling against water 2 km offshore made Pleasure Point
-  // 0.13 units deep: its first 320 m only reach 2.8 m, which is what makes it a
-  // gentle point break, and what made it unsurfable in game.
+  // Scaled to the deepest point inside the window the game samples. The
+  // profiles run kilometres out; a level is 321 samples at one metre.
   let deepest = 0.1
   for (let i = BEACH_M; i < SAMPLES; i++) {
     const d = depthAt(brk.profile, i - BEACH_M)
     if (d > deepest) deepest = d
   }
-  const perUnit = deepest
 
   const heights = []
   for (let i = 0; i < SAMPLES; i++) {
     let h
     if (i < BEACH_M) {
-      // Ramp down across the beach to meet the waterline.
-      h = TIDE + BEACH_RISE * (1 - i / BEACH_M)
+      // Dry beach, sloping down to the waterline — the presets all have one,
+      // and it is where the wave finally breaks.
+      h = TIDE + BEACH_HEIGHT * (1 - i / BEACH_M)
     } else {
-      const metres = i - BEACH_M
-      const shape = Math.min(depthAt(brk.profile, metres) / perUnit, 1)
-      const units = MIN_DEPTH + shape * (DEPTH_TARGET - MIN_DEPTH)
-      h = TIDE - units
+      const shape = Math.min(depthAt(brk.profile, i - BEACH_M) / deepest, 1)
+      h = TIDE - shape * DEEPEST
     }
     heights.push(quantise(Math.max(h, 0)))
   }
 
+  // Mapped across the presets' own range rather than converted from metres.
+  // Absolute wave height means nothing here; what matters is swell against the
+  // depth it breaks in, and the presets show what that ratio should be.
+  const swellSpan = SWELL_MAX - SWELL_MIN
+  const relative = Math.min(brk.idealSwell.heightM / 4, 1)
+
   return {
     GroundHeights: heights,
-    // Presets run 0.8 (Pipeline) to 1.0 (Sunset), so this is a slider rather
-    // than a height in depth units. Calibrated so Pipeline's 3 m lands on the
-    // 0.8 nocanwin gave it.
-    Swell: quantise(Math.min(Math.max(brk.idealSwell.heightM / 3.75, 0.25), 1)),
+    Swell: quantise(SWELL_MIN + relative * swellSpan),
     Tide: TIDE,
   }
 }
-
-/**
- * Levels the game ships, as of 25 Aug 2026.
- *
- * The file name is the name shown in game, and writing into
- * StreamingAssets/Levels means a matching name silently replaces a preset —
- * which is how I destroyed nocanwin's own Pipeline.lvl before restoring it from
- * a copy. A pack must never be able to eat the base game's content.
- */
-export const SHIPPED_LEVELS = new Set([
-  'Bellows', 'Kawaikui', 'KeIki', 'Kewalo', 'Kokololio', 'Makaha', 'Makapuu',
-  'Mokuleia', 'Pipeline', 'Portlock', 'Sandys', 'Sunset', 'Tracks', 'Waikiki',
-  'WhitePlains', 'Yokahama',
-])
 
 /** Levels are named by their file, so this is the name shown in game. */
 export function beachFileName(brk) {
