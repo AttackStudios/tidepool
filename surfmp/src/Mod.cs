@@ -27,4 +27,7 @@ public class Mod : MelonMod
         Log = LoggerInstance;
         Log.Msg("SurfMP 0.1.0 — wave probe. No networking yet.");
     }
+
+    /// <summary>Cheap: a float compare until the simulation exists.</summary>
+    public override void OnUpdate() => WaveProbe.Tick();
 }

@@ -1,7 +1,6 @@
 using System;
 using System.Text;
 using HarmonyLib;
-using MelonLoader;
 using Il2CppSurf;
 
 namespace TidePool.SurfMP;
@@ -9,29 +8,37 @@ namespace TidePool.SurfMP;
 /// <summary>
 /// Reads the wave surface, to find out whether the plan is buildable.
 ///
-/// The wave simulation lives in <c>Surf.m</c>, which holds 22
-/// <c>NativeArray&lt;float&gt;</c> buffers under obfuscated names — vf, vg, vh
-/// and so on. Identifying the surface among them would have meant watching
-/// which changed as a wave passed.
+/// The design rests on the host reading the surface and broadcasting it. The
+/// simulation lives in <c>Surf.m</c> behind 22 obfuscated
+/// <c>NativeArray&lt;float&gt;</c> buffers, but the class exposes
+/// <c>public float ex(int)</c> — exactly the shape of a sampler. If it is one,
+/// the surface can be read without touching the buffers at all.
 ///
-/// It may not be necessary. The class exposes <c>public float ex(int)</c>,
-/// which has exactly the shape of a sampler: give it an index, get a height.
-/// If that is what it is, the host can read the surface without touching the
-/// buffers at all, and M0's blocking question is answered.
-///
-/// So: call it across the level's width, print what comes back, and see whether
-/// it looks like an ocean.
+/// Hooks the constructor rather than a method that might run per frame. Patching
+/// <c>eq</c> produced nothing, and rather than work through er, es and eu one
+/// build at a time, the constructor is the one thing guaranteed to run — it
+/// hands over the instance, and sampling happens on our own clock afterwards.
 /// </summary>
-[HarmonyPatch(typeof(m), "eq")]
-internal static class WaveHook
+internal static class WaveProbe
 {
     private const int Samples = 321;
-    private static int _frames;
 
-    private static void Postfix(m __instance)
+    private static m _wave;
+    private static float _next;
+
+    internal static void Capture(m instance)
     {
-        // Every few seconds, not every frame: this is a look, not a feature.
-        if (__instance == null || _frames++ % 300 != 0) return;
+        if (instance == null) return;
+        _wave = instance;
+        Mod.Log.Msg("[wave] simulation instance captured");
+    }
+
+    /// <summary>Sample every few seconds. This is a look, not a feature.</summary>
+    internal static void Tick()
+    {
+        if (_wave == null) return;
+        if (UnityEngine.Time.time < _next) return;
+        _next = UnityEngine.Time.time + 3f;
 
         try
         {
@@ -40,17 +47,27 @@ internal static class WaveHook
 
             for (var i = 0; i < Samples; i += 20)
             {
-                var h = __instance.ex(i);
+                var h = _wave.ex(i);
+                if (float.IsNaN(h)) { Mod.Log.Warning($"[wave] ex({i}) returned NaN"); return; }
                 if (h < min) min = h;
                 if (h > max) max = h;
                 row.Append(h.ToString("F2")).Append(' ');
             }
 
-            Mod.Log.Msg($"[wave] range {min:F2}..{max:F2}  {row}");
+            Mod.Log.Msg($"[wave] range {min:F2}..{max:F2} | {row}");
         }
         catch (Exception e)
         {
-            Mod.Log.Error($"ex(int) is not a sampler: {e.GetType().Name}: {e.Message}");
+            Mod.Log.Error($"[wave] ex(int) is not a sampler: {e.GetType().Name}: {e.Message}");
+            _wave = null;
         }
     }
+}
+
+/// <summary>The wave simulation is constructed with its own parameters; that is our way in.</summary>
+[HarmonyPatch(typeof(m), MethodType.Constructor,
+    typeof(float), typeof(float), typeof(float), typeof(float), typeof(float), typeof(int))]
+internal static class WaveCtorPatch
+{
+    private static void Postfix(m __instance) => WaveProbe.Capture(__instance);
 }
