@@ -130,3 +130,38 @@ export function extractInto(zipPath: string, profileDir: string, ref: Dependency
   }
   return written
 }
+
+
+/**
+ * Install a mod loader into the game itself.
+ *
+ * A loader is not a mod and does not belong in a profile: MelonLoader
+ * bootstraps from `version.dll` beside the executable and reads `Mods/` from
+ * the game folder, so its files have to land there. Nothing about it is
+ * per-profile, which is why this takes a game root rather than a profile.
+ *
+ * Archive paths are honoured rather than flattened — a loader's layout is the
+ * point — but every target is still checked for containment, because this
+ * writes into a folder the user did not choose.
+ */
+export function installLoaderPack(zipPath: string, gameRoot: string): string[] {
+  const zip = new AdmZip(zipPath)
+  const written: string[] = []
+
+  for (const entry of zip.getEntries()) {
+    if (entry.isDirectory) continue
+    const name = entry.entryName.replace(/\\/g, '/')
+    if (/^(icon\.png|manifest\.json|README\.md|CHANGELOG\.md)$/i.test(name.split('/').pop() ?? '')) {
+      continue
+    }
+    if (name.startsWith('/') || /^[a-zA-Z]:/.test(name)) continue
+
+    const target = join(gameRoot, name)
+    if (!isInside(gameRoot, target)) continue
+
+    mkdirSync(join(target, '..'), { recursive: true })
+    writeFileSync(target, entry.getData())
+    written.push(target)
+  }
+  return written
+}

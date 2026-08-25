@@ -1,6 +1,9 @@
+import { tmpdir } from 'node:os'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import AdmZip from 'adm-zip'
 import { describe, expect, it } from 'vitest'
 import { join } from 'node:path'
-import { cacheKey, isInside, LOADER_STAGING, targetPathFor } from './install'
+import { cacheKey, isInside, LOADER_STAGING, targetPathFor, installLoaderPack } from './install'
 import type { PackageVersion } from '../../shared/types'
 
 const version = (url: string): PackageVersion => ({
@@ -140,5 +143,37 @@ describe('loader packs', () => {
     // route, which is a second join site and so a second chance to get it wrong.
     expect(targetPathFor('dotnet/../../../../../../evil.dll', '/p', pack)).toBeNull()
     expect(targetPathFor('BepInExPack/../../../../../../evil.dll', '/p', pack)).toBeNull()
+  })
+})
+
+describe('installLoaderPack', () => {
+  const packZip = (entries: Record<string, string>): string => {
+    const zip = new AdmZip()
+    for (const [name, body] of Object.entries(entries)) zip.addFile(name, Buffer.from(body))
+    const file = join(mkdtempSync(join(tmpdir(), 'tp-lp-')), 'loader.zip')
+    zip.writeZip(file)
+    return file
+  }
+
+  it('writes the loader into the game, keeping its layout', () => {
+    // MelonLoader's layout is the point: version.dll beside the exe, the rest
+    // under MelonLoader/. Flattening it would break the loader.
+    const game = mkdtempSync(join(tmpdir(), 'tp-g-'))
+    installLoaderPack(packZip({
+      'version.dll': 'MZ',
+      'MelonLoader/net6/MelonLoader.dll': 'MZ',
+      'MelonLoader/Documentation/README.md': 'x',
+    }), game)
+    expect(existsSync(join(game, 'version.dll'))).toBe(true)
+    expect(existsSync(join(game, 'MelonLoader', 'net6', 'MelonLoader.dll'))).toBe(true)
+    rmSync(game, { recursive: true, force: true })
+  })
+
+  it('refuses paths that escape the game folder', () => {
+    const game = mkdtempSync(join(tmpdir(), 'tp-g2-'))
+    installLoaderPack(packZip({ '../../evil.dll': 'MZ', 'version.dll': 'MZ' }), game)
+    expect(existsSync(join(game, 'version.dll'))).toBe(true)
+    expect(existsSync(join(game, '..', '..', 'evil.dll'))).toBe(false)
+    rmSync(game, { recursive: true, force: true })
   })
 })

@@ -29,7 +29,7 @@ import {
   findEssential,
   toSummary as essentialToSummary,
 } from './services/essentials'
-import { downloadPackage } from './services/install'
+import { downloadPackage, installLoaderPack } from './services/install'
 import { Installer } from './services/installer'
 import type {
   BrowseQuery,
@@ -446,6 +446,34 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
       if (mod.status !== 'released' || !mod.downloadUrl || !mod.version) {
         throw new Error(`${mod.name} isn't released yet, so there's nothing to install.`)
       }
+      // A loader is not a mod either. It bootstraps from a DLL beside the
+      // executable and reads its own folders out of the game install, so none
+      // of it is per-profile.
+      if (mod.categories.includes('Loader')) {
+        const game = resolveGame()
+        if (!game) throw new Error('No game folder set. Use "Locate game" to pick it.')
+        event.sender.send(CHANNELS.installProgress, {
+          phase: 'downloading', current: mod.id, completed: 0, total: 1,
+        })
+        const zip = await downloadPackage(
+          {
+            full_name: `${mod.id}-${mod.version}`,
+            name: mod.name,
+            version_number: mod.version,
+            download_url: mod.downloadUrl,
+            dependencies: [],
+            file_size: 0,
+          },
+          cacheDir,
+          fetch,
+        )
+        const written = installLoaderPack(zip, game.root)
+        event.sender.send(CHANNELS.installProgress, {
+          phase: 'done', current: mod.id, completed: 1, total: 1,
+        })
+        return { fullName: mod.id, version: mod.version, files: written, enabled: true }
+      }
+
       // Beaches are save files, not mods. Sending them through the mod
       // installer would put them in a profile's BepInEx tree, where the game
       // never looks — the install would report success and nothing would show

@@ -3,6 +3,22 @@
   "note": "Curated first-party mods, fetched at runtime by TidePool. Editing this file changes what the Essentials tab shows without shipping a new app build - which is how a 'planned' entry becomes installable later.",
   "mods": [
     {
+      "id": "LavaGang-MelonLoader",
+      "name": "MelonLoader",
+      "owner": "LavaGang",
+      "summary": "The mod loader. Install this first - code mods need it.",
+      "description": "MelonLoader is the loader that runs code mods, and it is the one that works on Surf Sandbox.\n\nThe game is Unity 6.3 (6000.3.8f1). BepInEx 6 does not run on it - the build Thunderstore ships never starts, and the newest development build loads its runtime and then spins indefinitely generating interop. MelonLoader 0.7.3 generates the same assemblies in about forty seconds and loads cleanly. Tested against the real game.\n\nIt installs into the game folder rather than a profile, because that is where it bootstraps from. First launch takes a minute while it generates assemblies, and it opens a console window that tells you what it is doing.\n\nBeaches need no loader, so Break Pack works without this.",
+      "status": "released",
+      "version": "0.7.3",
+      "downloadUrl": "https://github.com/LavaGang/MelonLoader/releases/download/v0.7.3/MelonLoader.x64.zip",
+      "icon": null,
+      "homepage": "https://github.com/LavaGang/MelonLoader",
+      "categories": [
+        "Loader"
+      ],
+      "dependencies": []
+    },
+    {
       "id": "BepInEx-BepInExPack_IL2CPP",
       "name": "BepInEx (IL2CPP)",
       "owner": "BepInEx",
