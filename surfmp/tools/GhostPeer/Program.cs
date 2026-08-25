@@ -1,0 +1,99 @@
+using System;
+using System.Diagnostics;
+using System.Threading;
+using TidePool.SurfMP.Net;
+
+namespace TidePool.SurfMP.Ghost;
+
+/// <summary>
+/// Joins a SurfMP session and surfs, without being a game.
+///
+/// Testing multiplayer normally needs two copies of Surf Sandbox, and a second
+/// copy dies on launch. But the session layer has no idea what its peers are —
+/// it moves position, heading and velocity between sockets. So this joins as a
+/// real peer and streams a rider along the beach.
+///
+/// That exercises everything except a second player: handshake, peer table,
+/// packet decode, the clone spawning in-game, and interpolation. If a surfer
+/// appears in the water and moves smoothly, the netcode is proven end to end.
+/// </summary>
+internal static class Program
+{
+    private const float Extent = 512f;
+    private const float SendEvery = 1f / 20f;
+
+    private static int Main(string[] argv)
+    {
+        var host = argv.Length > 0 ? argv[0] : "127.0.0.1";
+        var port = argv.Length > 1 ? int.Parse(argv[1]) : 27581;
+        var name = argv.Length > 2 ? argv[2] : "Ghost";
+        var seconds = argv.Length > 3 ? double.Parse(argv[3]) : 90.0;
+
+        NetLog.Info = m => Console.WriteLine("  " + m);
+        NetLog.Warn = m => Console.WriteLine("  warn: " + m);
+        NetLog.Error = m => Console.WriteLine("  error: " + m);
+
+        var session = new Session();
+        var joined = false;
+        string refused = null;
+
+        session.Joined += p => { joined = true; Console.WriteLine($"  saw peer: {p.Name}"); };
+        session.Refused += r => refused = r;
+
+        session.Join(host, port, name);
+
+        var clock = Stopwatch.StartNew();
+        var buffer = new byte[Wire.MaxPacket];
+        var nextSend = 0.0;
+        var sent = 0;
+
+        // The lineup sits inside the sim's walls: RightWallX is 7.75 and the
+        // player was found at about y=3, so a rider tracks across that span
+        // rather than somewhere off in the void where nobody would see it.
+        const float MinX = 1.0f, MaxX = 6.5f, WaterY = 3.06f;
+
+        while (clock.Elapsed.TotalSeconds < seconds)
+        {
+            var now = (float)clock.Elapsed.TotalSeconds;
+            session.Pump(now);
+
+            if (refused != null) { Console.WriteLine($"  refused: {refused}"); return 1; }
+
+            if (joined && now >= nextSend)
+            {
+                nextSend = now + SendEvery;
+
+                // Track back and forth across the break, the way a rider works a
+                // wave, so the motion is obviously driven rather than a drift.
+                var phase = (float)((Math.Sin(now * 0.5) + 1.0) * 0.5);
+                var x = MinX + (MaxX - MinX) * phase;
+                var z = (float)Math.Sin(now * 1.3) * 0.4f;
+                var vx = (float)(Math.Cos(now * 0.5) * 0.5 * (MaxX - MinX) * 0.5);
+                var heading = vx >= 0 ? 90f : 270f;
+
+                var w = new PacketWriter(buffer, Op.SurferState);
+                w.Byte(session.SelfId);
+                w.Height(x, -Extent, Extent);
+                w.Height(WaterY, -Extent, Extent);
+                w.Height(z, -Extent, Extent);
+                w.Height(heading, 0f, 360f);
+                w.Height(vx, -64f, 64f);
+                w.Height(0f, -64f, 64f);
+                w.Height(0f, -64f, 64f);
+
+                session.SendToHost(buffer, w.Length);
+
+                if (sent++ % 40 == 0)
+                    Console.WriteLine($"  surfing at x={x:F2} z={z:F2}  ({sent} updates sent)");
+            }
+
+            Thread.Sleep(5);
+        }
+
+        session.Shutdown("done");
+        Console.WriteLine(joined
+            ? $"  finished — {sent} updates sent"
+            : "  never got a Welcome; is the host up and hosting?");
+        return joined ? 0 : 1;
+    }
+}
