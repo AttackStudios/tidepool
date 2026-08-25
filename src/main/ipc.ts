@@ -371,7 +371,9 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
 
   // ---- beaches ----------------------------------------------------------
 
-  const beachDir = () => findBeachDir(process.platform, undefined, settings.read().beachPath)
+  // Beaches live inside the game install, not in a Unity save folder, so this
+  // needs the game before it can find anything.
+  const beachDir = () => findBeachDir(resolveGame()?.root ?? null, settings.read().beachPath)
 
   ipcMain.handle(CHANNELS.listBeaches, () =>
     attempt(async () => {

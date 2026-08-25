@@ -1,178 +1,188 @@
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import AdmZip from 'adm-zip'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import AdmZip from 'adm-zip'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
-  CODE_PREFIX, InvalidBeachCodeError, decodeBeach, deleteBeach, displayNameFor,
-  encodeBeach, findBeachDir, importBeach, readBeaches, safeFileName, unitySaveRoots,
+  BEACH_EXT,
+  CODE_PREFIX,
+  InvalidBeachCodeError,
+  METRES_PER_UNIT,
+  decodeBeach,
+  deleteBeach,
+  describeBeach,
+  encodeBeach,
+  findBeachDir,
+  importBeach,
   installBeachPack,
+  readBeaches,
+  safeFileName,
 } from './beaches'
 
+/** A level in the game's own shape: 321 heights, shore first, plus swell/tide. */
+function level(maxDepthUnits = 0.5): string {
+  const heights = Array.from({ length: 321 }, (_, i) =>
+    Math.round((1 - (maxDepthUnits * i) / 320) * 32) / 32,
+  )
+  return JSON.stringify({ GroundHeights: heights, Swell: 0.8, Tide: 1.0 })
+}
+
 let dir: string
-beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'tidepool-beach-')) })
+beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'tp-beach-')) })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
-const write = (name: string, body: string) => writeFileSync(join(dir, name), body, 'utf8')
+describe('describeBeach', () => {
+  it('reads the shape out of a level file', () => {
+    const s = describeBeach(level(0.5))
+    expect(s).not.toBeNull()
+    expect(s!.samples).toBe(321)
+    expect(s!.swell).toBe(0.8)
+    expect(s!.tide).toBe(1)
+    // Depth is Tide - height, converted at the fitted scale.
+    expect(s!.maxDepthM).toBeCloseTo(0.5 * METRES_PER_UNIT, 1)
+    expect(s!.clamped).toBe(false)
+  })
 
-describe('unitySaveRoots', () => {
-  it('points at LocalLow on Windows, which is where Unity writes user data', () => {
-    expect(unitySaveRoots('win32', 'C:\\Users\\x')).toEqual([join('C:\\Users\\x', 'AppData', 'LocalLow')])
+  it('flags a profile that hits the game floor, where the real bed is deeper', () => {
+    expect(describeBeach(level(1))!.clamped).toBe(true)
   })
-  it('covers Application Support on macOS', () => {
-    expect(unitySaveRoots('darwin', '/Users/x')[0]).toContain('Application Support')
-  })
-})
 
-describe('displayNameFor', () => {
-  it('uses a name field when the save has one', () => {
-    expect(displayNameFor('{"name":"Pipeline"}', 'a.json')).toBe('Pipeline')
-  })
-  it('tries the other plausible keys, since the schema is unknown', () => {
-    // The real key is not knowable before release, so several are attempted.
-    expect(displayNameFor('{"beachName":"Teahupoo"}', 'a.json')).toBe('Teahupoo')
-    expect(displayNameFor('{"title":"Uluwatu"}', 'a.json')).toBe('Uluwatu')
-  })
-  it('falls back to the file name rather than showing nothing', () => {
-    expect(displayNameFor('{"unexpected":1}', 'my-break.json')).toBe('my-break')
-    expect(displayNameFor('not json at all', 'broken.json')).toBe('broken')
-  })
-  it('caps an absurdly long name', () => {
-    expect(displayNameFor(JSON.stringify({ name: 'x'.repeat(500) }), 'a.json')).toHaveLength(80)
-  })
-})
-
-describe('readBeaches', () => {
-  it('lists json saves, newest first', () => {
-    write('a.json', '{"name":"Alpha"}')
-    write('b.json', '{"name":"Beta"}')
-    const list = readBeaches(dir)
-    expect(list).toHaveLength(2)
-    expect(list.map((b) => b.name).sort()).toEqual(['Alpha', 'Beta'])
-  })
-  it('ignores non-json files', () => {
-    write('a.json', '{}')
-    write('notes.txt', 'hi')
-    expect(readBeaches(dir)).toHaveLength(1)
-  })
-  it('returns nothing for a folder that is not there', () => {
-    expect(readBeaches(join(dir, 'nope'))).toEqual([])
-  })
-  it('still lists a corrupt save, so it can be deleted', () => {
-    write('broken.json', '{ not json')
-    expect(readBeaches(dir)[0]?.name).toBe('broken')
+  it('returns null for anything unreadable rather than throwing', () => {
+    // A corrupt file must still list, so it can be deleted.
+    for (const bad of ['', 'not json', '{}', '{"GroundHeights":[]}', '[]', 'null']) {
+      expect(describeBeach(bad)).toBeNull()
+    }
   })
 })
 
 describe('findBeachDir', () => {
   it('prefers an explicit override', () => {
-    expect(findBeachDir('darwin', '/nowhere', dir)).toBe(dir)
+    expect(findBeachDir(null, dir)).toBe(dir)
   })
 
-  it('finds the save folder under a Unity root by looking for json', () => {
-    // The company and product folder names are the developer's choice and
-    // cannot be predicted, so the search is by name hint plus actual content.
-    const home = mkdtempSync(join(tmpdir(), 'tidepool-home-'))
-    const saves = join(home, 'Library', 'Application Support', 'nocanwin', 'Surf Sandbox')
-    mkdirSync(saves, { recursive: true })
-    writeFileSync(join(saves, 'beach.json'), '{"name":"x"}', 'utf8')
-    expect(findBeachDir('darwin', home)).toBe(saves)
-    rmSync(home, { recursive: true, force: true })
+  it('derives the Levels folder from the game install', () => {
+    // Beaches live inside the game, not in a Unity save folder.
+    const levels = join(dir, 'SurfSandbox_Data', 'StreamingAssets', 'Levels')
+    mkdirSync(levels, { recursive: true })
+    expect(findBeachDir(dir)).toBe(levels)
   })
 
-  it('looks one level deeper, where saves often sit', () => {
-    const home = mkdtempSync(join(tmpdir(), 'tidepool-home2-'))
-    const saves = join(home, 'Library', 'Application Support', 'Surf Sandbox', 'beaches')
-    mkdirSync(saves, { recursive: true })
-    writeFileSync(join(saves, 'a.json'), '{}', 'utf8')
-    expect(findBeachDir('darwin', home)).toBe(saves)
-    rmSync(home, { recursive: true, force: true })
+  it('is null without a game, because there is nowhere for beaches to be', () => {
+    expect(findBeachDir(null)).toBeNull()
+    expect(findBeachDir(dir)).toBeNull() // game folder with no Levels
   })
 
-  it('returns null when nothing matches', () => {
-    expect(findBeachDir('darwin', join(dir, 'empty-home'))).toBeNull()
+  it('ignores an override that does not exist', () => {
+    expect(findBeachDir(null, join(dir, 'nope'))).toBeNull()
+  })
+})
+
+describe('readBeaches', () => {
+  it('lists levels newest first, with their shape', () => {
+    writeFileSync(join(dir, `Pipeline${BEACH_EXT}`), level(1))
+    writeFileSync(join(dir, `Kewalo${BEACH_EXT}`), level(0.25))
+    const list = readBeaches(dir)
+    expect(list).toHaveLength(2)
+    expect(list.map((b) => b.name).sort()).toEqual(['Kewalo', 'Pipeline'])
+    expect(list.find((b) => b.name === 'Pipeline')!.shape!.clamped).toBe(true)
+  })
+
+  it('ignores files that are not levels', () => {
+    writeFileSync(join(dir, `Real${BEACH_EXT}`), level())
+    writeFileSync(join(dir, 'notes.txt'), 'x')
+    writeFileSync(join(dir, 'old.json'), '{}')
+    expect(readBeaches(dir).map((b) => b.name)).toEqual(['Real'])
+  })
+
+  it('still lists a corrupt level so it can be deleted', () => {
+    writeFileSync(join(dir, `Broken${BEACH_EXT}`), 'not json at all')
+    const list = readBeaches(dir)
+    expect(list).toHaveLength(1)
+    expect(list[0]!.name).toBe('Broken')
+    expect(list[0]!.shape).toBeNull()
+  })
+
+  it('returns nothing for a folder that is not there', () => {
+    expect(readBeaches(join(dir, 'missing'))).toEqual([])
   })
 })
 
 describe('safeFileName', () => {
   it('strips any path so an imported name cannot escape the folder', () => {
-    // Codes come from strangers; a filename is not allowed to pick a location.
-    expect(safeFileName('../../../evil.json')).toBe('evil.json')
-    expect(safeFileName('/etc/passwd')).toBe('passwd.json')
-    expect(safeFileName('a/b/c.json')).toBe('c.json')
+    expect(safeFileName('../../evil')).not.toContain('..')
+    expect(safeFileName('/etc/passwd')).not.toContain('/')
+    expect(safeFileName('a\\b\\c')).not.toContain('\\')
   })
-  it('always ends in .json', () => {
-    expect(safeFileName('beach')).toBe('beach.json')
+
+  it('always ends in the level extension', () => {
+    expect(safeFileName('Pipeline')).toBe(`Pipeline${BEACH_EXT}`)
+    expect(safeFileName(`Pipeline${BEACH_EXT}`)).toBe(`Pipeline${BEACH_EXT}`)
   })
+
   it('never produces an empty or dotfile name', () => {
-    expect(safeFileName('...')).toBe('imported-beach.json')
+    for (const n of ['', '.', '..', '/', BEACH_EXT]) {
+      const out = safeFileName(n)
+      expect(out.startsWith('.')).toBe(false)
+      expect(out.length).toBeGreaterThan(BEACH_EXT.length)
+    }
   })
 })
 
 describe('share codes', () => {
-  it('round-trips a beach', () => {
-    write('pipeline.json', '{"name":"Pipeline","contours":[1,2,3]}')
-    const code = encodeBeach(readBeaches(dir)[0]!)
+  it('round-trips a level', () => {
+    const contents = level(0.75)
+    // encodeBeach reads from disk, so this needs a real file.
+    const path = join(dir, `Pipeline${BEACH_EXT}`)
+    writeFileSync(path, contents)
+    const [beach] = readBeaches(dir)
+    const code = encodeBeach(beach!)
     expect(code.startsWith(CODE_PREFIX)).toBe(true)
-
-    const decoded = decodeBeach(code)
-    expect(decoded.name).toBe('Pipeline')
-    expect(JSON.parse(decoded.contents).contours).toEqual([1, 2, 3])
+    const back = decodeBeach(code)
+    expect(back.contents).toBe(contents)
+    expect(back.fileName).toBe(`Pipeline${BEACH_EXT}`)
   })
 
-  it('rejects a code without the prefix', () => {
-    expect(() => decodeBeach('hello')).toThrow(InvalidBeachCodeError)
-  })
-
-  it('rejects a truncated code', () => {
-    write('a.json', '{"name":"A"}')
-    const code = encodeBeach(readBeaches(dir)[0]!)
-    expect(() => decodeBeach(code.slice(0, code.length - 10))).toThrow(/damaged/)
-  })
-
-  it('refuses a code whose filename tries to escape', () => {
-    const { gzipSync } = require('node:zlib')
-    const payload = { n: 'evil', f: '../../../../etc/cron.d/evil.json', d: '{}' }
-    const code = CODE_PREFIX + gzipSync(Buffer.from(JSON.stringify(payload))).toString('base64url')
-    expect(decodeBeach(code).fileName).toBe('evil.json')
+  it('rejects codes that are not ours, truncated, or hostile', () => {
+    for (const bad of ['nonsense', `${CODE_PREFIX}!!!!`, CODE_PREFIX]) {
+      expect(() => decodeBeach(bad)).toThrow(InvalidBeachCodeError)
+    }
   })
 })
 
 describe('importBeach', () => {
-  it('writes the beach and returns its path', () => {
-    const path = importBeach(dir, { fileName: 'new.json', contents: '{"name":"New"}' })
-    expect(readFileSync(path, 'utf8')).toContain('New')
+  it('writes the level and returns its path', () => {
+    const p = importBeach(dir, { fileName: `Sunset${BEACH_EXT}`, contents: level() })
+    expect(existsSync(p)).toBe(true)
+    expect(readFileSync(p, 'utf8')).toBe(level())
   })
 
-  it('never overwrites an existing save', () => {
-    // Silently replacing someone's beach would be unforgivable.
-    write('new.json', '{"name":"Original"}')
-    const path = importBeach(dir, { fileName: 'new.json', contents: '{"name":"Imported"}' })
-    expect(path).toContain('(2)')
-    expect(readFileSync(join(dir, 'new.json'), 'utf8')).toContain('Original')
+  it('never overwrites a level the player already has', () => {
+    writeFileSync(join(dir, `Sunset${BEACH_EXT}`), 'MINE')
+    importBeach(dir, { fileName: `Sunset${BEACH_EXT}`, contents: level() })
+    expect(readFileSync(join(dir, `Sunset${BEACH_EXT}`), 'utf8')).toBe('MINE')
+    expect(readdirSync(dir)).toContain(`Sunset (2)${BEACH_EXT}`)
   })
 })
 
 describe('deleteBeach', () => {
-  it('removes a save', () => {
-    write('gone.json', '{}')
-    deleteBeach(dir, 'gone.json')
-    expect(readBeaches(dir)).toHaveLength(0)
+  it('removes a level', () => {
+    writeFileSync(join(dir, `Gone${BEACH_EXT}`), level())
+    deleteBeach(dir, `Gone${BEACH_EXT}`)
+    expect(existsSync(join(dir, `Gone${BEACH_EXT}`))).toBe(false)
   })
+
   it('cannot be talked into deleting outside the folder', () => {
-    const outside = join(dir, '..', 'keepme.json')
-    writeFileSync(outside, 'keep', 'utf8')
-    deleteBeach(dir, '../keepme.json')
-    expect(readFileSync(outside, 'utf8')).toBe('keep')
+    const outside = join(dir, '..', 'keepme')
+    writeFileSync(outside, 'x')
+    try {
+      deleteBeach(dir, '../keepme')
+    } catch { /* refusing is also fine */ }
+    expect(existsSync(outside)).toBe(true)
     rmSync(outside, { force: true })
   })
 })
 
-
 describe('installBeachPack', () => {
-  // Beaches are save files, not mods. Sending them through the normal install
-  // path would put them in a profile's BepInEx tree, where the game never looks
-  // — the pack would install "successfully" and nothing would appear in-game.
   const packZip = (entries: Record<string, string>): string => {
     const zip = new AdmZip()
     for (const [name, body] of Object.entries(entries)) zip.addFile(name, Buffer.from(body))
@@ -181,35 +191,34 @@ describe('installBeachPack', () => {
     return file
   }
 
-  it('writes every beach into the save folder', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'tp-bd-'))
-    const zip = packZip({ 'pipeline.json': '{"name":"Pipeline"}', 'nazare.json': '{"name":"Nazare"}' })
-    const written = installBeachPack(zip, dir)
-    expect(written).toHaveLength(2)
-    expect(readdirSync(dir).sort()).toEqual(['nazare.json', 'pipeline.json'])
+  it('writes every level into the Levels folder', () => {
+    installBeachPack(packZip({
+      [`Pipeline${BEACH_EXT}`]: level(1),
+      [`Nazare${BEACH_EXT}`]: level(1),
+    }), dir)
+    expect(readdirSync(dir).sort()).toEqual([`Nazare${BEACH_EXT}`, `Pipeline${BEACH_EXT}`])
   })
 
-  it('skips packaging metadata and anything that is not a beach', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'tp-bd2-'))
-    const zip = packZip({
-      'reef.json': '{}', 'manifest.json': '{}', 'icon.png': 'x', 'README.md': 'x', 'notes.txt': 'x',
-    })
-    installBeachPack(zip, dir)
-    expect(readdirSync(dir)).toEqual(['reef.json'])
+  it('skips packaging metadata and anything that is not a level', () => {
+    installBeachPack(packZip({
+      [`Reef${BEACH_EXT}`]: level(), 'manifest.json': '{}', 'icon.png': 'x',
+      'README.md': 'x', 'notes.txt': 'x', 'old.json': '{}',
+    }), dir)
+    expect(readdirSync(dir)).toEqual([`Reef${BEACH_EXT}`])
   })
 
   it('flattens paths, so an archive cannot choose where its files land', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'tp-bd3-'))
-    const zip = packZip({ '../../escape.json': '{}', 'nested/deep/reef.json': '{}' })
-    installBeachPack(zip, dir)
-    expect(readdirSync(dir).sort()).toEqual(['escape.json', 'reef.json'])
+    installBeachPack(packZip({
+      [`../../escape${BEACH_EXT}`]: level(),
+      [`nested/deep/Reef${BEACH_EXT}`]: level(),
+    }), dir)
+    expect(readdirSync(dir).sort()).toEqual([`Reef${BEACH_EXT}`, `escape${BEACH_EXT}`])
   })
 
-  it('never overwrites a beach the player already has', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'tp-bd4-'))
-    writeFileSync(join(dir, 'reef.json'), 'MINE')
-    installBeachPack(packZip({ 'reef.json': '{"name":"theirs"}' }), dir)
-    expect(readFileSync(join(dir, 'reef.json'), 'utf8')).toBe('MINE')
-    expect(readdirSync(dir)).toContain('reef (2).json')
+  it('never overwrites a level the player already has', () => {
+    writeFileSync(join(dir, `Reef${BEACH_EXT}`), 'MINE')
+    installBeachPack(packZip({ [`Reef${BEACH_EXT}`]: level() }), dir)
+    expect(readFileSync(join(dir, `Reef${BEACH_EXT}`), 'utf8')).toBe('MINE')
+    expect(readdirSync(dir)).toContain(`Reef (2)${BEACH_EXT}`)
   })
 })

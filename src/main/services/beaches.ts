@@ -25,10 +25,12 @@ export const MAX_CODE_SOURCE_BYTES = 2 * 1024 * 1024
 export interface Beach {
   fileName: string
   path: string
-  /** Best-effort display name; falls back to the file name. */
+  /** The level's name in game, which is its file name without the extension. */
   name: string
   sizeBytes: number
   modified: string
+  /** Parsed contents, or null if the file is not a readable level. */
+  shape?: BeachShape | null
 }
 
 /**
@@ -37,78 +39,35 @@ export interface Beach {
  * The company and product folders are chosen by the developer and unknowable
  * before release, so these are the roots to search rather than a final path.
  */
-export function unitySaveRoots(platform: NodeJS.Platform, home: string): string[] {
-  switch (platform) {
-    case 'win32':
-      return [join(home, 'AppData', 'LocalLow')]
-    case 'darwin':
-      return [join(home, 'Library', 'Application Support'), join(home, 'Library', 'Preferences')]
-    default:
-      return [join(home, '.config', 'unity3d')]
-  }
-}
+/** Levels are `.lvl`, plain JSON, written by the game itself. */
+export const BEACH_EXT = '.lvl'
 
 /**
- * Find the folder holding beach saves.
+ * Find the folder holding beaches.
  *
- * Looks for a directory under a Unity save root whose name mentions the game and
- * which actually contains JSON. Searching by content rather than a hardcoded
- * path means a company folder we cannot predict does not break it.
+ * Not a Unity save folder. The game keeps levels inside its own install, at
+ * `<game>/<Name>_Data/StreamingAssets/Levels`, and writes player edits there
+ * too — `Kewalo_User.lvl` and friends appear beside the shipped presets. That
+ * folder is writable without elevation, which is why it works at all.
  */
 export function findBeachDir(
-  platform: NodeJS.Platform = process.platform,
-  home: string = process.env.HOME ?? process.env.USERPROFILE ?? '',
+  gameRoot: string | null,
   override?: string | null,
 ): string | null {
   if (override && existsSync(override)) return override
+  if (!gameRoot || !existsSync(gameRoot)) return null
 
-  const matches = (name: string) => /surf/i.test(name)
-
-  for (const root of unitySaveRoots(platform, home)) {
-    if (!existsSync(root)) continue
-    let companies: string[]
-    try {
-      companies = readdirSync(root)
-    } catch {
-      continue
-    }
-
-    for (const company of companies) {
-      const companyDir = join(root, company)
-      const candidates = matches(company) ? [companyDir] : []
-      try {
-        if (statSync(companyDir).isDirectory()) {
-          for (const product of readdirSync(companyDir)) {
-            if (matches(product) || matches(company)) candidates.push(join(companyDir, product))
-          }
-        }
-      } catch {
-        continue
-      }
-
-      for (const dir of candidates) {
-        if (hasJson(dir)) return dir
-        // Saves often sit one level deeper, in a "beaches" or "saves" folder.
-        try {
-          for (const sub of readdirSync(dir)) {
-            const subDir = join(dir, sub)
-            if (statSync(subDir).isDirectory() && hasJson(subDir)) return subDir
-          }
-        } catch {
-          continue
-        }
-      }
-    }
-  }
-  return null
-}
-
-function hasJson(dir: string): boolean {
+  let entries: string[]
   try {
-    return readdirSync(dir).some((f) => f.toLowerCase().endsWith('.json'))
+    entries = readdirSync(gameRoot)
   } catch {
-    return false
+    return null
   }
+  const dataDir = entries.find((e) => e.endsWith('_Data'))
+  if (!dataDir) return null
+
+  const levels = join(gameRoot, dataDir, 'StreamingAssets', 'Levels')
+  return existsSync(levels) ? levels : null
 }
 
 /**
@@ -117,27 +76,66 @@ function hasJson(dir: string): boolean {
  * The real key is unknown until the game ships, so try the plausible ones and
  * fall back to the file name rather than guessing wrong and showing nothing.
  */
-export function displayNameFor(contents: string, fileName: string): string {
-  const fallback = basename(fileName).replace(/\.json$/i, '')
+/**
+ * Metres per depth unit in a level file.
+ *
+ * Levels store height above the game's floor, not metres. Least-squares fit of
+ * the game's own Pipeline.lvl against a real Pipeline cross-section over its
+ * 229 unclamped samples gives 14.8 m; rounded, because 36 quantisation levels
+ * do not support more precision than that.
+ */
+export const METRES_PER_UNIT = 15
+
+export interface BeachShape {
+  samples: number
+  swell: number
+  tide: number
+  /** Deepest point, in metres. The game clamps at one depth unit. */
+  maxDepthM: number
+  /** True when the profile hits the floor, so the real sea bed is deeper. */
+  clamped: boolean
+}
+
+/**
+ * Read the shape out of a level file.
+ *
+ * A `.lvl` is plain JSON: `GroundHeights` (321 samples, shore first), `Swell`
+ * and `Tide`. Depth below the waterline is `Tide - height`, so a value above
+ * the tide is dry beach.
+ *
+ * Returns null rather than throwing: a corrupt or foreign file should still be
+ * listed so it can be deleted.
+ */
+export function describeBeach(contents: string): BeachShape | null {
   try {
-    const parsed: unknown = JSON.parse(contents)
-    if (typeof parsed !== 'object' || parsed === null) return fallback
-    const o = parsed as Record<string, unknown>
-    for (const key of ['name', 'beachName', 'title', 'displayName', 'label']) {
-      const v = o[key]
-      if (typeof v === 'string' && v.trim()) return v.trim().slice(0, 80)
+    const d: unknown = JSON.parse(contents)
+    if (typeof d !== 'object' || d === null) return null
+    const o = d as Record<string, unknown>
+    const g = o.GroundHeights
+    if (!Array.isArray(g) || g.length === 0) return null
+    const heights = g.filter((v): v is number => typeof v === 'number')
+    if (heights.length === 0) return null
+
+    const tide = typeof o.Tide === 'number' ? o.Tide : 1
+    const swell = typeof o.Swell === 'number' ? o.Swell : 0
+    const deepest = tide - Math.min(...heights)
+    return {
+      samples: heights.length,
+      swell,
+      tide,
+      maxDepthM: Math.round(deepest * METRES_PER_UNIT * 10) / 10,
+      clamped: deepest >= 1,
     }
   } catch {
-    // Not valid JSON is still listable; the user may want to delete it.
+    return null
   }
-  return fallback
 }
 
 export function readBeaches(dir: string): Beach[] {
   if (!existsSync(dir)) return []
   let files: string[]
   try {
-    files = readdirSync(dir).filter((f) => f.toLowerCase().endsWith('.json'))
+    files = readdirSync(dir).filter((f) => f.toLowerCase().endsWith(BEACH_EXT))
   } catch {
     return []
   }
@@ -152,7 +150,8 @@ export function readBeaches(dir: string): Beach[] {
       beaches.push({
         fileName,
         path,
-        name: contents ? displayNameFor(contents, fileName) : fileName.replace(/\.json$/i, ''),
+        name: fileName.replace(/\.lvl$/i, ''),
+      shape: contents ? describeBeach(contents) : null,
         sizeBytes: stat.size,
         modified: stat.mtime.toISOString(),
       })
@@ -215,8 +214,8 @@ export function decodeBeach(code: string): { name: string; fileName: string; con
 export function safeFileName(name: string): string {
   const base = basename(name.replace(/\\/g, '/')).replace(/[^\w.\- ]+/g, '_')
   const trimmed = base.replace(/^\.+/, '').slice(0, 100)
-  const withExt = /\.json$/i.test(trimmed) ? trimmed : `${trimmed}.json`
-  return withExt === '.json' ? 'imported-beach.json' : withExt
+  const withExt = /\.lvl$/i.test(trimmed) ? trimmed : `${trimmed}${BEACH_EXT}`
+  return withExt === BEACH_EXT ? `imported-beach${BEACH_EXT}` : withExt
 }
 
 /** Write an imported beach, never overwriting an existing save. */
@@ -229,7 +228,7 @@ export function importBeach(
   let target = join(dir, safe)
   let n = 2
   while (existsSync(target)) {
-    target = join(dir, safe.replace(/\.json$/i, ` (${n++}).json`))
+    target = join(dir, safe.replace(/\.lvl$/i, ` (${n++})${BEACH_EXT}`))
   }
   writeFileSync(target, beach.contents, 'utf8')
   return target
@@ -265,11 +264,11 @@ export function installBeachPack(zipPath: string, dir: string): string[] {
     if (/^(icon\.png|manifest\.json|README\.md|CHANGELOG\.md)$/i.test(name.split('/').pop() ?? '')) {
       continue
     }
-    if (!/\.json$/i.test(name)) continue
+    if (!name.toLowerCase().endsWith(BEACH_EXT)) continue
 
     written.push(
       importBeach(dir, {
-        fileName: name.split('/').pop() ?? 'beach.json',
+        fileName: name.split('/').pop() ?? `beach${BEACH_EXT}`,
         contents: entry.getData().toString('utf8'),
       }),
     )

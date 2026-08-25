@@ -9,7 +9,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { breakingGradient, resample, validateProfile } from '../dist/shared/breaks.js'
-import { GRID, SCHEMA_KNOWN, beachFileName, toBeachFile } from './beach-format.mjs'
+import { SCHEMA_KNOWN, beachFileName, toBeachFile } from './beach-format.mjs'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 
@@ -68,12 +68,8 @@ mkdirSync(outDir, { recursive: true })
 
 let written = 0
 for (const b of data.breaks) {
-  // Our profiles are deliberately irregular — dense inshore where the shape
-  // decides the wave, sparse offshore where it does not. If the game wants an
-  // even grid, resample onto one rather than shipping our spacing.
-  const grid = GRID.sampleCount ? resample(b.profile, GRID.sampleCount) : null
-  const file = toBeachFile(b, grid)
-  writeFileSync(new URL(beachFileName(b), outDir), JSON.stringify(file, null, 2) + '\n')
+  const file = toBeachFile(b)
+  writeFileSync(new URL(beachFileName(b), outDir), JSON.stringify(file))
   written++
 }
 

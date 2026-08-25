@@ -1,95 +1,115 @@
 /**
- * Turning a break profile into a Surf Sandbox beach file.
+ * Turning a break profile into a Surf Sandbox level file.
  *
- * THIS IS THE ONLY FILE THAT NEEDS EDITING once the game exists. Everything
- * else — the nine profiles, validation, ranking, packaging, install routing —
- * is done and tested. Fill in `toBeachFile` and the pack builds.
+ * Schema read directly from the game's own presets in
+ * `SurfSandbox_Data/StreamingAssets/Levels/*.lvl`, which are plain JSON:
  *
- * ## What we know before release
+ *   { "GroundHeights": [321 floats], "Swell": float, "Tide": float }
  *
- * Steam's feature list: "Adjust bottom contours, wave height, period, and
- * frequency" and "Design: name your spot, restore the reef, and make your break
- * unique". nocanwin's 11 April post: "I finally put the sand in sandbox. The
- * ocean floor can be changed now."
- *
- * So a beach is at minimum: a name, and a description of the sea floor.
- * `beaches.ts` already established they are JSON files in the Unity save
- * folder, found by content rather than a hardcoded path.
- *
- * ## What to do on release day
- *
- * 1. Make a beach in-game and name it something findable, e.g. "zzTest".
- * 2. `readBeaches(findBeachDir(...))` — or just read the JSON off disk.
- * 3. Fill in FIELDS below to match what you see, and flip SCHEMA_KNOWN to true.
- * 4. `npm run breaks` writes the pack and prints what it produced.
- *
- * Resist normalising their schema into something nicer. Write exactly what the
- * game writes; a beach the game refuses to load is worth less than an ugly one.
+ * - **321 samples, index 0 is the shore**, running straight out to sea.
+ *   Pipeline.lvl lines up with a real Pipeline cross-section at one sample per
+ *   metre, so the array spans 0–320 m.
+ * - **Heights, not depths.** Depth below the waterline is `Tide - height`, so a
+ *   value above `Tide` is dry beach.
+ * - **Quantised to 1/32.** Every value in every preset is a multiple of
+ *   0.03125; writing anything finer is writing noise.
+ * - **Depth clamps at 1.0 unit.** Pipeline.lvl flatlines from index 240 out,
+ *   which is the game's floor rather than the real sea floor.
  */
 
-/** Flip to true once FIELDS below matches a real save file. */
-export const SCHEMA_KNOWN = false
+export const SCHEMA_KNOWN = true
+
+/** Samples per level file, one per metre from the shoreline. */
+export const SAMPLES = 321
+
+/** Values are multiples of 1/32 in every shipped preset. */
+export const QUANTUM = 1 / 32
+
+/** The waterline. Every preset ships 1.0. */
+export const TIDE = 1.0
 
 /**
- * Field names in the game's own beach JSON.
+ * Metres per depth unit.
  *
- * Left as a single object so that mapping the schema is one edit in one place
- * rather than a hunt through string literals.
+ * Least-squares fit of the game's own Pipeline.lvl against a real Pipeline
+ * cross-section over the 229 unclamped samples: 14.8 m, rms 2.26 m. Rounded to
+ * 15, because a fit that precise on 36 quantisation levels is false precision.
+ *
+ * This is the number that keeps breaks comparable to each other. Normalising
+ * each break to its own maximum instead would flatten exactly the differences
+ * the pack exists to show.
  */
-export const FIELDS = {
-  name: 'name',
-  /** The depth-vs-distance samples, whatever the game calls them. */
-  profile: 'bottomContour',
-  /** If depths are stored as a bare array, the key holding it. */
-  depths: 'depths',
-  /** Spacing between samples, if the game stores samples rather than pairs. */
-  spacing: 'spacing',
-  waveHeight: 'waveHeight',
-  wavePeriod: 'wavePeriod',
-  swellDirection: 'swellDirection',
+export const METRES_PER_UNIT = 15
+
+/**
+ * Dry beach in front of the waterline.
+ *
+ * Our profiles start at the shoreline; the game's presets all begin above the
+ * tide. Without a little land the level starts at a wall of water. Matches the
+ * presets' modest rise rather than inventing terrain.
+ */
+const BEACH_M = 8
+const BEACH_RISE = 3 * QUANTUM
+
+const quantise = (v) => Math.round(v / QUANTUM) * QUANTUM
+
+/** Depth in metres at a distance, linearly interpolated, flat past the end. */
+function depthAt(profile, x) {
+  if (x <= profile[0][0]) return profile[0][1]
+  for (let i = 1; i < profile.length; i++) {
+    const [x0, d0] = profile[i - 1]
+    const [x1, d1] = profile[i]
+    if (x <= x1) return d0 + ((x - x0) / (x1 - x0)) * (d1 - d0)
+  }
+  return profile[profile.length - 1][1]
 }
 
-/**
- * How many samples the game expects, and how far apart.
- *
- * Our profiles are irregularly spaced (dense near shore, sparse offshore,
- * because that is where the shape matters). `resample` in shared/breaks.ts
- * converts to an even grid — it exists for exactly this.
- */
-export const GRID = {
-  /** Set from the real file. Null means "keep our own points". */
-  sampleCount: null,
-  /** Metres between samples, if fixed. */
-  spacingM: null,
-}
-
-/**
- * Convert one break into the object the game will write to disk.
- *
- * @param {{id:string,name:string,location:string,idealSwell:object,profile:[number,number][]}} brk
- * @param {number[]} resampled  Evenly spaced depths, when GRID.sampleCount is set.
- * @returns {object} plain JSON, serialised verbatim
- */
-export function toBeachFile(brk, resampled) {
-  if (!SCHEMA_KNOWN) {
-    throw new Error(
-      'Beach schema is not known yet. Make a beach in-game, read its JSON, fill in ' +
-        'FIELDS and GRID in tools/beach-format.mjs, then set SCHEMA_KNOWN = true.',
-    )
+export function toBeachFile(brk) {
+  const heights = []
+  for (let i = 0; i < SAMPLES; i++) {
+    let h
+    if (i < BEACH_M) {
+      // Ramp down across the beach to meet the waterline.
+      h = TIDE + BEACH_RISE * (1 - i / BEACH_M)
+    } else {
+      const metres = i - BEACH_M
+      const units = Math.min(depthAt(brk.profile, metres) / METRES_PER_UNIT, 1)
+      h = TIDE - units
+    }
+    heights.push(quantise(Math.max(h, 0)))
   }
 
-  // ---- fill in from a real save file -------------------------------------
   return {
-    [FIELDS.name]: brk.name,
-    [FIELDS.profile]: resampled ?? brk.profile,
-    [FIELDS.waveHeight]: brk.idealSwell.heightM,
-    [FIELDS.wavePeriod]: brk.idealSwell.periodSec,
-    [FIELDS.swellDirection]: brk.idealSwell.directionDeg,
+    GroundHeights: heights,
+    // Presets run 0.8 (Pipeline) to 1.0 (Sunset), so this is a slider rather
+    // than a height in depth units. Calibrated so Pipeline's 3 m lands on the
+    // 0.8 nocanwin gave it.
+    Swell: quantise(Math.min(Math.max(brk.idealSwell.heightM / 3.75, 0.25), 1)),
+    Tide: TIDE,
   }
-  // ------------------------------------------------------------------------
 }
 
-/** File name for a break, matching whatever convention the game uses. */
+/**
+ * Levels the game ships, as of 25 Aug 2026.
+ *
+ * The file name is the name shown in game, and writing into
+ * StreamingAssets/Levels means a matching name silently replaces a preset —
+ * which is how I destroyed nocanwin's own Pipeline.lvl before restoring it from
+ * a copy. A pack must never be able to eat the base game's content.
+ */
+export const SHIPPED_LEVELS = new Set([
+  'Bellows', 'Kawaikui', 'KeIki', 'Kewalo', 'Kokololio', 'Makaha', 'Makapuu',
+  'Mokuleia', 'Pipeline', 'Portlock', 'Sandys', 'Sunset', 'Tracks', 'Waikiki',
+  'WhitePlains', 'Yokahama',
+])
+
+/** Levels are named by their file, so this is the name shown in game. */
 export function beachFileName(brk) {
-  return `${brk.id}.json`
+  // Decompose first so accents become separate marks and can be dropped —
+  // otherwise "Nazaré" loses the é entirely and ships as "Nazar".
+  const ascii = brk.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const base = ascii.replace(/[^A-Za-z0-9]/g, '')
+  // Only disambiguate on an actual clash, so eight of the nine keep their real
+  // names and the ninth is obviously ours rather than a replacement.
+  return SHIPPED_LEVELS.has(base) ? `${base} (Break Pack).lvl` : `${base}.lvl`
 }
