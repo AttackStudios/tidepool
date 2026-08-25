@@ -23,7 +23,7 @@ internal static class LevelScanner
     };
 
     /// <summary>`<game>/<Name>_Data/StreamingAssets/Levels`, found from the running process.</summary>
-    internal static string? LevelsDir()
+    internal static string LevelsDir()
     {
         var root = Path.GetDirectoryName(Environment.ProcessPath);
         if (root is null) return null;
@@ -45,7 +45,7 @@ internal static class LevelScanner
         }
 
         var files = Directory.GetFiles(dir, "*.lvl").Select(Path.GetFileNameWithoutExtension).ToArray();
-        var custom = files.Where(f => f is not null
+        var custom = files.Where(f => f != null
                                       && !Shipped.Contains(f)
                                       && !f.EndsWith("_User", StringComparison.Ordinal)).ToArray();
 
