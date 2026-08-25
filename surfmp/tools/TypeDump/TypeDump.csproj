@@ -17,4 +17,13 @@
     <AssemblyName>TypeDump</AssemblyName>
   </PropertyGroup>
 
+  <!--
+    MetadataLoadContext inspects an assembly without executing it, so member
+    types come out readable rather than as raw signature blobs. The Il2Cpp
+    interop wrappers cannot be loaded normally outside the game.
+  -->
+  <ItemGroup>
+    <PackageReference Include="System.Reflection.MetadataLoadContext" Version="8.0.0" />
+  </ItemGroup>
+
 </Project>

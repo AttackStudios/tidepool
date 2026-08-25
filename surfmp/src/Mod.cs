@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.12.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.13.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;
@@ -25,7 +25,7 @@ public class Mod : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("SurfMP 0.12.0 — F9 host, F10 join localhost, F11 leave.");
+        Log.Msg("SurfMP 0.13.0 — F9 host, F10 join, F11 leave, F8 mark a determinism run.");
         Sync.GameHook.Install(HarmonyInstance);
 
         // The netcode has no game dependency, so that it can be tested headless.
@@ -43,6 +43,7 @@ public class Mod : MelonMod
 
         Sync.WaveParams.Capture();
         Sync.LocalSurfer.Tick(dt);
+        Sync.Determinism.Tick(now);
 
         // Packets arrive on the socket thread and are queued; this is where they
         // get handled, because Unity's API is main-thread-only.
