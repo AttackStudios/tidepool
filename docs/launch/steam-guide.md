@@ -1,79 +1,113 @@
 # Steam guide — "How to mod Surf Sandbox"
 
-Post to the Surf Sandbox hub → Guides → Create. Highest-leverage post available: every day-one player
-is already on that page. Title it exactly **How to mod Surf Sandbox**.
+Post to the Surf Sandbox hub → Guides → Create. Highest-leverage post available: every player is
+already on that page. Title it exactly **How to mod Surf Sandbox**.
+
+Everything below the line is the guide body, written in **Steam's own formatting tags**, not
+Markdown. Steam guides do not render Markdown — paste it verbatim into the editor's text view and
+it formats itself. Do not "fix" the brackets.
 
 ---
 
-## How to mod Surf Sandbox
+[h1]How to mod Surf Sandbox[/h1]
 
-Surf Sandbox has no official mod support, but it's built in Unity, which means the community can add
-it. This guide gets you from a clean install to running mods in about five minutes.
+Surf Sandbox has no official mod support, but it is built in Unity, so the community can add it.
+This gets you from a clean install to running mods in a few minutes.
 
-**You need:** Surf Sandbox on Steam, and Windows. That's it.
+[b]You need:[/b] Surf Sandbox on Steam, and Windows.
 
-### 1. Install TidePool
+[hr][/hr]
 
-[TidePool]({{RELEASE_URL}}) is a free, open-source mod manager for Surf Sandbox. Download
-`TidePool-Setup-{{TIDEPOOL_VERSION}}.exe` and run it.
+[h2]1. Install TidePool[/h2]
 
-It's unsigned, so Windows SmartScreen will warn you. Click **More info → Run anyway**. If you'd rather
-not, the source is at https://github.com/AttackStudios/tidepool and you can build it yourself.
+[url=https://attackstudios.github.io/tidepool/]TidePool[/url] is a free, open-source mod manager for
+Surf Sandbox. Download the Windows installer and run it.
 
-### 2. Let it find your game
+It is unsigned, so Windows SmartScreen will warn you. Click [b]More info[/b] then [b]Run anyway[/b].
+If you would rather not, the source is on
+[url=https://github.com/AttackStudios/tidepool]GitHub[/url] and you can build it yourself.
 
-TidePool reads Steam's own install records, so it should find Surf Sandbox on its own. If it doesn't —
-non-Steam copy, unusual install location — click **Locate game** and pick the folder containing the
-game's executable.
+[h2]2. Let it find your game[/h2]
 
-### 3. Install the mod loader
+TidePool reads Steam's own install records, so it should find Surf Sandbox by itself. If it does not
+— a non-Steam copy, or an unusual install location — click [b]Locate game[/b] and pick the folder
+containing the game's executable.
 
-Mods need **BepInEx**, which loads them into the game. TidePool installs it for you: open **Browse**,
-make sure the source is **Essentials**, and hit **Install** on BepInEx. Anything a mod depends on is
-pulled in automatically, so you never have to work out install order yourself.
+[h2]3. Install the mod loader[/h2]
 
-<!-- The link here used to point at {{RELEASE_URL}}, which is TidePool's own release page, not
-     BepInEx. And it said to search Browse without naming a source. On day one the Thunderstore
-     source is empty, because the surf-sandbox community does not exist until Thunderstore approves
-     it -- so Essentials is the only source that can serve the loader. This step is a dead end
-     unless essentials/index.json actually carries a BepInEx entry. -->
+Code mods need a loader. For Surf Sandbox that is [b]MelonLoader[/b].
 
-### 4. Install a mod
+Open [b]Browse[/b], set the source to [b]Essentials[/b], and install [b]MelonLoader[/b]. It goes into
+the game folder rather than a profile, because that is where it starts from.
 
-Still in **Browse** — search, pick something, **Install**. The panel on the right shows exactly what
-will be installed before you commit, including dependencies.
+[b]The first launch after installing it takes a minute or two.[/b] MelonLoader generates the files it
+needs from your copy of the game, and opens a console window while it works. That is normal. Let it
+finish.
 
-### 5. Play
+[quote]Why not BepInEx? Surf Sandbox runs on Unity 6.3, and BepInEx does not work on it — the common
+build never starts, and the newest development build runs forever without finishing. MelonLoader
+works. If you have seen a BepInEx guide for another game, this is why it does not apply here.[/quote]
 
-Hit **▶ Run** in TidePool and the game starts with your mods loaded.
+[h2]4. Install a mod[/h2]
 
-Prefer launching from Steam so you keep the overlay, playtime and cloud saves? Click **Copy Steam
-options**, then in Steam right-click Surf Sandbox → Properties → paste into **Launch Options**. After
-that, launching from Steam works normally.
+Still in [b]Browse[/b] — pick something and hit [b]Install[/b]. The panel on the right shows exactly
+what will be installed before you commit, dependencies included.
 
-### Profiles
+[h2]5. Play[/h2]
 
-Profiles are separate sets of mods. Make one per playstyle — a clean one, a heavily modded one, one for
-testing. Switching profiles never touches your game install, so vanilla is always one click away.
+Hit [b]Run[/b] in TidePool, or just launch from Steam as normal. MelonLoader loads either way, so you
+keep the overlay, playtime and cloud saves without configuring anything.
 
-### If something breaks
+To play unmodded, use [b]Vanilla[/b] in TidePool. It starts the game with the loader switched off.
 
-**The game starts but no mods load.** Check BepInEx is installed in the profile you're actually running.
-If you launch from Steam, the launch options must be pasted in.
+[hr][/hr]
 
-**The game won't start.** Hit **Vanilla** in TidePool. If it launches fine unmodded, a mod is the cause —
-disable them one at a time with the toggles in **Installed**.
+[h2]Beaches need no loader[/h2]
 
-**A mod misbehaves after an update.** Surf Sandbox is early in development and game updates break mods.
-Check the mod's page for an update before reporting anything.
+Beaches are ordinary level files, so they work on a completely clean install — no MelonLoader, no
+mods, nothing.
 
-**Never report a modded bug to nocanwin.** Surf Sandbox is made by one person, and modded bug reports
-waste their time on problems they didn't cause. If a mod broke it, bring it to us instead.
+TidePool's [b]Beach Manager[/b] tab lists every break in your game, shows how deep each one gets and
+what swell it is built for, and installs, shares or deletes them. A whole break shares as a single
+code, so sending someone your spot is one paste.
 
-### Get help
+[b]Break Pack[/b] in Essentials adds nine real waves rebuilt from their actual sea-floor shape:
+Pipeline, Teahupo'o, Nazaré, Jeffreys Bay, Skeleton Bay, Mavericks, Puerto Escondido, Pleasure Point,
+and one gentle sandbar to learn on.
 
-- Discord: https://discord.gg/RRu3gevbXS
-- Issues: https://github.com/AttackStudios/tidepool/issues
+[h2]Profiles[/h2]
 
-TidePool is free and open source, MIT licensed. Mods are made by the community — if you build one,
-come share it.
+Profiles are separate sets of mods. Make one per playstyle — a clean one, a heavily modded one, one
+for testing. Switching profiles never touches your game install, so vanilla is always one click away,
+and a whole setup shares as a code with no account and no server.
+
+[hr][/hr]
+
+[h2]If something breaks[/h2]
+
+[b]The game starts but no mods load.[/b] Check MelonLoader is installed and that you are not launching
+with mods disabled. Its console window says how many mods it loaded.
+
+[b]The game will not start.[/b] Hit [b]Vanilla[/b] in TidePool. If it launches fine unmodded, a mod is
+the cause — disable them one at a time with the toggles in [b]Installed[/b].
+
+[b]A mod misbehaves after a game update.[/b] Updates break mods. Check the mod's page for a newer
+version before reporting anything.
+
+[b]Sending a log.[/b] MelonLoader writes one to
+[i]Surf Sandbox\MelonLoader\Latest.log[/i]. Attach it and we can usually tell you what happened.
+
+[h2]Please do not report modded bugs to nocanwin[/h2]
+
+Surf Sandbox is made by one person. Modded bug reports cost them time on problems they did not cause.
+Launch vanilla first to check, and if a mod is at fault bring it to us instead.
+
+[h2]Get help[/h2]
+
+[list]
+[*][url=https://discord.gg/RRu3gevbXS]Discord[/url]
+[*][url=https://github.com/AttackStudios/tidepool/issues]GitHub issues[/url]
+[/list]
+
+TidePool is free and open source, MIT licensed, and not affiliated with nocanwin. Mods are made by
+the community — if you build one, come and share it.
