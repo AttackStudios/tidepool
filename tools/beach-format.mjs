@@ -42,6 +42,23 @@ export const TIDE = 1.0
 export const METRES_PER_UNIT = 15
 
 /**
+ * How much of the game's depth range a break's deepest point should reach.
+ *
+ * A single metres-per-unit scale across every break is physically honest and
+ * unplayable. Pleasure Point only reaches 2.8 m in its first 320 m — that is
+ * genuinely what the seabed does there — and at 15 m per unit it came out
+ * knee-deep, so the game stands you up instead of letting you surf.
+ *
+ * So each break is scaled to its own depth instead. The shape is what carries a
+ * break's character — where it shoals, how abruptly — and shape survives
+ * scaling. Absolute depth does not survive being unsurfable.
+ *
+ * Just under 1.0 because the game clamps there, and a profile that flatlines at
+ * the floor loses the outer part of its shape.
+ */
+const DEPTH_TARGET = 0.9
+
+/**
  * Dry beach in front of the waterline.
  *
  * Our profiles start at the shoreline; the game's presets all begin above the
@@ -65,6 +82,20 @@ function depthAt(profile, x) {
 }
 
 export function toBeachFile(brk) {
+  // Scaled to the deepest point the level actually reaches — measured across the
+  // window the game samples, not the whole profile.
+  //
+  // The profiles run out to a couple of kilometres, but a level is 321 samples
+  // at one metre each. Scaling against water 2 km offshore made Pleasure Point
+  // 0.13 units deep: its first 320 m only reach 2.8 m, which is what makes it a
+  // gentle point break, and what made it unsurfable in game.
+  let deepest = 0.1
+  for (let i = BEACH_M; i < SAMPLES; i++) {
+    const d = depthAt(brk.profile, i - BEACH_M)
+    if (d > deepest) deepest = d
+  }
+  const perUnit = deepest / DEPTH_TARGET
+
   const heights = []
   for (let i = 0; i < SAMPLES; i++) {
     let h
@@ -73,7 +104,7 @@ export function toBeachFile(brk) {
       h = TIDE + BEACH_RISE * (1 - i / BEACH_M)
     } else {
       const metres = i - BEACH_M
-      const units = Math.min(depthAt(brk.profile, metres) / METRES_PER_UNIT, 1)
+      const units = Math.min(depthAt(brk.profile, metres) / perUnit, 1)
       h = TIDE - units
     }
     heights.push(quantise(Math.max(h, 0)))

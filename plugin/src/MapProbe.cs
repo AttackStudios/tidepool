@@ -96,27 +96,32 @@ internal static class MapStartPatch
         log.Msg($"Custom levels on the map: {added} added, {root.childCount} markers total.");
     }
 
+    /// <summary>Our label object, named so it is never created twice.</summary>
+    private const string LabelName = "TidePoolName";
+
     /// <summary>
-    /// Put the level's name beside its marker, always visible.
+    /// Put the level's name beside its marker, on an object of our own.
     ///
-    /// The marker's Text child reads "select" and the game never once reveals
-    /// it — a frame-by-frame watch across a full session recorded no activation
-    /// on any marker, ours or the presets'. So it is dead weight, and reusing it
-    /// costs nothing: it already carries the game's font and material, and it is
-    /// the one thing here proven to render.
+    /// The marker already has a Text child reading "select", and reusing it
+    /// almost worked — until selecting a marker made the name vanish. The game
+    /// hides that child as part of its own state handling, so anything living
+    /// inside it is at the mercy of logic we do not control.
     ///
-    /// Shown permanently rather than on hover. A reveal the game does not use
-    /// cannot be borrowed, and driving one ourselves meant tracking a map
-    /// instance that turned out not to be the one on screen. A name that is
-    /// always there beats a clever one that never appears.
+    /// So the label is a separate child of the marker. It is copied from the
+    /// prompt, which gives it the game's font and material for free, then the
+    /// prompt is put back exactly as it was. The game can do what it likes with
+    /// its own object; ours is not part of that conversation.
     /// </summary>
     private static void Label(Transform marker, string levelName, MelonLogger.Instance log)
     {
-        var text = marker.Find("Text");
-        if (text == null) { log.Warning($"  {levelName}: no Text child"); return; }
+        if (marker.Find(LabelName) != null) return;
 
-        var tmp = text.GetComponent<TextMeshProUGUI>();
-        if (tmp == null) { log.Warning($"  {levelName}: Text child has no TextMeshProUGUI"); return; }
+        var prompt = marker.Find("Text");
+        if (prompt == null) { log.Warning($"  {levelName}: no Text child to copy"); return; }
+
+        var promptTmp = prompt.GetComponent<TextMeshProUGUI>();
+        if (promptTmp == null) { log.Warning($"  {levelName}: Text child has no TextMeshProUGUI"); return; }
+        var promptText = promptTmp.text;
 
         // The bracket prefix groups the pack in the file list; on the map the
         // column already does that, and "Pleasure Point" reads better.
@@ -124,12 +129,17 @@ internal static class MapStartPatch
             ? levelName.Substring(5)
             : levelName;
 
+        var label = UnityEngine.Object.Instantiate(prompt.gameObject, marker);
+        label.name = LabelName;
+
+        var tmp = label.GetComponent<TextMeshProUGUI>();
+        if (tmp == null) { log.Warning($"  {levelName}: label copy lost its TextMeshProUGUI"); return; }
         tmp.text = display;
         tmp.fontSize = LabelFontSize;
         tmp.alignment = TextAlignmentOptions.MidlineRight;
         tmp.enableWordWrapping = false;
 
-        var rect = text.GetComponent<RectTransform>();
+        var rect = label.GetComponent<RectTransform>();
         var markerRect = marker.GetComponent<RectTransform>();
         if (rect != null && markerRect != null)
         {
@@ -140,7 +150,11 @@ internal static class MapStartPatch
             rect.anchoredPosition = new Vector2(-(markerRect.rect.width * 0.5f + LabelGap), 0f);
         }
 
-        text.gameObject.SetActive(true);
+        label.SetActive(true);
+
+        // Leave the game's prompt exactly as found, including its own text.
+        promptTmp.text = promptText;
+
         log.Msg($"    labelled {display}");
     }
 
