@@ -136,7 +136,7 @@ export function App() {
           className={tab === 'beaches' ? 'tab tab--on' : 'tab'}
           onClick={() => setTab('beaches')}
         >
-          Beaches
+          Beach Manager
         </button>
         <button
           role="tab"

@@ -74,6 +74,12 @@ for (const b of data.breaks) {
 }
 
 // Zipped because that is what Essentials serves and what the installer expects.
+//
+// The delete is not optional: zip UPDATES an existing archive rather than
+// replacing it, so without this a rebuild keeps every file any earlier build
+// ever produced. That shipped a stale Pipeline.lvl which would have overwritten
+// the game's own preset on install.
+rmSync(zipPath, { force: true })
 execFileSync('zip', ['-qrj', zipPath.pathname, outDir.pathname])
 console.log(`\nPack built: ${written} beaches -> ${zipPath.pathname}`)
 console.log('Next: upload it, then set downloadUrl and status "released" on the')
