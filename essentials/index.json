@@ -19,6 +19,24 @@
       "dependencies": []
     },
     {
+      "id": "AttackStudioYT-TidePoolMod",
+      "name": "TidePool In-Game Mod",
+      "owner": "AttackStudioYT",
+      "summary": "Puts custom breaks on the map, so you can actually pick them.",
+      "description": "Surf Sandbox's break select is a map of Oahu whose sixteen markers are built into the scene, not read from the levels folder. So a custom break sits on disk where the game never looks for it - installed, valid, and unreachable.\n\nThis adds a marker for every custom break you have, named, in a column down the left of the map. Install it and Break Pack becomes playable.\n\nNeeds MelonLoader, which is in Essentials. Install that first; its first launch takes a minute while it generates files.",
+      "status": "released",
+      "version": "1.0.1",
+      "downloadUrl": "https://github.com/AttackStudios/tidepool/releases/download/tidepool-mod-1.0.1/tidepool-mod.zip",
+      "icon": null,
+      "homepage": "https://github.com/AttackStudios/tidepool/tree/main/plugin",
+      "categories": [
+        "Mods"
+      ],
+      "dependencies": [
+        "LavaGang-MelonLoader"
+      ]
+    },
+    {
       "id": "AttackStudioYT-SurfMP",
       "name": "SurfMP",
       "owner": "AttackStudioYT",

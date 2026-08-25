@@ -446,10 +446,11 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
       if (mod.status !== 'released' || !mod.downloadUrl || !mod.version) {
         throw new Error(`${mod.name} isn't released yet, so there's nothing to install.`)
       }
-      // A loader is not a mod either. It bootstraps from a DLL beside the
-      // executable and reads its own folders out of the game install, so none
-      // of it is per-profile.
-      if (mod.categories.includes('Loader')) {
+      // Loaders and MelonLoader mods both live in the game install rather than
+      // a profile — a loader bootstraps from a DLL beside the executable, and
+      // MelonLoader reads its mods from the game's own Mods folder. Neither is
+      // per-profile, and both ship with a layout that has to be preserved.
+      if (mod.categories.includes('Loader') || mod.categories.includes('Mods')) {
         const game = resolveGame()
         if (!game) throw new Error('No game folder set. Use "Locate game" to pick it.')
         event.sender.send(CHANNELS.installProgress, {
