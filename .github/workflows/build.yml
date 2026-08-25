@@ -71,7 +71,8 @@ jobs:
         run: |
           ls -la dist-release
           PRERELEASE=""
-          case "${GITHUB_REF_NAME}" in *-rc*|*-beta*|*-alpha*) PRERELEASE="--prerelease" ;; esac
+          IS_PRE=false
+          case "${GITHUB_REF_NAME}" in *-rc*|*-beta*|*-alpha*) PRERELEASE="--prerelease"; IS_PRE=true ;; esac
 
           # Idempotent on purpose. A re-run, or a tag that was moved after a
           # first build already published, would otherwise fail with "a release
@@ -80,9 +81,16 @@ jobs:
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             echo "Release exists; replacing its assets with this build."
             gh release upload "${GITHUB_REF_NAME}" dist-release/* --clobber
+            # --draft=false is not redundant. Deleting a tag turns its published
+            # release back into a draft, and a draft is invisible to the
+            # anonymous API -- so the download page stays locked and every asset
+            # link 404s, while the announcement still goes out. Re-tagging after
+            # a bad build is exactly when that would happen.
             gh release edit "${GITHUB_REF_NAME}" \
               --title "TidePool ${GITHUB_REF_NAME}" \
-              --notes-file docs/launch/release-notes.md
+              --notes-file docs/launch/release-notes.md \
+              --draft=false \
+              --prerelease="${IS_PRE}"
           else
             gh release create "${GITHUB_REF_NAME}" dist-release/* \
               --title "TidePool ${GITHUB_REF_NAME}" \
