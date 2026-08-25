@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Exercises the netcode without the game.
+
+    Session and the transport were kept free of any MelonLoader or Unity
+    dependency precisely so this could exist: real sockets on localhost, real
+    packets, run from a terminal in two seconds. The alternative is launching
+    Surf Sandbox twice and surfing to find out whether a handshake works.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>SurfMP.Harness</AssemblyName>
+    <RootNamespace>TidePool.SurfMP.Harness</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Harness.cs" />
+    <Compile Include="../src/Net/*.cs" />
+  </ItemGroup>
+
+</Project>

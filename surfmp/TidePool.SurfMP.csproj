@@ -20,6 +20,16 @@
     <MLDir>$(GameDir)\MelonLoader</MLDir>
   </PropertyGroup>
 
+  <!--
+    The harness under tests/ compiles the same Net sources into its own console
+    assembly. Without this the mod's default glob swallows it, and both projects
+    generate an AssemblyInfo that collides.
+  -->
+  <ItemGroup>
+    <Compile Remove="tests/**" />
+    <None Remove="tests/**" />
+  </ItemGroup>
+
   <ItemGroup>
     <Reference Include="MelonLoader"><HintPath>$(MLDir)\net6\MelonLoader.dll</HintPath></Reference>
     <Reference Include="0Harmony"><HintPath>$(MLDir)\net6\0Harmony.dll</HintPath></Reference>

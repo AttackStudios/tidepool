@@ -27,6 +27,12 @@ public class Mod : MelonMod
         Log = LoggerInstance;
         Log.Msg("SurfMP 0.2.0 — wave probe. No networking yet.");
         WaveProbe.Install(HarmonyInstance);
+
+        // The netcode has no game dependency, so that it can be tested headless.
+        // This is where it gets one.
+        Net.NetLog.Info = Log.Msg;
+        Net.NetLog.Warn = Log.Warning;
+        Net.NetLog.Error = Log.Error;
     }
 
     /// <summary>Cheap: a float compare until the simulation exists.</summary>
