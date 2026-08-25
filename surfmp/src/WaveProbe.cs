@@ -92,22 +92,31 @@ internal static class WaveProbe
     private static void OnSampled(m __instance) => _sampledByGame = __instance;
 
     /// <summary>
-    /// Watch a handful of fixed points every frame.
+    /// Find the water by looking for what moves.
     ///
-    /// The range across all 321 samples was stable at 0.00..35.00 for twenty
-    /// seconds of actual surfing, and the profile decays from shore to offshore
-    /// like a seabed. But a steady swell would hold a steady crest-to-trough
-    /// envelope too, so that reading fits both a static ground profile and live
-    /// water, and those two have opposite consequences for SurfMP.
+    /// ex(int) turned out to be terrain: twenty-three static readings against
+    /// one, and its values are integers matching the .lvl format's 1/32
+    /// quantisation of ground heights. So the surface lives in one of the
+    /// obfuscated buffers on this same instance.
     ///
-    /// A single point settles it. Ground does not move between frames; water
-    /// does. So track each point's spread over time rather than the surface's
-    /// spread over space.
+    /// Guessing which, one launch at a time, is what the last four builds cost.
+    /// Instead apply the trick that just worked: enumerate every member of the
+    /// live instance, read whatever can be read, and report which values change
+    /// between frames. Terrain holds still. Water does not.
     /// </summary>
-    private static readonly int[] Watched = { 20, 60, 100, 140, 180, 220 };
-    private static readonly float[] Lo = new float[6];
-    private static readonly float[] Hi = new float[6];
-    private static bool _watching;
+    private sealed class Candidate
+    {
+        internal string Name;
+        internal Func<int, float> Read;
+        internal float Lo = float.MaxValue;
+        internal float Hi = float.MinValue;
+    }
+
+    private static readonly List<Candidate> Candidates = new List<Candidate>();
+    private static bool _scanned;
+
+    /// <summary>Spread across the array, avoiding the dry-beach end where nothing happens.</summary>
+    private static readonly int[] Probe = { 60, 110, 160, 210 };
 
     internal static void Tick()
     {
@@ -122,41 +131,103 @@ internal static class WaveProbe
             return;
         }
 
-        // Every frame, not every three seconds: the question is whether these
-        // points move at all, and sampling slowly would miss it.
-        if (!_watching)
-        {
-            _watching = true;
-            for (var k = 0; k < Watched.Length; k++) { Lo[k] = float.MaxValue; Hi[k] = float.MinValue; }
-        }
+        if (!_scanned) { _scanned = true; Scan(wave); }
 
-        for (var k = 0; k < Watched.Length; k++)
+        // Every frame. The question is whether these values move at all, and
+        // sampling once every three seconds would miss it.
+        foreach (var c in Candidates)
         {
-            float h;
-            try { h = wave.ex(Watched[k]); }
-            catch (Exception) { continue; }
-            if (float.IsNaN(h)) continue;
-            if (h < Lo[k]) Lo[k] = h;
-            if (h > Hi[k]) Hi[k] = h;
+            foreach (var i in Probe)
+            {
+                float v;
+                try { v = c.Read(i); } catch (Exception) { continue; }
+                if (float.IsNaN(v) || float.IsInfinity(v)) continue;
+                if (v < c.Lo) c.Lo = v;
+                if (v > c.Hi) c.Hi = v;
+            }
         }
 
         if (UnityEngine.Time.time < _next) return;
         _next = UnityEngine.Time.time + Period;
 
-        var moved = 0f;
-        var row = new StringBuilder();
-        for (var k = 0; k < Watched.Length; k++)
+        var moving = new StringBuilder();
+        var still = 0;
+        foreach (var c in Candidates)
         {
-            if (Lo[k] > Hi[k]) continue;
-            var spread = Hi[k] - Lo[k];
-            if (spread > moved) moved = spread;
-            row.Append($"[{Watched[k]}]{Lo[k]:F2}~{Hi[k]:F2} ");
-            Lo[k] = float.MaxValue; Hi[k] = float.MinValue;
+            if (c.Lo > c.Hi) { still++; continue; }
+            var spread = c.Hi - c.Lo;
+            if (spread > 0.001f) moving.Append($"{c.Name}:{c.Lo:F2}~{c.Hi:F2} ");
+            else still++;
+            c.Lo = float.MaxValue; c.Hi = float.MinValue;
         }
 
-        Mod.Log.Msg(moved > 0.001f
-            ? $"[wave] MOVING, max spread {moved:F3} over 3s \u2014 this is the water surface | {row}"
-            : $"[wave] static over 3s \u2014 this is terrain, not water | {row}");
+        Mod.Log.Msg(moving.Length > 0
+            ? $"[wave] MOVING \u2014 {moving}"
+            : $"[wave] nothing moved ({Candidates.Count} candidate(s), {still} static)");
+    }
+
+    /// <summary>
+    /// List everything on the type, then keep whatever can actually be read as a
+    /// float by index. Written defensively throughout: this is reflection over an
+    /// obfuscated Il2Cpp type, and most of what it tries will fail.
+    /// </summary>
+    private static void Scan(m wave)
+    {
+        Mod.Log.Msg("[probe] scanning the live instance for readable buffers");
+
+        const BindingFlags Any = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+
+        foreach (var f in typeof(m).GetFields(Any))
+            Consider(f.Name, f.FieldType, () => f.GetValue(wave));
+
+        foreach (var pr in typeof(m).GetProperties(Any))
+        {
+            if (pr.GetIndexParameters().Length != 0) continue;
+            Consider(pr.Name, pr.PropertyType, () => pr.GetValue(wave));
+        }
+
+        // Methods shaped like a sampler: one int in, one float out. ex is the
+        // known terrain one; its siblings are exactly where water would hide.
+        foreach (var mi in typeof(m).GetMethods(Any))
+        {
+            if (mi.ReturnType != typeof(float)) continue;
+            var ps = mi.GetParameters();
+            if (ps.Length != 1 || ps[0].ParameterType != typeof(int)) continue;
+            var name = mi.Name;
+            Candidates.Add(new Candidate
+            {
+                Name = $"{name}()",
+                Read = i => (float)mi.Invoke(wave, new object[] { i }),
+            });
+            Mod.Log.Msg($"[probe]   method {name}(int) -> float");
+        }
+
+        Mod.Log.Msg($"[probe] {Candidates.Count} readable candidate(s)");
+    }
+
+    private static void Consider(string name, Type type, Func<object> get)
+    {
+        var typeName = type.Name;
+        object value;
+        try { value = get(); } catch (Exception) { return; }
+        if (value == null) return;
+
+        Mod.Log.Msg($"[probe]   {name} : {typeName}");
+
+        if (value is float[] arr)
+        {
+            Candidates.Add(new Candidate { Name = name, Read = i => i < arr.Length ? arr[i] : float.NaN });
+            return;
+        }
+
+        // NativeArray and the Il2Cpp collection wrappers all expose an indexer or
+        // a get_Item; take whichever answers rather than special-casing types that
+        // may not even be generated in this interop build.
+        var item = value.GetType().GetMethod("get_Item", new[] { typeof(int) });
+        if (item == null || item.ReturnType != typeof(float)) return;
+
+        Candidates.Add(new Candidate { Name = name, Read = i => (float)item.Invoke(value, new object[] { i }) });
+        Mod.Log.Msg($"[probe]     ^ indexable, watching it");
     }
 
     /// <summary>One full read, to see the surface's shape rather than just its range.</summary>
