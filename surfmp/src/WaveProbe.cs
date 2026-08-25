@@ -32,8 +32,22 @@ internal static class WaveProbe
     /// <summary>Il2Cpp leaves untouched buffers filled with this; it is not data.</summary>
     private const float Sentinel = 1e30f;
 
-    /// <summary>Spread along the beach, avoiding the dry end where nothing happens.</summary>
-    private static readonly int[] Probe = { 60, 110, 160, 210 };
+    /// <summary>
+    /// The simulation is a grid, not a line: 31137 = 321 x 97, with vn's 321
+    /// being the along-beach axis that GroundHeights also uses.
+    ///
+    /// Sampling 60..210 as if the array were flat walked diagonally across it
+    /// with a stride of 97, which is what produced the period-96 clustering I
+    /// misread as a per-wave structure. These probes stay on one line instead.
+    /// </summary>
+    private const int Along = 321;
+    private const int Across = 97;
+
+    /// <summary>Four points across the same stretch of water, under stride-97 layout.</summary>
+    private static readonly int[] Probe =
+    {
+        160 * Across + 10, 160 * Across + 30, 160 * Across + 50, 160 * Across + 70,
+    };
 
     private sealed class Candidate
     {
@@ -91,16 +105,28 @@ internal static class WaveProbe
     /// constructor: an earlier build called Time.time here, the wave simulation is
     /// built by the job system where that throws, and the result was silence.
     /// </summary>
-    private static void OnConstructed(m __instance)
+    private static void OnConstructed(m __instance, float a, float b, float c, float d, float e, int f)
     {
         try
         {
             if (__instance == null) return;
             Instances.Add(__instance);
             _ctorHits++;
+
+            // The ocean is generated from these. If a client can be handed the
+            // same six values and the same clock, it simulates the same sea for
+            // a few bytes — which is the whole design now that the surface is
+            // known to be 31137 floats and far too large to broadcast.
+            //
+            // Stored rather than logged: this runs on a job thread, and an
+            // earlier build proved that touching anything else here is fatal.
+            _args = $"{a:F3} {b:F3} {c:F3} {d:F3} {e:F3} {f}";
         }
         catch (Exception) { /* never disturb the game */ }
     }
+
+    private static string _args;
+    private static bool _argsLogged;
 
     /// <summary>Runs as often as the game samples its wave, so it does one thing.</summary>
     private static void OnSampled(m __instance) => _sampledByGame = __instance;
@@ -121,6 +147,12 @@ internal static class WaveProbe
         }
 
         if (!_scanned) { _scanned = true; Scan(wave); }
+
+        if (!_argsLogged && _args != null)
+        {
+            _argsLogged = true;
+            Mod.Log.Msg($"[probe] simulation built from: {_args}");
+        }
 
         // Every frame. The question is whether a given point changes between
         // frames, and sampling once every three seconds would miss it.
@@ -190,22 +222,34 @@ internal static class WaveProbe
     /// </summary>
     private static void Profile(Candidate c)
     {
+        Row(c, "across", j => 160 * Across + j, Across, 4);
+        Row(c, "along ", i => i * Across + 48, Along, 16);
+    }
+
+    /// <summary>
+    /// One line through the grid. Both axes are printed because which of the two
+    /// is offshore is not yet established, and a wave is obvious in one and flat
+    /// in the other.
+    /// </summary>
+    private static void Row(Candidate c, string axis, Func<int, int> index, int count, int step)
+    {
         var row = new StringBuilder();
         float lo = float.MaxValue, hi = float.MinValue;
         var crest = -1;
 
-        for (var i = 0; i < Samples; i += 16)
+        for (var n = 0; n < count; n += step)
         {
+            var i = index(n);
             float v;
             try { v = c.Read(i); } catch (Exception) { return; }
             if (float.IsNaN(v) || Math.Abs(v) > Sentinel) { row.Append("-- "); continue; }
             row.Append(v.ToString("F2")).Append(' ');
             if (v < lo) lo = v;
-            if (v > hi) { hi = v; crest = i; }
+            if (v > hi) { hi = v; crest = n; }
         }
 
-        if (lo > hi) return;
-        Mod.Log.Msg($"[wave] {c.Name} [{lo:F2}..{hi:F2}] peak@{crest} : {row}");
+        if (lo > hi || hi - lo < 0.01f) return;
+        Mod.Log.Msg($"[wave] {c.Name} {axis} [{lo:F2}..{hi:F2}] peak@{crest} : {row}");
     }
 
     // ---- discovery -------------------------------------------------------
