@@ -114,5 +114,8 @@ export function beachFileName(brk) {
   const base = ascii.replace(/[<>:"/\\|?*\x00-\x1f]+/g, '').trim()
   // Only disambiguate on an actual clash, so eight of the nine keep their real
   // names and the ninth is obviously ours rather than a replacement.
-  return SHIPPED_LEVELS.has(base) ? `${base} (Break Pack).lvl` : `${base}.lvl`
+  // Prefixed so the pack groups together in the game's level list instead of
+  // scattering through sixteen presets with nothing to say which is which.
+  // "[" sorts ahead of letters, so the set lands together at the top.
+  return `[BP] ${base}.lvl`
 }
