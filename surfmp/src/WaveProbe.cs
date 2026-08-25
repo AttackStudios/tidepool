@@ -8,40 +8,39 @@ using Il2CppSurf;
 namespace TidePool.SurfMP;
 
 /// <summary>
-/// Reads the wave surface, to find out whether SurfMP is buildable at all.
+/// Finds the live wave simulation and reads its surface.
 ///
-/// The design rests on the host reading the surface and broadcasting it. The
-/// simulation lives in <c>Surf.m</c> behind 22 obfuscated
-/// <c>NativeArray&lt;float&gt;</c> buffers, but the class exposes
-/// <c>public float ex(int)</c> — exactly the shape of a sampler. If it is one,
-/// the surface can be read without touching the buffers at all.
+/// <c>ex(int)</c> is confirmed callable and never throws \u2014 the biggest risk in
+/// the whole design, and it is retired. What is not settled is which <c>m</c>
+/// to call it on. Instance #0 is built about 60ms into startup, long before a
+/// beach exists, and reads a flat 0.00 forever.
 ///
-/// Patches are applied by enumeration and each one is wrapped separately. The
-/// names here are obfuscated and will churn between game builds, so anything
-/// that assumes a signature is a guess that costs a launch to disprove — and
-/// one bad patch must never take the working ones down with it.
+/// So capture by two independent routes rather than betting on one:
+///
+/// 1. The constructors, which say when an instance comes into being.
+/// 2. <c>ex(int)</c> itself. If the game samples its own wave surface, that
+///    postfix hands over the live instance directly \u2014 no inference required.
+///
+/// Route 2 is the one that cannot really fail: an instance the game is actively
+/// sampling is by definition the one carrying the water.
 /// </summary>
 internal static class WaveProbe
 {
     private const int Samples = 321;
     private const float Period = 3f;
 
-    /// <summary>
-    /// Every instance ever constructed, not just the first.
-    ///
-    /// The first attempt adopted instance #0 and held it, and every sample came
-    /// back exactly 0.00 forever \u2014 because that one is built about 60ms into
-    /// startup, long before a beach is loaded. It was never the live simulation.
-    /// Which one is cannot be known in advance, so keep them all and let the
-    /// numbers say: the live one is whichever stops reading flat.
-    /// </summary>
     private static readonly List<m> Instances = new List<m>();
+
+    /// <summary>Set from ex()'s own postfix. Hot path \u2014 an assignment and nothing else.</summary>
+    private static m _sampledByGame;
 
     private static float _next;
     private static int _live = -1;
+    private static int _ctorHits;
+    private static int _ticks;
 
-    /// <summary>The instance actually carrying wave data, once one has proven itself.</summary>
-    internal static m Live => _live >= 0 && _live < Instances.Count ? Instances[_live] : null;
+    /// <summary>The instance carrying wave data, once one has proven itself.</summary>
+    internal static m Live => _live >= 0 && _live < Instances.Count ? Instances[_live] : _sampledByGame;
 
     internal static void Install(HarmonyLib.Harmony harmony)
     {
@@ -51,30 +50,71 @@ internal static class WaveProbe
         var ctors = 0;
         foreach (var ctor in AccessTools.GetDeclaredConstructors(typeof(m)))
         {
+            // Skip the static constructor: it has no instance to hand back, and
+            // patching type initialisers is a good way to break a type outright.
+            if (ctor.IsStatic) continue;
             try { harmony.Patch(ctor, postfix: capture); ctors++; }
-            catch (Exception e) { Mod.Log.Warning($"[probe] ctor ({ctor.GetParameters().Length} args): {e.Message}"); }
+            catch (Exception e) { Mod.Log.Warning($"[probe] ctor: {e.Message}"); }
         }
-        Mod.Log.Msg($"[probe] {ctors} constructor(s) patched");
+        Mod.Log.Msg($"[probe] {ctors} instance constructor(s) patched");
+
+        try
+        {
+            var ex = AccessTools.Method(typeof(m), "ex", new[] { typeof(int) });
+            if (ex == null) { Mod.Log.Error("[probe] ex(int) not found"); return; }
+            harmony.Patch(ex, postfix: new HarmonyMethod(typeof(WaveProbe).GetMethod(
+                nameof(OnSampled), BindingFlags.NonPublic | BindingFlags.Static)));
+            Mod.Log.Msg("[probe] ex(int) patched \u2014 will catch whichever instance the game reads");
+        }
+        catch (Exception e) { Mod.Log.Error($"[probe] ex(int): {e.Message}"); }
     }
 
+    /// <summary>
+    /// Nothing here may throw. A postfix that does propagates into the game's own
+    /// constructor, and the previous build's silence is exactly what that looks
+    /// like: no instance, no error, no wave.
+    /// </summary>
     private static void OnConstructed(m __instance)
     {
-        if (__instance == null) return;
-        Instances.Add(__instance);
-        Mod.Log.Msg($"[probe] instance #{Instances.Count - 1} constructed at t={UnityEngine.Time.time:F1}s");
+        try
+        {
+            if (__instance == null) return;
+            Instances.Add(__instance);
+            _ctorHits++;
+        }
+        catch (Exception) { /* never disturb the game */ }
     }
 
-    /// <summary>Sample on our own clock \u2014 which is what a host broadcasting the wave needs anyway.</summary>
+    /// <summary>
+    /// Called as often as the game samples its own wave, so it does exactly one
+    /// thing. No logging, no allocation, no Unity API.
+    /// </summary>
+    private static void OnSampled(m __instance) => _sampledByGame = __instance;
+
+    /// <summary>Sample on our own clock \u2014 what a host broadcasting the wave needs anyway.</summary>
     internal static void Tick()
     {
-        if (Instances.Count == 0) return;
         if (UnityEngine.Time.time < _next) return;
         _next = UnityEngine.Time.time + Period;
+        _ticks++;
+
+        // A heartbeat even with nothing found, so silence in the log means the
+        // update loop is dead rather than the search being empty. Last time those
+        // two were indistinguishable and cost a launch to tell apart.
+        if (Instances.Count == 0 && _sampledByGame == null)
+        {
+            if (_ticks % 5 == 1)
+                Mod.Log.Msg($"[probe] waiting \u2014 {_ctorHits} construction(s), game has not sampled ex() yet");
+            return;
+        }
+
+        var candidates = new List<m>(Instances);
+        if (_sampledByGame != null && !candidates.Contains(_sampledByGame)) candidates.Add(_sampledByGame);
 
         var summary = new StringBuilder();
         var found = -1;
 
-        for (var idx = 0; idx < Instances.Count; idx++)
+        for (var idx = 0; idx < candidates.Count; idx++)
         {
             float min = float.MaxValue, max = float.MinValue;
             var ok = true;
@@ -82,36 +122,32 @@ internal static class WaveProbe
             for (var i = 0; i < Samples; i += 10)
             {
                 float h;
-                try { h = Instances[idx].ex(i); }
-                catch (Exception e)
-                {
-                    summary.Append($"#{idx}:{e.GetType().Name} ");
-                    ok = false;
-                    break;
-                }
+                try { h = candidates[idx].ex(i); }
+                catch (Exception e) { summary.Append($"#{idx}:{e.GetType().Name} "); ok = false; break; }
                 if (float.IsNaN(h)) continue;
                 if (h < min) min = h;
                 if (h > max) max = h;
             }
 
             if (!ok) continue;
-            summary.Append($"#{idx}:{min:F2}..{max:F2} ");
+            var tag = ReferenceEquals(candidates[idx], _sampledByGame) ? "*" : "";
+            summary.Append($"#{idx}{tag}:{min:F2}..{max:F2} ");
 
-            // Flat means either the wrong instance or a dead one. A range means water.
+            // Flat means the wrong instance, or a dead one. A range means water.
             if (max - min > 0.001f && found < 0) found = idx;
         }
 
         if (found >= 0 && found != _live)
         {
             _live = found;
-            Mod.Log.Msg($"[probe] instance #{found} is the live wave \u2014 ex(int) IS a height sampler");
-            Dump(Instances[found]);
+            Mod.Log.Msg($"[probe] #{found} is the live wave \u2014 ex(int) IS a height sampler");
+            Dump(candidates[found]);
         }
 
-        Mod.Log.Msg($"[wave] {Instances.Count} instance(s) | {summary}");
+        Mod.Log.Msg($"[wave] {candidates.Count} candidate(s) (* = game-sampled) | {summary}");
     }
 
-    /// <summary>One full read of the surface, to see its actual shape rather than its range.</summary>
+    /// <summary>One full read, to see the surface's shape rather than just its range.</summary>
     private static void Dump(m wave)
     {
         var row = new StringBuilder();
