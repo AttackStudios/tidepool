@@ -149,3 +149,25 @@ describe('steamRunUrl', () => {
     expect(steamRunUrl()).toBe('steam://rungameid/4480760')
   })
 })
+
+describe('launching with MelonLoader', () => {
+  it('does not demand a staged loader, because MelonLoader lives in the game', () => {
+    // The profile is bare. With BepInEx that is a refusal; with MelonLoader
+    // there is nothing to place, so refusing would block a working setup.
+    mkdirSync(join(root, 'MelonLoader'), { recursive: true })
+    const bare = mkdtempSync(join(tmpdir(), 'tp-ml-'))
+    const { spawn } = fakeSpawn()
+    const plan = buildLaunchPlan(bare, { loader: 'melonloader' })
+    expect(launchGame(root, bare, plan, 'modded', 'win32', spawn).started).toBe(true)
+    rmSync(bare, { recursive: true, force: true })
+  })
+
+  it('still refuses when neither loader is present', () => {
+    const bare = mkdtempSync(join(tmpdir(), 'tp-none-'))
+    const { spawn } = fakeSpawn()
+    const outcome = launchGame(root, bare, buildLaunchPlan(bare, { loader: 'bepinex' }), 'modded', 'win32', spawn)
+    expect(outcome.started).toBe(false)
+    expect(outcome.reason).toMatch(/no mod loader/i)
+    rmSync(bare, { recursive: true, force: true })
+  })
+})

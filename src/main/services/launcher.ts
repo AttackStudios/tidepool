@@ -16,7 +16,7 @@ import { spawn } from 'node:child_process'
 import { cpSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type { LaunchPlan } from './launch'
-import { inspectGameFolder } from './gamefolder'
+import { detectLoader, inspectGameFolder } from './gamefolder'
 import { LOADER_STAGING } from './install'
 import { SURF_SANDBOX_APP_ID } from './steam'
 
@@ -99,13 +99,18 @@ export function launchGame(
     return { started: false, mode, reason: `No executable found beside ${folder.dataDir}` }
   }
 
-  if (mode !== 'vanilla' && placeLoader(profileDir, gameRoot) === null) {
-    return {
-      started: false,
-      mode,
-      reason:
-        'This profile has no mod loader installed, so the game would start unmodded. ' +
-        'Install BepInEx from Browse, then launch again.',
+  // MelonLoader installs into the game itself and bootstraps from version.dll,
+  // so there is nothing to place and nothing to refuse. Only BepInEx keeps its
+  // loader in the profile and needs it copied across at launch.
+  if (mode !== 'vanilla' && detectLoader(gameRoot) !== 'melonloader') {
+    if (placeLoader(profileDir, gameRoot) === null) {
+      return {
+        started: false,
+        mode,
+        reason:
+          'No mod loader found. TidePool looks for MelonLoader in the game folder, or BepInEx ' +
+          'installed into this profile — neither is there, so the game would start unmodded.',
+      }
     }
   }
 

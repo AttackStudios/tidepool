@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { findGameInstall } from './services/steam'
 import { inspectGameFolder } from './services/gamefolder'
 import { canLaunchDirectly, launchGame, placeLoader, steamRunUrl } from './services/launcher'
+import { detectLoader } from './services/gamefolder'
+import { DEFAULT_LOADER } from '../shared/loaders'
 import { findUpdates } from './services/updates'
 import { decodeProfile, encodeProfile, refsFor } from './services/profilecode'
 import { analyseRemoval } from './services/dependents'
@@ -177,7 +179,12 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
       // switch Doorstop off, not the modded arguments with the mode discarded
       // later.
       const profileDir = profiles.dir(profileId)
-      const plan = buildLaunchPlan(profileDir, { modded: mode !== 'vanilla' })
+      // The plan differs entirely by loader: MelonLoader takes --no-mods to
+      // switch off and nothing to switch on; BepInEx takes Doorstop arguments.
+      const plan = buildLaunchPlan(profileDir, {
+        loader: detectLoader(game.root) ?? DEFAULT_LOADER,
+        modded: mode !== 'vanilla',
+      })
       return launchGame(game.root, profileDir, plan, mode)
     }),
   )
