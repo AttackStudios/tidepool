@@ -108,16 +108,32 @@ internal static class WaveProbe
     {
         internal string Name;
         internal Func<int, float> Read;
-        internal float Lo = float.MaxValue;
-        internal float Hi = float.MinValue;
+        /// <summary>Per index, not pooled. See the note on Tick.</summary>
+        internal float[] Lo;
+        internal float[] Hi;
     }
 
     private static readonly List<Candidate> Candidates = new List<Candidate>();
     private static bool _scanned;
+    private static string _found;
 
-    /// <summary>Spread across the array, avoiding the dry-beach end where nothing happens.</summary>
+    /// <summary>Spread along the beach, avoiding the dry end where nothing happens.</summary>
     private static readonly int[] Probe = { 60, 110, 160, 210 };
 
+    /// <summary>Il2Cpp leaves untouched buffers filled with this; it is not data.</summary>
+    private const float Sentinel = 1e30f;
+
+    /// <summary>
+    /// Track every probe point separately.
+    ///
+    /// The previous build pooled min and max across all four indices at once, so
+    /// an array that merely varies ALONG the beach registered as moving even when
+    /// it was perfectly static in time — vn reported a 0..18 range identical to
+    /// ex(), which is proven terrain. Spatial variation is not motion.
+    ///
+    /// Keeping a range per index answers the actual question: does this one point
+    /// change between frames? Terrain holds still at every point. Water does not.
+    /// </summary>
     internal static void Tick()
     {
         var wave = Live;
@@ -133,17 +149,15 @@ internal static class WaveProbe
 
         if (!_scanned) { _scanned = true; Scan(wave); }
 
-        // Every frame. The question is whether these values move at all, and
-        // sampling once every three seconds would miss it.
         foreach (var c in Candidates)
         {
-            foreach (var i in Probe)
+            for (var k = 0; k < Probe.Length; k++)
             {
                 float v;
-                try { v = c.Read(i); } catch (Exception) { continue; }
-                if (float.IsNaN(v) || float.IsInfinity(v)) continue;
-                if (v < c.Lo) c.Lo = v;
-                if (v > c.Hi) c.Hi = v;
+                try { v = c.Read(Probe[k]); } catch (Exception) { continue; }
+                if (float.IsNaN(v) || float.IsInfinity(v) || Math.Abs(v) > Sentinel) continue;
+                if (v < c.Lo[k]) c.Lo[k] = v;
+                if (v > c.Hi[k]) c.Hi[k] = v;
             }
         }
 
@@ -151,19 +165,53 @@ internal static class WaveProbe
         _next = UnityEngine.Time.time + Period;
 
         var moving = new StringBuilder();
-        var still = 0;
+        var best = 0f;
+        Candidate winner = null;
+
         foreach (var c in Candidates)
         {
-            if (c.Lo > c.Hi) { still++; continue; }
-            var spread = c.Hi - c.Lo;
-            if (spread > 0.001f) moving.Append($"{c.Name}:{c.Lo:F2}~{c.Hi:F2} ");
-            else still++;
-            c.Lo = float.MaxValue; c.Hi = float.MinValue;
+            // The most any single point moved. A buffer sloping along the beach
+            // but frozen in time scores zero here, which is the whole point.
+            var worst = 0f;
+            for (var k = 0; k < Probe.Length; k++)
+            {
+                if (c.Lo[k] > c.Hi[k]) continue;
+                var d = c.Hi[k] - c.Lo[k];
+                if (d > worst) worst = d;
+                c.Lo[k] = float.MaxValue; c.Hi[k] = float.MinValue;
+            }
+
+            if (worst <= 0.001f) continue;
+            moving.Append($"{c.Name}:{worst:F2} ");
+            if (worst > best) { best = worst; winner = c; }
         }
 
-        Mod.Log.Msg(moving.Length > 0
-            ? $"[wave] MOVING \u2014 {moving}"
-            : $"[wave] nothing moved ({Candidates.Count} candidate(s), {still} static)");
+        if (moving.Length == 0) { Mod.Log.Msg($"[wave] nothing moved ({Candidates.Count} candidates)"); return; }
+
+        Mod.Log.Msg($"[wave] per-point motion over 3s \u2014 {moving}");
+
+        if (winner != null && winner.Name != _found)
+        {
+            _found = winner.Name;
+            Mod.Log.Msg($"[wave] strongest mover: {winner.Name} (moved {best:F2})");
+            Profile(winner);
+        }
+    }
+
+    /// <summary>The whole array at one instant, to see whether it looks like water.</summary>
+    private static void Profile(Candidate c)
+    {
+        var row = new StringBuilder();
+        for (var i = 0; i < Samples; i += 20)
+        {
+            try
+            {
+                var v = c.Read(i);
+                row.Append(Math.Abs(v) > Sentinel ? "--" : v.ToString("F2")).Append(' ');
+            }
+            catch (Exception) { return; }
+        }
+        Mod.Log.Msg($"[wave] {c.Name} shape: {row}");
     }
 
     /// <summary>
@@ -194,15 +242,18 @@ internal static class WaveProbe
             var ps = mi.GetParameters();
             if (ps.Length != 1 || ps[0].ParameterType != typeof(int)) continue;
             var name = mi.Name;
-            Candidates.Add(new Candidate
-            {
-                Name = $"{name}()",
-                Read = i => (float)mi.Invoke(wave, new object[] { i }),
-            });
+            Add($"{name}()", i => (float)mi.Invoke(wave, new object[] { i }));
             Mod.Log.Msg($"[probe]   method {name}(int) -> float");
         }
 
         Mod.Log.Msg($"[probe] {Candidates.Count} readable candidate(s)");
+    }
+
+    private static void Add(string name, Func<int, float> read)
+    {
+        var c = new Candidate { Name = name, Read = read, Lo = new float[Probe.Length], Hi = new float[Probe.Length] };
+        for (var k = 0; k < Probe.Length; k++) { c.Lo[k] = float.MaxValue; c.Hi[k] = float.MinValue; }
+        Candidates.Add(c);
     }
 
     private static void Consider(string name, Type type, Func<object> get)
@@ -216,7 +267,7 @@ internal static class WaveProbe
 
         if (value is float[] arr)
         {
-            Candidates.Add(new Candidate { Name = name, Read = i => i < arr.Length ? arr[i] : float.NaN });
+            Add(name, i => i < arr.Length ? arr[i] : float.NaN);
             return;
         }
 
@@ -226,7 +277,7 @@ internal static class WaveProbe
         var item = value.GetType().GetMethod("get_Item", new[] { typeof(int) });
         if (item == null || item.ReturnType != typeof(float)) return;
 
-        Candidates.Add(new Candidate { Name = name, Read = i => (float)item.Invoke(value, new object[] { i }) });
+        Add(name, i => (float)item.Invoke(value, new object[] { i }));
         Mod.Log.Msg($"[probe]     ^ indexable, watching it");
     }
 
