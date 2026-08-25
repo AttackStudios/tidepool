@@ -115,7 +115,6 @@ internal static class WaveProbe
 
     private static readonly List<Candidate> Candidates = new List<Candidate>();
     private static bool _scanned;
-    private static string _found;
 
     /// <summary>Spread along the beach, avoiding the dry end where nothing happens.</summary>
     private static readonly int[] Probe = { 60, 110, 160, 210 };
@@ -186,32 +185,55 @@ internal static class WaveProbe
             if (worst > best) { best = worst; winner = c; }
         }
 
-        if (moving.Length == 0) { Mod.Log.Msg($"[wave] nothing moved ({Candidates.Count} candidates)"); return; }
+        if (moving.Length == 0)
+        {
+            // Worth logging. When the ocean went idle every buffer froze at once,
+            // which is what says this measurement tracks wave activity and not noise.
+            Mod.Log.Msg($"[wave] nothing moved ({Candidates.Count} candidates) \u2014 sim idle");
+            return;
+        }
 
         Mod.Log.Msg($"[wave] per-point motion over 3s \u2014 {moving}");
 
-        if (winner != null && winner.Name != _found)
-        {
-            _found = winner.Name;
-            Mod.Log.Msg($"[wave] strongest mover: {winner.Name} (moved {best:F2})");
-            Profile(winner);
-        }
+        // Ranking by raw magnitude was misleading: vl runs to thousands and vy to
+        // 1e20, so both won on scale while being the wrong quantity. Height is not
+        // the biggest number in the simulation. Print the shapes of the coherent
+        // movers instead and let the profile say which one is water.
+        foreach (var c in Candidates)
+            if (Array.IndexOf(Shortlist, c.Name) >= 0) Profile(c);
     }
+
+    /// <summary>
+    /// The buffers that move coherently while surfing.
+    ///
+    /// vg and vk move as a matched pair and swing both sides of zero, which is
+    /// what displacement about a waterline looks like. vh, vi and vx move
+    /// positive-only. Excluded: vn (terrain, moves only on a beach change), vl
+    /// (thousands \u2014 energy, not height), vy and vq (sentinel garbage).
+    /// </summary>
+    private static readonly string[] Shortlist = { "vf", "vg", "vh", "vi", "vk", "vx" };
 
     /// <summary>The whole array at one instant, to see whether it looks like water.</summary>
     private static void Profile(Candidate c)
     {
         var row = new StringBuilder();
-        for (var i = 0; i < Samples; i += 20)
+        float lo = float.MaxValue, hi = float.MinValue;
+        var crest = -1;
+
+        for (var i = 0; i < Samples; i += 16)
         {
-            try
-            {
-                var v = c.Read(i);
-                row.Append(Math.Abs(v) > Sentinel ? "--" : v.ToString("F2")).Append(' ');
-            }
-            catch (Exception) { return; }
+            float v;
+            try { v = c.Read(i); } catch (Exception) { return; }
+            if (Math.Abs(v) > Sentinel || float.IsNaN(v)) { row.Append("-- "); continue; }
+            row.Append(v.ToString("F2")).Append(' ');
+            if (v < lo) lo = v;
+            if (v > hi) { hi = v; crest = i; }
         }
-        Mod.Log.Msg($"[wave] {c.Name} shape: {row}");
+
+        if (lo > hi) return;
+        // Where the peak sits matters as much as its height: a wave has its crest
+        // somewhere out in the water and travels shorewards over successive reads.
+        Mod.Log.Msg($"[wave] {c.Name} [{lo:F2}..{hi:F2}] peak@{crest} : {row}");
     }
 
     /// <summary>
