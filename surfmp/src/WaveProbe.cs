@@ -8,39 +8,56 @@ using Il2CppSurf;
 namespace TidePool.SurfMP;
 
 /// <summary>
-/// Finds the live wave simulation and reads its surface.
+/// Finds the wave surface in the live simulation.
 ///
-/// <c>ex(int)</c> is confirmed callable and never throws \u2014 the biggest risk in
-/// the whole design, and it is retired. What is not settled is which <c>m</c>
-/// to call it on. Instance #0 is built about 60ms into startup, long before a
-/// beach exists, and reads a flat 0.00 forever.
+/// What is settled so far. <c>ex(int)</c> is a real sampler that never throws,
+/// but it reads terrain: its values are integers matching the .lvl format's
+/// 1/32 quantisation of ground heights, and they hold still except when the
+/// beach changes. The simulation carries 22 NativeArray buffers. Of the ones
+/// readable as floats, <c>vg</c> and <c>vk</c> move as a matched pair while
+/// surfing — but their non-zero values cluster at 48-80, 144-176 and 240-272
+/// with exact zeros between, repeating every 96. That is a per-wave structure,
+/// not a surface, so those buffers are not indexed by position along the beach.
 ///
-/// So capture by two independent routes rather than betting on one:
-///
-/// 1. The constructors, which say when an instance comes into being.
-/// 2. <c>ex(int)</c> itself. If the game samples its own wave surface, that
-///    postfix hands over the live instance directly \u2014 no inference required.
-///
-/// Route 2 is the one that cannot really fail: an instance the game is actively
-/// sampling is by definition the one carrying the water.
+/// Six buffers were dismissed only for refusing a float indexer, which is what
+/// a mesh of vertices does. So record what each member actually is — element
+/// type and length — before deciding anything. GroundHeights is 321 long, so a
+/// buffer of that length is indexed by position along the beach.
 /// </summary>
 internal static class WaveProbe
 {
     private const int Samples = 321;
     private const float Period = 3f;
 
+    /// <summary>Il2Cpp leaves untouched buffers filled with this; it is not data.</summary>
+    private const float Sentinel = 1e30f;
+
+    /// <summary>Spread along the beach, avoiding the dry end where nothing happens.</summary>
+    private static readonly int[] Probe = { 60, 110, 160, 210 };
+
+    private sealed class Candidate
+    {
+        internal string Name;
+        internal Func<int, float> Read;
+        /// <summary>Per index. Pooling these conflates a slope along the beach with motion.</summary>
+        internal float[] Lo;
+        internal float[] Hi;
+    }
+
+    private static readonly List<Candidate> Candidates = new List<Candidate>();
     private static readonly List<m> Instances = new List<m>();
 
-    /// <summary>Set from ex()'s own postfix. Hot path \u2014 an assignment and nothing else.</summary>
+    /// <summary>Set from ex()'s own postfix. Hot path — an assignment and nothing else.</summary>
     private static m _sampledByGame;
 
     private static float _next;
-    private static int _live = -1;
     private static int _ctorHits;
     private static int _ticks;
+    private static bool _scanned;
 
-    /// <summary>The instance carrying wave data, once one has proven itself.</summary>
-    internal static m Live => _live >= 0 && _live < Instances.Count ? Instances[_live] : _sampledByGame;
+    internal static m Live => _sampledByGame ?? (Instances.Count > 0 ? Instances[0] : null);
+
+    // ---- installation ----------------------------------------------------
 
     internal static void Install(HarmonyLib.Harmony harmony)
     {
@@ -50,8 +67,8 @@ internal static class WaveProbe
         var ctors = 0;
         foreach (var ctor in AccessTools.GetDeclaredConstructors(typeof(m)))
         {
-            // Skip the static constructor: it has no instance to hand back, and
-            // patching type initialisers is a good way to break a type outright.
+            // Skip the static constructor: no instance to hand back, and patching
+            // type initialisers is a good way to break a type outright.
             if (ctor.IsStatic) continue;
             try { harmony.Patch(ctor, postfix: capture); ctors++; }
             catch (Exception e) { Mod.Log.Warning($"[probe] ctor: {e.Message}"); }
@@ -64,15 +81,15 @@ internal static class WaveProbe
             if (ex == null) { Mod.Log.Error("[probe] ex(int) not found"); return; }
             harmony.Patch(ex, postfix: new HarmonyMethod(typeof(WaveProbe).GetMethod(
                 nameof(OnSampled), BindingFlags.NonPublic | BindingFlags.Static)));
-            Mod.Log.Msg("[probe] ex(int) patched \u2014 will catch whichever instance the game reads");
+            Mod.Log.Msg("[probe] ex(int) patched — will catch whichever instance the game reads");
         }
         catch (Exception e) { Mod.Log.Error($"[probe] ex(int): {e.Message}"); }
     }
 
     /// <summary>
     /// Nothing here may throw. A postfix that does propagates into the game's own
-    /// constructor, and the previous build's silence is exactly what that looks
-    /// like: no instance, no error, no wave.
+    /// constructor: an earlier build called Time.time here, the wave simulation is
+    /// built by the job system where that throws, and the result was silence.
     /// </summary>
     private static void OnConstructed(m __instance)
     {
@@ -85,54 +102,11 @@ internal static class WaveProbe
         catch (Exception) { /* never disturb the game */ }
     }
 
-    /// <summary>
-    /// Called as often as the game samples its own wave, so it does exactly one
-    /// thing. No logging, no allocation, no Unity API.
-    /// </summary>
+    /// <summary>Runs as often as the game samples its wave, so it does one thing.</summary>
     private static void OnSampled(m __instance) => _sampledByGame = __instance;
 
-    /// <summary>
-    /// Find the water by looking for what moves.
-    ///
-    /// ex(int) turned out to be terrain: twenty-three static readings against
-    /// one, and its values are integers matching the .lvl format's 1/32
-    /// quantisation of ground heights. So the surface lives in one of the
-    /// obfuscated buffers on this same instance.
-    ///
-    /// Guessing which, one launch at a time, is what the last four builds cost.
-    /// Instead apply the trick that just worked: enumerate every member of the
-    /// live instance, read whatever can be read, and report which values change
-    /// between frames. Terrain holds still. Water does not.
-    /// </summary>
-    private sealed class Candidate
-    {
-        internal string Name;
-        internal Func<int, float> Read;
-        /// <summary>Per index, not pooled. See the note on Tick.</summary>
-        internal float[] Lo;
-        internal float[] Hi;
-    }
+    // ---- measurement -----------------------------------------------------
 
-    private static readonly List<Candidate> Candidates = new List<Candidate>();
-    private static bool _scanned;
-
-    /// <summary>Spread along the beach, avoiding the dry end where nothing happens.</summary>
-    private static readonly int[] Probe = { 60, 110, 160, 210 };
-
-    /// <summary>Il2Cpp leaves untouched buffers filled with this; it is not data.</summary>
-    private const float Sentinel = 1e30f;
-
-    /// <summary>
-    /// Track every probe point separately.
-    ///
-    /// The previous build pooled min and max across all four indices at once, so
-    /// an array that merely varies ALONG the beach registered as moving even when
-    /// it was perfectly static in time — vn reported a 0..18 range identical to
-    /// ex(), which is proven terrain. Spatial variation is not motion.
-    ///
-    /// Keeping a range per index answers the actual question: does this one point
-    /// change between frames? Terrain holds still at every point. Water does not.
-    /// </summary>
     internal static void Tick()
     {
         var wave = Live;
@@ -142,12 +116,14 @@ internal static class WaveProbe
             _next = UnityEngine.Time.time + Period;
             _ticks++;
             if (_ticks % 5 == 1)
-                Mod.Log.Msg($"[probe] waiting \u2014 {_ctorHits} construction(s), game has not sampled ex() yet");
+                Mod.Log.Msg($"[probe] waiting — {_ctorHits} construction(s), game has not sampled ex() yet");
             return;
         }
 
         if (!_scanned) { _scanned = true; Scan(wave); }
 
+        // Every frame. The question is whether a given point changes between
+        // frames, and sampling once every three seconds would miss it.
         foreach (var c in Candidates)
         {
             for (var k = 0; k < Probe.Length; k++)
@@ -164,9 +140,6 @@ internal static class WaveProbe
         _next = UnityEngine.Time.time + Period;
 
         var moving = new StringBuilder();
-        var best = 0f;
-        Candidate winner = null;
-
         foreach (var c in Candidates)
         {
             // The most any single point moved. A buffer sloping along the beach
@@ -174,46 +147,47 @@ internal static class WaveProbe
             var worst = 0f;
             for (var k = 0; k < Probe.Length; k++)
             {
-                if (c.Lo[k] > c.Hi[k]) continue;
-                var d = c.Hi[k] - c.Lo[k];
-                if (d > worst) worst = d;
+                if (c.Lo[k] <= c.Hi[k])
+                {
+                    var d = c.Hi[k] - c.Lo[k];
+                    if (d > worst) worst = d;
+                }
                 c.Lo[k] = float.MaxValue; c.Hi[k] = float.MinValue;
             }
-
-            if (worst <= 0.001f) continue;
-            moving.Append($"{c.Name}:{worst:F2} ");
-            if (worst > best) { best = worst; winner = c; }
+            if (worst > 0.001f) moving.Append($"{c.Name}:{worst:F2} ");
         }
 
         if (moving.Length == 0)
         {
-            // Worth logging. When the ocean went idle every buffer froze at once,
-            // which is what says this measurement tracks wave activity and not noise.
-            Mod.Log.Msg($"[wave] nothing moved ({Candidates.Count} candidates) \u2014 sim idle");
+            // Worth logging: when the ocean went idle every buffer froze at once,
+            // which is what says this measurement tracks waves and not noise.
+            Mod.Log.Msg($"[wave] nothing moved ({Candidates.Count} candidates) — sim idle");
             return;
         }
 
-        Mod.Log.Msg($"[wave] per-point motion over 3s \u2014 {moving}");
+        Mod.Log.Msg($"[wave] per-point motion over 3s — {moving}");
 
-        // Ranking by raw magnitude was misleading: vl runs to thousands and vy to
+        // Ranking by magnitude was misleading: vl runs to thousands and vy to
         // 1e20, so both won on scale while being the wrong quantity. Height is not
-        // the biggest number in the simulation. Print the shapes of the coherent
-        // movers instead and let the profile say which one is water.
-        foreach (var c in Candidates)
-            if (Array.IndexOf(Shortlist, c.Name) >= 0) Profile(c);
+        // the biggest number in a simulation. Print shapes and let them show.
+        foreach (var c in Candidates) if (Interesting(c.Name)) Profile(c);
     }
 
     /// <summary>
-    /// The buffers that move coherently while surfing.
-    ///
-    /// vg and vk move as a matched pair and swing both sides of zero, which is
-    /// what displacement about a waterline looks like. vh, vi and vx move
-    /// positive-only. Excluded: vn (terrain, moves only on a beach change), vl
-    /// (thousands \u2014 energy, not height), vy and vq (sentinel garbage).
+    /// Buffers worth seeing in full: the coherent movers, plus every vector
+    /// component, since a water mesh keeps its surface in one of those.
     /// </summary>
     private static readonly string[] Shortlist = { "vf", "vg", "vh", "vi", "vk", "vx" };
 
-    /// <summary>The whole array at one instant, to see whether it looks like water.</summary>
+    private static bool Interesting(string name) =>
+        name.Contains(".") || Array.IndexOf(Shortlist, name) >= 0;
+
+    /// <summary>
+    /// The whole array at one instant. Where the crest sits matters as much as
+    /// how high it is: a wave has its peak out in the water and travels
+    /// shorewards between reads, which is what tells it from a buffer that
+    /// merely changes.
+    /// </summary>
     private static void Profile(Candidate c)
     {
         var row = new StringBuilder();
@@ -224,26 +198,21 @@ internal static class WaveProbe
         {
             float v;
             try { v = c.Read(i); } catch (Exception) { return; }
-            if (Math.Abs(v) > Sentinel || float.IsNaN(v)) { row.Append("-- "); continue; }
+            if (float.IsNaN(v) || Math.Abs(v) > Sentinel) { row.Append("-- "); continue; }
             row.Append(v.ToString("F2")).Append(' ');
             if (v < lo) lo = v;
             if (v > hi) { hi = v; crest = i; }
         }
 
         if (lo > hi) return;
-        // Where the peak sits matters as much as its height: a wave has its crest
-        // somewhere out in the water and travels shorewards over successive reads.
         Mod.Log.Msg($"[wave] {c.Name} [{lo:F2}..{hi:F2}] peak@{crest} : {row}");
     }
 
-    /// <summary>
-    /// List everything on the type, then keep whatever can actually be read as a
-    /// float by index. Written defensively throughout: this is reflection over an
-    /// obfuscated Il2Cpp type, and most of what it tries will fail.
-    /// </summary>
+    // ---- discovery -------------------------------------------------------
+
     private static void Scan(m wave)
     {
-        Mod.Log.Msg("[probe] scanning the live instance for readable buffers");
+        Mod.Log.Msg("[probe] scanning the live instance");
 
         const BindingFlags Any = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
@@ -257,61 +226,90 @@ internal static class WaveProbe
         }
 
         // Methods shaped like a sampler: one int in, one float out. ex is the
-        // known terrain one; its siblings are exactly where water would hide.
+        // known terrain one; its siblings are where water might hide.
         foreach (var mi in typeof(m).GetMethods(Any))
         {
             if (mi.ReturnType != typeof(float)) continue;
             var ps = mi.GetParameters();
             if (ps.Length != 1 || ps[0].ParameterType != typeof(int)) continue;
-            var name = mi.Name;
-            Add($"{name}()", i => (float)mi.Invoke(wave, new object[] { i }));
-            Mod.Log.Msg($"[probe]   method {name}(int) -> float");
+            var method = mi;
+            Add($"{method.Name}()", i => (float)method.Invoke(wave, new object[] { i }));
+            Mod.Log.Msg($"[probe]   {method.Name}(int) -> float");
         }
 
         Mod.Log.Msg($"[probe] {Candidates.Count} readable candidate(s)");
     }
 
-    private static void Add(string name, Func<int, float> read)
+    /// <summary>
+    /// Record what a member actually is before trying to read it.
+    ///
+    /// Element type and length are the two facts that would have settled this
+    /// several builds ago and were never printed. A buffer logged as
+    /// "NativeArray`1" hides whether it holds floats or vectors, and six were
+    /// dismissed purely for refusing a float indexer.
+    /// </summary>
+    private static void Consider(string name, Type declared, Func<object> get)
     {
-        var c = new Candidate { Name = name, Read = read, Lo = new float[Probe.Length], Hi = new float[Probe.Length] };
-        for (var k = 0; k < Probe.Length; k++) { c.Lo[k] = float.MaxValue; c.Hi[k] = float.MinValue; }
-        Candidates.Add(c);
-    }
-
-    private static void Consider(string name, Type type, Func<object> get)
-    {
-        var typeName = type.Name;
         object value;
         try { value = get(); } catch (Exception) { return; }
         if (value == null) return;
 
-        Mod.Log.Msg($"[probe]   {name} : {typeName}");
+        var actual = value.GetType();
+        var element = actual.IsGenericType ? actual.GetGenericArguments()[0] : null;
 
-        if (value is float[] arr)
+        var length = -1;
+        try
         {
-            Add(name, i => i < arr.Length ? arr[i] : float.NaN);
+            var lp = actual.GetProperty("Length");
+            if (lp != null && lp.PropertyType == typeof(int)) length = (int)lp.GetValue(value);
+        }
+        catch (Exception) { }
+
+        var label = element == null ? declared.Name : $"{declared.Name.Split('`')[0]}<{element.Name}>";
+        // A length of 321 means indexed by position along the beach, like GroundHeights.
+        Mod.Log.Msg($"[probe]   {name} : {label}{(length >= 0 ? $"  len={length}" : "")}{(length == Samples ? "   <-- beach-length" : "")}");
+
+        if (value is float[] arr) { Add(name, i => i < arr.Length ? arr[i] : float.NaN); return; }
+
+        var item = actual.GetMethod("get_Item", new[] { typeof(int) });
+        if (item == null) return;
+
+        if (item.ReturnType == typeof(float))
+        {
+            Add(name, i => (float)item.Invoke(value, new object[] { i }));
             return;
         }
 
-        // NativeArray and the Il2Cpp collection wrappers all expose an indexer or
-        // a get_Item; take whichever answers rather than special-casing types that
-        // may not even be generated in this interop build.
-        var item = value.GetType().GetMethod("get_Item", new[] { typeof(int) });
-        if (item == null || item.ReturnType != typeof(float)) return;
+        // The interesting case: a water mesh stores its surface as vertices, and
+        // the height is one component. Watch every float component rather than
+        // assuming which axis is up.
+        var parts = new List<FieldInfo>();
+        foreach (var f in item.ReturnType.GetFields(BindingFlags.Public | BindingFlags.Instance))
+            if (f.FieldType == typeof(float)) parts.Add(f);
+        if (parts.Count == 0) return;
 
-        Add(name, i => (float)item.Invoke(value, new object[] { i }));
-        Mod.Log.Msg($"[probe]     ^ indexable, watching it");
+        foreach (var part in parts)
+        {
+            var component = part;
+            Add($"{name}.{component.Name}", i =>
+            {
+                var v = item.Invoke(value, new object[] { i });
+                return v == null ? float.NaN : (float)component.GetValue(v);
+            });
+        }
+        Mod.Log.Msg($"[probe]     ^ {item.ReturnType.Name}, watching .{string.Join("/.", parts.ConvertAll(f => f.Name))}");
     }
 
-    /// <summary>One full read, to see the surface's shape rather than just its range.</summary>
-    private static void Dump(m wave)
+    private static void Add(string name, Func<int, float> read)
     {
-        var row = new StringBuilder();
-        for (var i = 0; i < Samples; i += 20)
+        var c = new Candidate
         {
-            try { row.Append(wave.ex(i).ToString("F2")).Append(' '); }
-            catch (Exception) { return; }
-        }
-        Mod.Log.Msg($"[wave] surface: {row}");
+            Name = name,
+            Read = read,
+            Lo = new float[Probe.Length],
+            Hi = new float[Probe.Length],
+        };
+        for (var k = 0; k < Probe.Length; k++) { c.Lo[k] = float.MaxValue; c.Hi[k] = float.MinValue; }
+        Candidates.Add(c);
     }
 }
