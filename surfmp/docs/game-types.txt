@@ -1,0 +1,194 @@
+Il2CppSurf.Config
+    fields  Value
+    methods BoxIl2CppObject
+Il2CppSurf.ConfigAuthoring
+    methods get_Value set_Value
+Il2CppSurf.m
+    methods eq er es et eu ev ew ex ey get_uw set_uw get_ux set_ux get_uy set_uy get_uz set_uz get_va set_va get_vb set_vb get_vc set_vc get_vd set_vd get_ve set_ve get_vf set_vf get_vg set_vg get_vh set_vh get_vi set_vi get_vj set_vj get_vk set_vk get_vl set_vl get_vm set_vm get_vn set_vn get_vo set_vo get_vp set_vp get_vq set_vq get_vr set_vr get_vs set_vs get_vt set_vt get_vu set_vu get_vv set_vv get_vw set_vw get_vx set_vx get_vy set_vy get_vz set_vz get_wa set_wa get_wb set_wb get_wc set_wc get_wd set_wd get_we set_we get_wf set_wf get_wg set_wg get_wh set_wh get_wi set_wi
+Il2CppSurf.TransparentWindow
+    methods ez fa get_wj set_wj get_wk set_wk
+Il2CppSurf.ControlData
+    methods get_Tap set_Tap get_Hold set_Hold get_InputImage0 set_InputImage0 get_InputImage1 set_InputImage1 get_InputImage2 set_InputImage2 get_InputImage3 set_InputImage3 get_InputText set_InputText
+Il2CppSurf.UI.ButtonAlpha
+    methods Awake fb fc get_wl set_wl get_wm set_wm
+Il2CppSurf.UI.Conditions
+    methods Awake Start fh fi fj fk fl get_Swell set_Swell get_SwellArrow set_SwellArrow get_Tide set_Tide get_TideArrow set_TideArrow get_FastForward set_FastForward get_ConditionsButton set_ConditionsButton get_ControlLabel set_ControlLabel get_MessageTime set_MessageTime get_wq set_wq
+Il2CppSurf.UI.ControlDataDisplay
+    methods fm fn get_CharacterAction set_CharacterAction get_InputAction set_InputAction get_InputKey set_InputKey get_InputImages set_InputImages get_ArrowSprite set_ArrowSprite get_PlusSprite set_PlusSprite
+Il2CppSurf.UI.Controls
+    methods Awake fo fp get_RootGameObject set_RootGameObject get_ControlDatas set_ControlDatas get_ControlDataDisplays set_ControlDataDisplays get_CloseButton set_CloseButton
+Il2CppSurf.UI.Editor
+    methods Awake Start fq fr fs ft fu fv fw fx get_EditorGameObject set_EditorGameObject get_MapButton set_MapButton get_BuoyButton set_BuoyButton get_EquipmentButton set_EquipmentButton get_ResetButton set_ResetButton get_TutorialButton set_TutorialButton get_SettingsButton set_SettingsButton get_SaveButton set_SaveButton get_wr set_wr
+Il2CppSurf.UI.Equipment
+    methods Awake Start fy fz ga gb gc gd get_EquipmentGameObject set_EquipmentGameObject get_BlockerGameObject set_BlockerGameObject get_LeftButton set_LeftButton get_RightButton set_RightButton get_SelectButton set_SelectButton get_LableText set_LableText get_ProfilesRoot set_ProfilesRoot get_ws set_ws get_wt set_wt get_wu set_wu
+Il2CppSurf.UI.FPS
+    methods Start gi gj gk get_wz set_wz get_MinSimFPS set_MinSimFPS get_Text set_Text get_SimText set_SimText get_Toggle set_Toggle get_xa set_xa
+Il2CppSurf.UI.Logo
+    methods Start gl Update get_Image set_Image get_FadeDis set_FadeDis get_AlphaSpeed set_AlphaSpeed get_xb set_xb
+Il2CppSurf.UI.MainButtons
+    methods Start gm gn go gp gq gr gs Update get_Buttons set_Buttons get_MapButton set_MapButton get_EquipmentButton set_EquipmentButton get_EditButton set_EditButton get_TutorialButton set_TutorialButton get_SettingsButton set_SettingsButton get_WindowButton set_WindowButton get_ExitButton set_ExitButton get_FadeDis set_FadeDis get_AlphaSpeed set_AlphaSpeed get_xc set_xc get_xd set_xd get_xe set_xe get_xf set_xf get_xg set_xg get_xh set_xh get_xi set_xi get_xj set_xj
+Il2CppSurf.UI.Map
+    methods Awake Start gt gu gv gw gx gy get_MapGameObject set_MapGameObject get_BlockerGameObject set_BlockerGameObject get_LocatorTransform set_LocatorTransform get_LocationButtonsRoot set_LocationButtonsRoot get_LeftButton set_LeftButton get_RightButton set_RightButton get_SelectButton set_SelectButton get_xk set_xk get_xl set_xl
+Il2CppSurf.UI.MapLocationButton
+    methods Awake gz
+Il2CppSurf.UI.MaxAlpha
+    methods Start ha
+Il2CppSurf.UI.Message
+    methods Start hb Update get_Text set_Text get_xm set_xm
+Il2CppSurf.UI.Pointer
+    methods Start hc hd Update get_HideCursorTime set_HideCursorTime get_BrushPaintTransform set_BrushPaintTransform get_CursorImage set_CursorImage get_xn set_xn get_xo set_xo get_xp set_xp
+Il2CppSurf.UI.Settings
+    methods Awake Start he hf hg hh hi hj hk hl hm hn ho hp hq hr hs ht get_xq set_xq get_AudioMixer set_AudioMixer get_SettingsGameObject set_SettingsGameObject get_BlockerGameObject set_BlockerGameObject get_VolumeSetting set_VolumeSetting get_TutorialSetting set_TutorialSetting get_ControlsSetting set_ControlsSetting get_SurfTimescaleSetting set_SurfTimescaleSetting get_TurnTimescaleSetting set_TurnTimescaleSetting get_SnapTimescaleSetting set_SnapTimescaleSetting get_StallTimescaleSetting set_StallTimescaleSetting get_AirTimescaleSetting set_AirTimescaleSetting get_VSyncToggle set_VSyncToggle get_Skill0Toggle set_Skill0Toggle get_Skill1Toggle set_Skill1Toggle get_CloseButton set_CloseButton get_VersionText set_VersionText get_xr set_xr get_xs set_xs
+Il2CppSurf.UI.SettingsButton
+    methods get_Label set_Label get_Button set_Button
+Il2CppSurf.UI.SettingsValue
+    methods Awake hu hv hw hx hy hz get_ValueChanged set_ValueChanged get_Key set_Key get_ValueText set_ValueText get_AddButton set_AddButton get_SubtractButton set_SubtractButton get_DefaultValue set_DefaultValue get_Min set_Min get_Max set_Max get_Step set_Step get_xt set_xt
+Il2CppSurf.UI.Sounds
+    methods ia get__buttonClick set__buttonClick
+Il2CppSurf.UI.Startup
+    methods Start
+Il2CppSurf.UI.ToolTips
+    methods Awake Start Update
+Il2CppSurf.UI.Tutorial
+    methods Awake Start if ig ih ii ij ik il im in io ip iq ir Update get_TutorialGameObject set_TutorialGameObject get_DarkBlocker set_DarkBlocker get_ClearBlocker set_ClearBlocker get_Background set_Background get_TitleText set_TitleText get_BodyText set_BodyText get_NextButton set_NextButton get_YesButton set_YesButton get_CancelButton set_CancelButton get_NoButton set_NoButton get_Skill0Toggle set_Skill0Toggle get_Skill1Toggle set_Skill1Toggle get_InputActions set_InputActions get_InitialFrameCount set_InitialFrameCount get_xx set_xx get_xy set_xy get_xz set_xz get_ya set_ya get_yb set_yb get_yc set_yc get_yd set_yd
+Il2CppSurf.UI.Tutorials
+    methods Awake Start iw ix iy iz ja jb ShowTutorial jc get__showTutorialKey set__showTutorialKey get_Root set_Root get_Blocker set_Blocker get_TutorialSettingsButtons set_TutorialSettingsButtons get_TutorialSequences set_TutorialSequences get_CloseButton set_CloseButton get_yh set_yh get_yi set_yi
+Il2CppSurf.UI.TutorialSequence
+    methods get_DisplayName set_DisplayName get_WaterHeight set_WaterHeight get_CharacterProfile set_CharacterProfile get_IntroStep set_IntroStep get_Steps set_Steps
+Il2CppSurf.UI.TutorialStep
+    methods get_NextButton set_NextButton get_TimeCheck set_TimeCheck get_ModeStep set_ModeStep get_EndStep set_EndStep get_DarkBlocker set_DarkBlocker get_TitleText set_TitleText get_BodyText set_BodyText get_TimeScaleOverride set_TimeScaleOverride get_TimeScale set_TimeScale get_DebugFrame set_DebugFrame get_FrameSuccess set_FrameSuccess get_FrameTimeScale1 set_FrameTimeScale1 get_FrameCount set_FrameCount get_ControlInputSuccess set_ControlInputSuccess get_MoveRight set_MoveRight get_MoveLeft set_MoveLeft get_SnapRight set_SnapRight get_SnapLeft set_SnapLeft get_Popup set_Popup get_DuckDive set_DuckDive get_Boost set_Boost get_Stall set_Stall get_Air set_Air get_DistanceSuccess set_DistanceSuccess get_DistanceLock set_DistanceLock get_GreaterThan set_GreaterThan get_Distance set_Distance
+Il2CppSurf.UI.WaterLevel
+    methods Start jd je jf jg jh get_Level set_Level get_UpButton set_UpButton get_DownButton set_DownButton
+Il2CppSurf.UI.WaveDistance
+    methods Start ji jj jk jl jm jn jo get_Distance set_Distance get_LineTransform set_LineTransform get_PlusButton set_PlusButton get_MinusButton set_MinusButton get_yj set_yj get_yk set_yk
+Il2CppSurf.Prop.ColorAbsorption
+    methods Start Update get_SpriteRenderer set_SpriteRenderer get_MaxDepth set_MaxDepth get_Speed set_Speed get_yl set_yl get_ym set_ym
+Il2CppSurf.Prop.DistanceAlpha
+    methods Start Update get_Debug set_Debug get_SpriteRenderer set_SpriteRenderer get_yn set_yn
+Il2CppSurf.Prop.FollowFluidSlicer
+    methods LateUpdate get_Offset set_Offset
+Il2CppSurf.Prop.Movement
+    methods Awake Start jp Update get_DirectionChanged set_DirectionChanged get_yo set_yo get_yp set_yp get_yq set_yq get_yr set_yr get_ys set_ys get_yt set_yt get_yu set_yu get_yv set_yv
+Il2CppSurf.Prop.Prop
+    methods get_PropData set_PropData
+Il2CppSurf.Prop.BoundryResponse
+    fields  value__ Reflect Loop
+Il2CppSurf.Prop.WaterOffset
+    fields  value__ None BelowLowWater BelowHighWater AboveLowWater AboveHighWater Between
+Il2CppSurf.Prop.PropData
+    methods get_Sprite set_Sprite get_Behavior set_Behavior get_Probability set_Probability get_FrontProb set_FrontProb get_MaxCount set_MaxCount get_XDir set_XDir get_YDir set_YDir get_AttachToGround set_AttachToGround get_HeightMin set_HeightMin get_HeightMax set_HeightMax get_XOverride set_XOverride get_X set_X get_YOverride set_YOverride get_Y set_Y get_ZOverride set_ZOverride get_Z set_Z get_WaterOffset set_WaterOffset get_WaterOffsetDis set_WaterOffsetDis get_Color0 set_Color0 get_Color1 set_Color1 get_UnderWater set_UnderWater get_UnderwaterDepth set_UnderwaterDepth get_Acceleration set_Acceleration get_SpeedMin set_SpeedMin get_SpeedMax set_SpeedMax get_VerticalSpeed set_VerticalSpeed get_ChangeDirTimeMin set_ChangeDirTimeMin get_ChangeDirTimeMax set_ChangeDirTimeMax get_ChangeSpeedTimeMin set_ChangeSpeedTimeMin get_ChangeSpeedTimeMax set_ChangeSpeedTimeMax get_Boundry set_Boundry get_BoundryResponse set_BoundryResponse get_AnimatorController set_AnimatorController
+Il2CppSurf.Prop.Props
+    methods Awake Start Update
+Il2CppSurf.Prop.PropSpawner
+    methods jq get_Prefab set_Prefab
+Il2CppSurf.Prop.RandomFlip
+    methods Awake get_X set_X get_Y set_Y
+Il2CppSurf.Prop.Behavior.Humpback
+    methods Awake Start get_zb set_zb get_Delay set_Delay get_Idle set_Idle get_Blow set_Blow get_Breach set_Breach get_Tail set_Tail get_Fin set_Fin get_zc set_zc get_zd set_zd
+Il2CppSurf.Prop.Behavior.Turn
+    methods Start jv get_ze set_ze
+Il2CppSurf.Level.LevelFile
+    methods get_GroundHeights set_GroundHeights get_Swell set_Swell get_Tide set_Tide
+Il2CppSurf.Ground.Brush
+    methods Update jw get_PlayerMoveDis set_PlayerMoveDis get_zf set_zf get_zg set_zg
+Il2CppSurf.Ground.Collision
+    methods Awake Start jx jy get_GroundMaterial set_GroundMaterial get_zh set_zh get_zi set_zi get_zj set_zj
+Il2CppSurf.Ground.GroundProps
+    methods Awake jz ka kb get_DebugProp set_DebugProp get_HonuPropData set_HonuPropData get_MonkPropData set_MonkPropData get_BlackTipPropData set_BlackTipPropData get_TigerPropData set_TigerPropData get_FishCount set_FishCount get_CoralCount set_CoralCount get_BlackTipCount set_BlackTipCount get_zk set_zk get_zl set_zl get_zm set_zm get_zn set_zn get_zo set_zo
+Il2CppSurf.Game.Conditions
+    methods Awake kc kd ke kf kg kh ki kj kk kl get_Changed set_Changed get_SwellEditorSteps set_SwellEditorSteps get_TideEditorSteps set_TideEditorSteps get_SwellSteps set_SwellSteps get_TideSteps set_TideSteps get_Curve set_Curve get_zp set_zp get_zq set_zq get_zr set_zr get_zs set_zs get_zt set_zt get_zu set_zu get_zv set_zv get_zw set_zw
+Il2CppSurf.Game.Config
+    methods Awake get_SurfTimescale set_SurfTimescale get_TurnTimescale set_TurnTimescale get_SnapTimescale set_SnapTimescale get_StallTimescale set_StallTimescale get_AirTimescale set_AirTimescale get_WaveDistanceMin set_WaveDistanceMin get_WaveDistanceMax set_WaveDistanceMax get_WavePeriodMin set_WavePeriodMin get_WavePeriodMax set_WavePeriodMax get_WaveLullMin set_WaveLullMin get_WaveLullMax set_WaveLullMax get_WaveSteps set_WaveSteps get_WaterHeightMin set_WaterHeightMin get_WaterHeightMax set_WaterHeightMax get_WaterHeightSteps set_WaterHeightSteps get_ConditionsTimeStep set_ConditionsTimeStep get_MaxAlpha set_MaxAlpha get_Parallax set_Parallax get_ParallaxFollowMaxX set_ParallaxFollowMaxX get_ParallaxMaxX set_ParallaxMaxX
+Il2CppSurf.Game.Controls
+    methods Awake km kn ko kp kq kr ks kt ku kv kw kx ky kz la lb Update get_LevelLoaded set_LevelLoaded get_GroundChangeStart set_GroundChangeStart get_GroundChanged set_GroundChanged get_CloseMenu set_CloseMenu get_CloseTutorial set_CloseTutorial get_WindowModeChanged set_WindowModeChanged get_zx set_zx get_zy set_zy
+Il2CppSurf.Game.FollowCamera
+    methods Awake Start LateUpdate lc OnDrawGizmos get_zz set_zz get_TrackedTransform set_TrackedTransform get_SnapToBottom set_SnapToBottom get_HorizontalSpeed set_HorizontalSpeed get_Zoom set_Zoom get_ZoomSpeed set_ZoomSpeed get_OrthographicSizeMin set_OrthographicSizeMin get_baa set_baa get_bab set_bab get_bac set_bac get_bad set_bad get_bae set_bae get_baf set_baf
+Il2CppSurf.Game.Levels
+    methods Start OnApplicationQuit ld le lf lg lh li lj lk get_DefaultGroundHeight set_DefaultGroundHeight get_DefaultSwell set_DefaultSwell get_DefaultTide set_DefaultTide get_bag set_bag get_bah set_bah get_bai set_bai get_baj set_baj get_bak set_bak
+Il2CppSurf.Game.ListnerFluidFollow
+    methods Update get_Listner set_Listner
+Il2CppSurf.Game.Manager
+    methods Awake ll get_State set_State get_Config set_Config get_Controls set_Controls get_Conditions set_Conditions get_Levels set_Levels get_FluidRenderer set_FluidRenderer get_FluidSim set_FluidSim get_SurfaceData set_SurfaceData get_TurbulenceData set_TurbulenceData get_Wave set_Wave get_PlayerCharacter set_PlayerCharacter get_WaveDistance set_WaveDistance get_WaterLevel set_WaterLevel get_Pointer set_Pointer get_MainButtons set_MainButtons get_Logo set_Logo get_ConditionsUI set_ConditionsUI get_Message set_Message get_UiSounds set_UiSounds get_BackgroundProps set_BackgroundProps get_Prefs set_Prefs get_PropSpawner set_PropSpawner get_TimeOfDay set_TimeOfDay get_TransparentWindow set_TransparentWindow get_bal set_bal
+Il2CppSurf.Game.Prefs
+    methods lm ln lo lp lq lr get_bam set_bam
+Il2CppSurf.Game.State
+    methods ls lt lu get_StateChanged set_StateChanged get_ban set_ban
+Il2CppSurf.Game.TimeOfDay
+    methods Awake lv Reset Update get_Changed set_Changed get__time set__time get__value set__value get__lightGradient set__lightGradient get_bao set_bao get_bap set_bap
+Il2CppSurf.Fx.WakeFx
+    methods Awake lw lx Update get_baq set_baq get_bar set_bar get_bas set_bas
+Il2CppSurf.Fx.WakeFxManager
+    methods Awake ly lz Update get_Prefab set_Prefab get_bat set_bat get_bau set_bau get_bav set_bav
+Il2CppSurf.Fx.WakeFxSpawner
+    methods Awake Update get_baw set_baw get_SpawningEnabled set_SpawningEnabled get_MinSpeed set_MinSpeed get_bax set_bax get_bay set_bay get_baz set_baz
+Il2CppSurf.Sim.FluidColorLayers
+    methods get_BarrelColor set_BarrelColor get_ColorsLayers set_ColorsLayers
+Il2CppSurf.Sim.FluidFx
+    methods Awake Start Update get_FullStrengthCount set_FullStrengthCount get__crashPrefab set__crashPrefab get_bba set_bba get_bbb set_bbb get_bbc set_bbc
+Il2CppSurf.Sim.FluidRenderer
+    methods Awake OnEnable OnDestroy md me mf mg mh mi mj mk ml mm mn mo mp mq mr ms mt LateUpdate Update get_RenderStart set_RenderStart get_RenderPixel set_RenderPixel get_RemoveIsolatedCells set_RemoveIsolatedCells get_RenderPlanes set_RenderPlanes get_RenderLastFluidPlane set_RenderLastFluidPlane get_DrawDebugParticles set_DrawDebugParticles get_DrawDebugTurbulence set_DrawDebugTurbulence get_DrawDebugSurface set_DrawDebugSurface get_DebugAllPlanes set_DebugAllPlanes get_ParticlePrefab set_ParticlePrefab get_FluidPlanePrefab set_FluidPlanePrefab get_PressureCutoff set_PressureCutoff get_FogColorNear set_FogColorNear get_FogColorFar set_FogColorFar get_FluidColors set_FluidColors get_SurfaceColors set_SurfaceColors get_SolidColors set_SolidColors get_TextureCount set_TextureCount get_PlaneDistance set_PlaneDistance get_PlaneTextureOffset set_PlaneTextureOffset get_FluidSliceRight set_FluidSliceRight get_FluidSliceLeft set_FluidSliceLeft get_bbj set_bbj get_bbk set_bbk get_bbl set_bbl get_bbm set_bbm get_bbn set_bbn get_bbo set_bbo get_bbp set_bbp get_bbq set_bbq get_bbr set_bbr get_bbs set_bbs get_bbt set_bbt get_bbu set_bbu get_bbv set_bbv get_bbw set_bbw get_bbx set_bbx get_bby set_bby get_bbz set_bbz
+Il2CppSurf.Sim.FluidSim
+    methods Awake Start OnDestroy mu mv mw mx my mz na nb nc nd ne nf ng nh ni nj nk nl nm nn no FixedUpdate get_WaterHeightChanged set_WaterHeightChanged get_GroundHeightChanged set_GroundHeightChanged get_bca set_bca get_bcb set_bcb get_PreSimulate set_PreSimulate get_PostSimulate set_PostSimulate get_Gravity set_Gravity get_FPS set_FPS get_FlipRatio set_FlipRatio get_NumPressureIterations set_NumPressureIterations get_NumParticleIterations set_NumParticleIterations get_OverRelaxation set_OverRelaxation get_Density set_Density get_CompensateDrift set_CompensateDrift get_SeparateParticles set_SeparateParticles get_Paused set_Paused get_SimWidth set_SimWidth get_SimHeight set_SimHeight get_SimResolution set_SimResolution get_UpdateSpeed set_UpdateSpeed get_InitialWaterHeight set_InitialWaterHeight get_InitialGroundHeight set_InitialGroundHeight get_LeftWallX set_LeftWallX get_RightWallX set_RightWallX get_bcc set_bcc get_bcd set_bcd get_bce set_bce get_bcf set_bcf get_bcg set_bcg get_bch set_bch get_bci set_bci get_bcj set_bcj get_bck set_bck get_bcl set_bcl get_bcm set_bcm get_bcn set_bcn get_bco set_bco get_bcp set_bcp
+Il2CppSurf.Sim.FluidSlice
+    methods Awake Start np nq nr ns OnEnable OnDestroy Update get_bcq set_bcq get_Side set_Side get_SliceT set_SliceT get_Material set_Material get_bcr set_bcr get_bcs set_bcs get_bct set_bct get_bcu set_bcu
+Il2CppSurf.Sim.FluidSound
+    methods Awake OnDrawGizmos nx Update get_Debug set_Debug get_WaveExclusionDis set_WaveExclusionDis get_PositionSpeed set_PositionSpeed get_StrengthSpeed set_StrengthSpeed get_UpStrengthScalar set_UpStrengthScalar get_DownStrengthScalar set_DownStrengthScalar get_AmbientVolume set_AmbientVolume get_UpVolume set_UpVolume get_DownVolume set_DownVolume get_BreakVolume set_BreakVolume get_AmbientAudio set_AmbientAudio get_UpAudio set_UpAudio get_DownAudio set_DownAudio get_BreakAudio set_BreakAudio get_FluidSlice set_FluidSlice get_bdq set_bdq get_bdr set_bdr get_bds set_bds get_bdt set_bdt
+Il2CppSurf.Sim.SolidColorLayers
+    methods get_ColorLayers set_ColorLayers
+Il2CppSurf.Sim.SurfaceData
+    methods Awake ny nz oa ob oc od oe of og get_bdu set_bdu get_bdv set_bdv get__surfaces set__surfaces get_bdw set_bdw
+Il2CppSurf.Sim.TurbulenceData
+    methods Awake oi OnDrawGizmos oj ok get_Processed set_Processed get_Debug set_Debug get_DebugRadius set_DebugRadius get_Min set_Min get_Max set_Max get_UpVel set_UpVel get_DownVel set_DownVel get_WaveExclusionDis set_WaveExclusionDis get_bed set_bed get_bee set_bee get_bef set_bef
+Il2CppSurf.Sim.Wave
+    methods Awake ol om OnDrawGizmos Reset on oo get_DistanceChanged set_DistanceChanged get_RightWave set_RightWave get_LeftWave set_LeftWave get_Period set_Period get_Lull set_Lull get_Curve set_Curve get_beg set_beg get_beh set_beh get_bei set_bei get_bej set_bej get_bek set_bek
+Il2CppSurf.ECS.FlipFluidAuthoring
+    methods Start op Update get_density set_density get_width set_width get_height set_height get_resolution set_resolution get_particleToCellRatio set_particleToCellRatio get_gravity set_gravity get_flipRatio set_flipRatio get_numPressureIters set_numPressureIters get_numParticleIters set_numParticleIters get_overRelaxation set_overRelaxation get_compensateDrift set_compensateDrift get_separateParticles set_separateParticles get_leftWallOffset set_leftWallOffset get_rightWallOffset set_rightWallOffset get_bel set_bel get_bem set_bem get_ben set_ben
+Il2CppSurf.ECS.FlipFluidConfig
+    fields  Density FNumX FNumY H FInvSpacing FNumCells Width Height MaxParticles NumParticles ParticleRestDensity ParticleRadius PInvSpacing PNumX PNumY PNumCells Dt Gravity FlipRatio NumPressureIters NumParticleIters OverRelaxation CompensateDrift SeparateParticles LeftWallOffset RightWallOffset
+    methods BoxIl2CppObject get_FLUID_CELL set_FLUID_CELL get_AIR_CELL set_AIR_CELL get_SOLID_CELL set_SOLID_CELL
+Il2CppSurf.ECS.v
+    methods oq Dispose get_beo set_beo get_bep set_bep get_beq set_beq get_ber set_ber get_bes set_bes get_bet set_bet get_beu set_beu get_bev set_bev get_bew set_bew get_bex set_bex get_bey set_bey get_bez set_bez get_bfa set_bfa get_bfb set_bfb get_bfc set_bfc get_bfd set_bfd get_bfe set_bfe get_bff set_bff get_bfg set_bfg get_bfh set_bfh get_bfi set_bfi
+Il2CppSurf.ECS.w
+    methods OnCreate OnDestroy OnUpdate os ot ou ov ow ox oy oz pa pb pc pd pe pf pg ph pi OnCreateForCompiler get_bfj set_bfj get_bfk set_bfk get_bfl set_bfl get_bfm set_bfm get_bfn set_bfn get_bfo set_bfo get_bfp set_bfp get_bfq set_bfq get_bfr set_bfr get_bfs set_bfs get_bft set_bft get_bfu set_bfu get_bfv set_bfv get_bfw set_bfw get_bfx set_bfx get_bfy set_bfy get_bfz set_bfz
+Il2CppSurf.Character.ActionCam
+    methods Awake pj pk Update get_ActionCamera set_ActionCamera get_bga set_bga get_bgb set_bgb
+Il2CppSurf.Character.AutoSurf
+    methods Awake pp pq pr ps pt pu Popup pv get_BottomTurnStart set_BottomTurnStart get_TopTurnStart set_TopTurnStart get_PopupTime set_PopupTime get_PopupAcceleration set_PopupAcceleration get_PopupSuccessSpeedNormalized set_PopupSuccessSpeedNormalized get_MinTurnAngle set_MinTurnAngle get_MaxTurnAngle set_MaxTurnAngle get_bgk set_bgk get_bgl set_bgl get_bgm set_bgm get_bgn set_bgn get_bgo set_bgo get_bgp set_bgp get_bgq set_bgq get_bgr set_bgr
+Il2CppSurf.Character.Buoyancy
+    methods Awake pw px py pz qa qb qc qd qe OnDrawGizmos FixedUpdate get_ForcesUpdated set_ForcesUpdated get_bgs set_bgs get_bgt set_bgt get_bgu set_bgu get_bgv set_bgv get_bgw set_bgw get_DragMultiplier set_DragMultiplier get_BuoyancyMultiplier set_BuoyancyMultiplier get_Offset set_Offset get_Radius set_Radius get_NormalSpeed set_NormalSpeed get_bgx set_bgx get_bgy set_bgy get_bgz set_bgz get_bha set_bha get_bhb set_bhb get_bhc set_bhc get_bhd set_bhd get_bhe set_bhe get_bhf set_bhf get_bhg set_bhg get_bhh set_bhh
+Il2CppSurf.Character.CharacterProfile
+    methods get_AnimatorController set_AnimatorController get_AirAllowed set_AirAllowed get_SnapAllowed set_SnapAllowed get_SurfTurnLimits set_SurfTurnLimits get_PaddleForce set_PaddleForce get_WipeoutSpeedMin set_WipeoutSpeedMin get_WipeoutSpeedMax set_WipeoutSpeedMax get_AirLaunchImpulseMin set_AirLaunchImpulseMin get_AirLaunchImpulseMax set_AirLaunchImpulseMax get_SurfDrag set_SurfDrag get_SurfSpeedMin set_SurfSpeedMin get_SurfSpeedMax set_SurfSpeedMax get_SurfStallMultiplier set_SurfStallMultiplier get_SurfBoostMultiplier set_SurfBoostMultiplier get_SurfTurnSpeed set_SurfTurnSpeed get_SurfSnapTimeMin set_SurfSnapTimeMin get_SurfSnapTimeMax set_SurfSnapTimeMax get_SurfSnapFxStrength set_SurfSnapFxStrength get_SurfAccelMultiplier set_SurfAccelMultiplier get_SurfDecelMultiplier set_SurfDecelMultiplier get_SurfSlipMultiplier set_SurfSlipMultiplier get_PaddleWipeoutSpeed set_PaddleWipeoutSpeed
+Il2CppSurf.Character.Controls
+    methods Awake qj qk ql qm Reset qn Update qo get_Updated set_Updated get_Air set_Air get_AirAttempt set_AirAttempt get_Popup set_Popup get_PopupAttempt set_PopupAttempt get_Kickout set_Kickout get_Jump set_Jump get_DuckDive set_DuckDive get_DuckDiveAttmept set_DuckDiveAttmept get_Stall set_Stall get_StallAttempt set_StallAttempt get_Boost set_Boost get_BoostAttempt set_BoostAttempt get_MoveAttempt set_MoveAttempt get_MoveStart set_MoveStart get_Move set_Move get_MoveStop set_MoveStop get_Snap set_Snap get_SnapAttempt set_SnapAttempt get_InputActions set_InputActions get_bhl set_bhl get_bhm set_bhm get_bhn set_bhn get_bho set_bho get_bhp set_bhp get_bhq set_bhq get_bhr set_bhr get_bhs set_bhs get_bht set_bht get_bhu set_bhu get_bhv set_bhv get_bhw set_bhw get_bhx set_bhx get_bhy set_bhy
+Il2CppSurf.Character.ExpertSurf
+    methods Awake qp get_bhz set_bhz get_bia set_bia get_bib set_bib get_bic set_bic
+Il2CppSurf.Character.FluidSlicer
+    methods Awake Start qq get_Debug set_Debug get_Speed set_Speed get_SurfOffsetTime set_SurfOffsetTime get_SurfOffset set_SurfOffset get_bid set_bid get_bie set_bie get_bif set_bif get_big set_big get_bih set_bih get_bii set_bii get_bij set_bij
+Il2CppSurf.Character.Movement
+    methods Awake Start rd re rf rg rh ri rj rk rl rm rn ro rp rq rr OnDrawGizmos OnCollisionEnter OnCollisionExit rs rt FixedUpdate Update ru DuckDive rv rw rx Kickout Wipeout ry Reset get_biw set_biw get_Updated set_Updated get_DuckDiveDepth set_DuckDiveDepth get_DuckDiveForce set_DuckDiveForce get_PaddleForce set_PaddleForce get_RunForce set_RunForce get_JumpForce set_JumpForce get_WipeoutRecoveryTime set_WipeoutRecoveryTime get_WipeoutSpeedMin set_WipeoutSpeedMin get_WipeoutSpeedMax set_WipeoutSpeedMax get_WipeoutDownCellCount set_WipeoutDownCellCount get_WipeoutDownCellVel set_WipeoutDownCellVel get_KickoutSpeed set_KickoutSpeed get_KickoutTime set_KickoutTime get_AirAllowed set_AirAllowed get_AirLaunchYVelMin set_AirLaunchYVelMin get_AirLaunchYVelMax set_AirLaunchYVelMax get_AirLaunchImpulseMin set_AirLaunchImpulseMin get_AirLaunchImpluseMax set_AirLaunchImpluseMax get_ManeuverInputTime set_ManeuverInputTime get_SurfTurnLimits set_SurfTurnLimits get_SurfTurnLimitsOverride set_SurfTurnLimitsOverride get_SurfTurnLimitsOverrideMin set_SurfTurnLimitsOverrideMin get_SurfTurnLimitsOverrideMax set_SurfTurnLimitsOverrideMax get_SurfBuoyancy set_SurfBuoyancy get_SurfBuoyancyNormalSpeed set_SurfBuoyancyNormalSpeed get_SurfAccel set_SurfAccel get_SurfDecel set_SurfDecel get_SurfAccelMultiplier set_SurfAccelMultiplier get_SurfDecelMultiplier set_SurfDecelMultiplier get_SurfFloaterAccel set_SurfFloaterAccel get_SurfDrag set_SurfDrag get_SurfSpeedMin set_SurfSpeedMin get_SurfSpeedMax set_SurfSpeedMax get_SurfBoostMultiplier set_SurfBoostMultiplier get_SurfTurnSpeed set_SurfTurnSpeed get_SurfTurnBoost set_SurfTurnBoost get_SurfFlatNormalThreshold set_SurfFlatNormalThreshold get_SurfFlatTimeThreshold set_SurfFlatTimeThreshold get_SurfFlatDrag set_SurfFlatDrag get_SnapAllowed set_SnapAllowed get_SnapTimeMin set_SnapTimeMin get_SnapTimeMax set_SnapTimeMax get_SnapSpeedMultiplier set_SnapSpeedMultiplier get_SurfStallTurnMultiplier set_SurfStallTurnMultiplier get_SurfStallTransitionSpeed set_SurfStallTransitionSpeed get_SurfStallTurnLimitsMin set_SurfStallTurnLimitsMin get_SurfStallTurnLimitsMax set_SurfStallTurnLimitsMax get_SurfStallMultiplier set_SurfStallMultiplier get_SurfStallMinimumSpeed set_SurfStallMinimumSpeed get_SurfSnapSpeedMultiplier set_SurfSnapSpeedMultiplier get_SurfPopupDragMultiplier set_SurfPopupDragMultiplier get_SurfSlipMultiplier set_SurfSlipMultiplier get_PaddleIdleDrag set_PaddleIdleDrag get_PaddleIdleDragSpeed set_PaddleIdleDragSpeed get_PaddleBuoyancy set_PaddleBuoyancy get_PaddleBuoyancyNormalSpeed set_PaddleBuoyancyNormalSpeed get_GroundRayAddedDis set_GroundRayAddedDis get_GroundTransitionTime set_GroundTransitionTime get_JumpTransitionTime set_JumpTransitionTime get_DefaultZTransitionSpeed set_DefaultZTransitionSpeed get_PaddleZTransitionSpeed set_PaddleZTransitionSpeed get_PaddleWipeoutSpeed set_PaddleWipeoutSpeed get_MaxZNormalized set_MaxZNormalized get_bix set_bix get_biy set_biy get_biz set_biz get_bja set_bja get_bjb set_bjb get_bjc set_bjc get_bjd set_bjd get_bje set_bje get_bjf set_bjf get_bjg set_bjg get_bjh set_bjh get_bji set_bji get_bjj set_bjj get_bjk set_bjk get_bjl set_bjl get_bjm set_bjm get_bjn set_bjn get_bjo set_bjo get_bjp set_bjp get_bjq set_bjq get_bjr set_bjr get_bjs set_bjs get_bjt set_bjt get_bju set_bju get_bjv set_bjv get_bjw set_bjw get_bjx set_bjx get_bjy set_bjy get_bjz set_bjz get_bka set_bka get_bkb set_bkb get_bkc set_bkc get_bkd set_bkd get_bke set_bke get_bkf set_bkf get_bkg set_bkg get_bkh set_bkh get_bki set_bki get_bkj set_bkj get_bkk set_bkk get_bkl set_bkl
+Il2CppSurf.Character.MovementAnimations
+    methods Awake Start sh si sj sk sl sm sn Update get_MinBarrelHeight set_MinBarrelHeight get_BarrelColorSpeed set_BarrelColorSpeed get_SpriteRenderer set_SpriteRenderer get_DuckDiveClip set_DuckDiveClip get_WipeoutRecoverClip set_WipeoutRecoverClip get_PopDownClip set_PopDownClip get_PopUpClip set_PopUpClip get_bks set_bks get_bkt set_bkt get_bku set_bku get_bkv set_bkv
+Il2CppSurf.Character.MovementFx
+    methods Awake so Update get__sprayPrefab set__sprayPrefab get__wipeoutPrefab set__wipeoutPrefab get_bkw set_bkw get_bkx set_bkx get_bky set_bky get_bkz set_bkz get_bla set_bla get_blb set_blb get_blc set_blc
+Il2CppSurf.Character.MovementState
+    methods Start sp sq sr ss st su sv sw sx sy sz ta tb get_ValueChanged set_ValueChanged get_Locked set_Locked get_SurfDir set_SurfDir get_bld set_bld get_ble set_ble get_blf set_blf get_blg set_blg get_blh set_blh
+Il2CppSurf.Character.MovementTime
+    methods Awake tc Update get_Debug set_Debug get_Speed set_Speed get_bli set_bli get_blj set_blj
+Il2CppSurf.Character.Profile
+    methods Awake td te tf tg th get_blk set_blk get_Animator set_Animator get_Profiles set_Profiles get_bll set_bll
+Il2CppSurf.Character.Sounds
+    methods Awake Start ti Update get_CarveVolumeSpeed set_CarveVolumeSpeed get_CarveVolume set_CarveVolume get_CarveAudio set_CarveAudio get_SnapAudio set_SnapAudio get_AirAudio set_AirAudio get_AirLandAudio set_AirLandAudio get_WipeoutAudio set_WipeoutAudio get_RunAudio set_RunAudio get_blm set_blm get_bln set_bln
+Il2CppSurf.Character.SurfMode
+    methods Start tn to get_Key set_Key get_ValueChanged set_ValueChanged get_blr set_blr
+Il2CppSurf.Character.TutorialSurf
+    methods Awake tp tq tr ts tt tu tv tw tx get_Success set_Success get_ScaleTime set_ScaleTime get_DistanceLockSpeed set_DistanceLockSpeed get_bls set_bls get_blt set_blt get_blu set_blu get_blv set_blv get_blw set_blw get_blx set_blx get_bly set_bly get_blz set_blz get_bma set_bma get_bmb set_bmb get_bmc set_bmc get_bmd set_bmd
+Il2CppSurf.Background.BackgroundProps
+    methods Start get_Sky set_Sky get_Sun set_Sun get_Moon set_Moon get_Stars set_Stars get_Sailboat set_Sailboat get_ContainerShip set_ContainerShip get_Cloud0 set_Cloud0 get_Cloud1 set_Cloud1 get_Iwa set_Iwa get_Humpback set_Humpback
+Il2CppSurf.Background.Foreground
+    methods Awake Start ty get_SpriteRenderer set_SpriteRenderer get_ReflectionSpriteRenderer set_ReflectionSpriteRenderer get_bme set_bme get_bmf set_bmf
+Il2CppSurf.Background.ForegroundData
+    methods get_Default set_Default get_Sprite set_Sprite
+Il2CppSurf.Background.Shimmer
+    methods Start tz get_TrackedObject set_TrackedObject get_ParticleSystem set_ParticleSystem get_MaxParticles set_MaxParticles get_MinHeight set_MinHeight get_MidHeight set_MidHeight get_MaxHeight set_MaxHeight
+Il2CppSurf.Background.SunMoon
+    methods Awake Start ua get_Root set_Root get_Sun set_Sun get_SunLocator set_SunLocator get_Moon set_Moon get_MoonLocator set_MoonLocator get_StarsRoot set_StarsRoot get_StarCuttoff set_StarCuttoff get_bmg set_bmg

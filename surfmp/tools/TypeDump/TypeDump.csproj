@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Reads the game's metadata straight off disk.
+
+    Every fact about the game so far cost a launch: build, install, ask Jack to
+    surf, read the log. That is the wrong tool for questions the assembly can
+    already answer. System.Reflection.Metadata ships with .NET, so the whole
+    type graph is readable without Unity, MelonLoader, or the game running.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>TypeDump</AssemblyName>
+  </PropertyGroup>
+
+</Project>
