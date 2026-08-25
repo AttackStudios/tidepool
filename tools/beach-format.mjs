@@ -56,7 +56,22 @@ export const METRES_PER_UNIT = 15
  * Just under 1.0 because the game clamps there, and a profile that flatlines at
  * the floor loses the outer part of its shape.
  */
-const DEPTH_TARGET = 0.9
+const DEPTH_TARGET = 0.95
+
+/**
+ * The shallowest water a break is allowed to have, outside its beach.
+ *
+ * Scaling alone was not enough. A real gentle profile still spends most of its
+ * length in water the game treats as standing depth, so Pleasure Point stayed
+ * unsurfable even once its deepest point reached the bottom of the range.
+ *
+ * So the whole profile is lifted off the floor: depths map onto
+ * [MIN_DEPTH, DEPTH_TARGET] rather than [0, DEPTH_TARGET]. Relative shape is
+ * untouched — the difference between a slab and a ramp is the gradient, not the
+ * offset — and everything is deep enough to ride. Tune later against how the
+ * waves actually feel; playable first.
+ */
+const MIN_DEPTH = 0.45
 
 /**
  * Dry beach in front of the waterline.
@@ -94,7 +109,7 @@ export function toBeachFile(brk) {
     const d = depthAt(brk.profile, i - BEACH_M)
     if (d > deepest) deepest = d
   }
-  const perUnit = deepest / DEPTH_TARGET
+  const perUnit = deepest
 
   const heights = []
   for (let i = 0; i < SAMPLES; i++) {
@@ -104,7 +119,8 @@ export function toBeachFile(brk) {
       h = TIDE + BEACH_RISE * (1 - i / BEACH_M)
     } else {
       const metres = i - BEACH_M
-      const units = Math.min(depthAt(brk.profile, metres) / perUnit, 1)
+      const shape = Math.min(depthAt(brk.profile, metres) / perUnit, 1)
+      const units = MIN_DEPTH + shape * (DEPTH_TARGET - MIN_DEPTH)
       h = TIDE - units
     }
     heights.push(quantise(Math.max(h, 0)))
