@@ -224,7 +224,11 @@ export function decodeBeach(code: string): { name: string; fileName: string; con
 
 /** Strip any directory component so an imported name cannot escape the folder. */
 export function safeFileName(name: string): string {
-  const base = basename(name.replace(/\\/g, '/')).replace(/[^\w.\- ]+/g, '_')
+  // The file name is the level's name in game, so keep what reads naturally —
+  // brackets, apostrophes, commas — and strip only what a file system or a path
+  // would object to. Replacing them turned "Pipeline (Break Pack)" into
+  // "Pipeline _Break Pack_" on the level list.
+  const base = basename(name.replace(/\\/g, '/')).replace(/[<>:"/|?*\x00-\x1f]+/g, '_')
   const trimmed = base.replace(/^\.+/, '').slice(0, 100)
   const withExt = /\.lvl$/i.test(trimmed) ? trimmed : `${trimmed}${BEACH_EXT}`
   return withExt === BEACH_EXT ? `imported-beach${BEACH_EXT}` : withExt

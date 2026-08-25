@@ -107,8 +107,11 @@ export const SHIPPED_LEVELS = new Set([
 export function beachFileName(brk) {
   // Decompose first so accents become separate marks and can be dropped —
   // otherwise "Nazaré" loses the é entirely and ships as "Nazar".
+  // Accents are decomposed and dropped for cross-platform safety, but spaces
+  // and apostrophes are kept: this string is the name on the level list, and
+  // "JeffreysBay" is not what the place is called.
   const ascii = brk.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  const base = ascii.replace(/[^A-Za-z0-9]/g, '')
+  const base = ascii.replace(/[<>:"/\\|?*\x00-\x1f]+/g, '').trim()
   // Only disambiguate on an actual clash, so eight of the nine keep their real
   // names and the ninth is obviously ours rather than a replacement.
   return SHIPPED_LEVELS.has(base) ? `${base} (Break Pack).lvl` : `${base}.lvl`
