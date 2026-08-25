@@ -7,7 +7,16 @@ import type { GameInstall } from '../shared/types'
  * a step already done is ticked, so it reads as progress rather than homework.
  */
 /** 25 August 2026, the day Surf Sandbox releases. */
-const RELEASE_DAY = Date.UTC(2026, 7, 25)
+/**
+ * The moment Surf Sandbox actually unlocks: 25 August 2026, 10:00 Pacific,
+ * confirmed by nocanwin.
+ *
+ * Written as the real instant rather than a calendar date. Date.UTC(2026, 7, 25)
+ * is midnight UTC, which is 5pm Pacific on the 24th — so the app would have
+ * spent seventeen hours telling people the game was out and sending them off to
+ * locate an install that did not exist yet.
+ */
+export const RELEASE_DAY = Date.parse('2026-08-25T17:00:00Z')
 
 export function Welcome({
   game,
