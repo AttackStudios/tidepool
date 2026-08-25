@@ -30,6 +30,9 @@ internal static class MapStartPatch
     /// <summary>Gap between the island's leftmost marker and our column, in pixels.</summary>
     private const float ColumnGap = 90f;
 
+    /// <summary>Gap between a marker and its label, in pixels.</summary>
+    private const float LabelGap = 10f;
+
     private static void Postfix(Map __instance)
     {
         if (__instance == null) return;
@@ -155,15 +158,20 @@ internal static class MapStartPatch
     }
 
     /// <summary>
-    /// Put the level's name on the marker.
+    /// Put the level's name on the marker, the way the game does it.
     ///
-    /// Every marker already carries a TextMeshProUGUI child, so the clone
+    /// Every marker already carries a TextMeshProUGUI child, so a clone
     /// inherits one — still reading "Waikiki" from the template. Setting that
-    /// rather than adding our own means the label gets the game's font, size and
-    /// colour for free, and cannot drift from them.
+    /// rather than adding our own means the label picks up the game's font,
+    /// size and colour for free.
     ///
-    /// The bracket prefix is dropped: it exists to group the pack in the file
-    /// list, and the column on the map already does that job visually.
+    /// Its visibility is left exactly as the template had it. The game reveals
+    /// these on hover, and forcing them on turned a tidy column into a wall of
+    /// overlapping text. Whatever shows the preset labels shows ours, because
+    /// the clone carries the same components.
+    ///
+    /// The label sits to the left of the marker and is right-aligned, so it
+    /// grows away from the island rather than across it.
     /// </summary>
     private static void Label(Transform marker, string levelName, MelonLogger.Instance log)
     {
@@ -176,12 +184,20 @@ internal static class MapStartPatch
         var display = levelName.StartsWith("[BP] ", StringComparison.Ordinal)
             ? levelName.Substring(5)
             : levelName;
-
-        var wasActive = text.gameObject.activeSelf;
         tmp.text = display;
-        // Presets may keep their label hidden until hover; ours have to be
-        // readable, because a column of identical diamonds says nothing.
-        text.gameObject.SetActive(true);
-        log.Msg($"    labelled {display} (text child was {(wasActive ? "visible" : "hidden")})");
+
+        var rect = text.GetComponent<RectTransform>();
+        var markerRect = marker.GetComponent<RectTransform>();
+        if (rect != null && markerRect != null)
+        {
+            var before = rect.anchoredPosition;
+            // Pivot on the right edge so the text extends leftwards from the
+            // marker however long the name is.
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(1f, 0.5f);
+            rect.anchoredPosition = new Vector2(-(markerRect.rect.width * 0.5f + LabelGap), 0f);
+            tmp.alignment = TextAlignmentOptions.MidlineRight;
+            log.Msg($"    {display}: label {before} -> {rect.anchoredPosition}, hover-only");
+        }
     }
 }
