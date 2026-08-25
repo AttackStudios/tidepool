@@ -26,10 +26,8 @@ namespace TidePool.SurfMod;
 [HarmonyPatch(typeof(Map), "Start")]
 internal static class MapStartPatch
 {
-    /// <summary>Where custom markers go, as a fraction of the map's width and height.</summary>
-    private const float ColumnX = -0.44f;
-    private const float TopY = 0.40f;
-    private const float StepY = 0.085f;
+    /// <summary>Gap between the island's leftmost marker and our column, in pixels.</summary>
+    private const float ColumnGap = 90f;
 
     private static void Postfix(Map __instance)
     {
@@ -59,6 +57,10 @@ internal static class MapStartPatch
             .ToHashSet(StringComparer.Ordinal);
 
         var template = root.GetChild(0);
+        var bounds = MarkerBounds(root);
+        // Spread our column over the same vertical extent the island markers use,
+        // so it fits whatever the canvas size turns out to be.
+        var step = custom.Length > 1 ? (bounds.top - bounds.bottom) / (custom.Length - 1) : 0f;
         var added = 0;
 
         foreach (var name in custom)
@@ -73,20 +75,52 @@ internal static class MapStartPatch
             var rect = clone.GetComponent<RectTransform>();
             if (rect != null)
             {
-                // Laid out in a column down one side rather than on the island.
-                // These are real breaks from all over the world; pretending
-                // Nazaré is off Oahu would be worse than plainly listing it.
-                rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
-                rect.anchoredPosition = new Vector2(
-                    ColumnX * ((RectTransform)root).rect.width,
-                    (TopY - StepY * added) * ((RectTransform)root).rect.height);
+                // Calibrated off the markers already on the map rather than off
+                // the root's rect. At Start the layout has not run, so that rect
+                // is still zero — which put all nine on top of each other in the
+                // middle. The existing markers are positioned correctly by then,
+                // so they are the reliable reference.
+                rect.anchorMin = template.GetComponent<RectTransform>().anchorMin;
+                rect.anchorMax = template.GetComponent<RectTransform>().anchorMax;
+                rect.anchoredPosition = new Vector2(bounds.minX - ColumnGap, bounds.top - step * added);
             }
 
             if (map.xl != null) map.xl.Add(clone.GetComponent<RectTransform>());
             added++;
-            log.Msg($"  added marker: {name}");
+            log.Msg($"  added marker: {name} at {clone.GetComponent<RectTransform>().anchoredPosition}");
         }
 
         log.Msg($"Custom levels on the map: {added} added, {root.childCount} markers total.");
+    }
+
+    private readonly struct Bounds
+    {
+        internal Bounds(float minX, float top, float bottom) { this.minX = minX; this.top = top; this.bottom = bottom; }
+        internal readonly float minX;
+        internal readonly float top;
+        internal readonly float bottom;
+    }
+
+    /// <summary>The extent of the markers already on the map, in their own coordinates.</summary>
+    private static Bounds MarkerBounds(Transform root)
+    {
+        float minX = float.MaxValue, top = float.MinValue, bottom = float.MaxValue;
+        var seen = 0;
+
+        for (var i = 0; i < root.childCount; i++)
+        {
+            var r = root.GetChild(i).GetComponent<RectTransform>();
+            if (r == null) continue;
+            var p = r.anchoredPosition;
+            if (p.x < minX) minX = p.x;
+            if (p.y > top) top = p.y;
+            if (p.y < bottom) bottom = p.y;
+            seen++;
+        }
+
+        // Nothing to calibrate against; fall back to something visible rather
+        // than stacking everything at the origin.
+        if (seen == 0) return new Bounds(-300f, 200f, -200f);
+        return new Bounds(minX, top, bottom);
     }
 }
