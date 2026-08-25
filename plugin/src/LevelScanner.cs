@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using System.Linq;
-using BepInEx.Logging;
+using MelonLoader;
 
-namespace TidePool.SurfPlugin;
+namespace TidePool.SurfMod;
 
 /// <summary>
 /// Reads the game's Levels folder and reports what is there.
@@ -35,12 +35,12 @@ internal static class LevelScanner
         return Directory.Exists(levels) ? levels : null;
     }
 
-    internal static void ReportFolder(ManualLogSource log)
+    internal static void Report(MelonLogger.Instance log)
     {
         var dir = LevelsDir();
         if (dir is null)
         {
-            log.LogWarning("Could not find the Levels folder.");
+            log.Warning("Could not find the Levels folder.");
             return;
         }
 
@@ -49,8 +49,8 @@ internal static class LevelScanner
                                       && !Shipped.Contains(f)
                                       && !f.EndsWith("_User", StringComparison.Ordinal)).ToArray();
 
-        log.LogInfo($"Levels folder: {dir}");
-        log.LogInfo($"  {files.Length} level(s), {custom.Length} of them custom");
-        foreach (var c in custom) log.LogInfo($"  custom: {c}");
+        log.Msg($"Levels folder: {dir}");
+        log.Msg($"  {files.Length} level(s), {custom.Length} of them custom");
+        foreach (var c in custom) log.Msg($"  custom: {c}");
     }
 }
