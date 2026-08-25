@@ -61,8 +61,22 @@ export function findBeachDir(
   const derived = levelsDirIn(gameRoot)
   if (derived) return derived
 
-  // Only a fallback, for an install we could not find.
-  return override && existsSync(override) ? override : null
+  // Only a fallback, and only if it is plausibly a levels folder. A stale pick
+  // is worse than none: one pointed at an unrelated Documents folder, so the
+  // Beach Manager dutifully listed nothing and there was no way to tell whether
+  // the app or the game was at fault.
+  return override && looksLikeLevels(override) ? override : null
+}
+
+/** Does this folder actually hold levels, or is it a leftover guess? */
+function looksLikeLevels(dir: string): boolean {
+  if (!existsSync(dir)) return false
+  if (basename(dir).toLowerCase() === 'levels') return true
+  try {
+    return readdirSync(dir).some((f) => f.toLowerCase().endsWith(BEACH_EXT))
+  } catch {
+    return false
+  }
 }
 
 /** `<game>/<Name>_Data/StreamingAssets/Levels`, if it is there. */

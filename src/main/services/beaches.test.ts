@@ -67,8 +67,24 @@ describe('findBeachDir', () => {
     rmSync(stale, { recursive: true, force: true })
   })
 
-  it('falls back to an override when the game cannot be found', () => {
+  it('falls back to an override that actually holds levels', () => {
+    writeFileSync(join(dir, `Kewalo${BEACH_EXT}`), level())
     expect(findBeachDir(null, dir)).toBe(dir)
+  })
+
+  it('accepts a folder named Levels even while it is still empty', () => {
+    const levels = join(dir, 'Levels')
+    mkdirSync(levels, { recursive: true })
+    expect(findBeachDir(null, levels)).toBe(levels)
+  })
+
+  it('ignores a stale pick that is plainly not a levels folder', () => {
+    // This is the real case: a Documents folder chosen once, kept for ever,
+    // and the Beach Manager quietly listing nothing.
+    const junk = mkdtempSync(join(tmpdir(), 'tp-junk-'))
+    writeFileSync(join(junk, 'notes.txt'), 'x')
+    expect(findBeachDir(null, junk)).toBeNull()
+    rmSync(junk, { recursive: true, force: true })
   })
 
   it('derives the Levels folder from the game install', () => {
