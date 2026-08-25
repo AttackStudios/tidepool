@@ -91,60 +91,72 @@ internal static class WaveProbe
     /// </summary>
     private static void OnSampled(m __instance) => _sampledByGame = __instance;
 
-    /// <summary>Sample on our own clock \u2014 what a host broadcasting the wave needs anyway.</summary>
+    /// <summary>
+    /// Watch a handful of fixed points every frame.
+    ///
+    /// The range across all 321 samples was stable at 0.00..35.00 for twenty
+    /// seconds of actual surfing, and the profile decays from shore to offshore
+    /// like a seabed. But a steady swell would hold a steady crest-to-trough
+    /// envelope too, so that reading fits both a static ground profile and live
+    /// water, and those two have opposite consequences for SurfMP.
+    ///
+    /// A single point settles it. Ground does not move between frames; water
+    /// does. So track each point's spread over time rather than the surface's
+    /// spread over space.
+    /// </summary>
+    private static readonly int[] Watched = { 20, 60, 100, 140, 180, 220 };
+    private static readonly float[] Lo = new float[6];
+    private static readonly float[] Hi = new float[6];
+    private static bool _watching;
+
     internal static void Tick()
     {
-        if (UnityEngine.Time.time < _next) return;
-        _next = UnityEngine.Time.time + Period;
-        _ticks++;
-
-        // A heartbeat even with nothing found, so silence in the log means the
-        // update loop is dead rather than the search being empty. Last time those
-        // two were indistinguishable and cost a launch to tell apart.
-        if (Instances.Count == 0 && _sampledByGame == null)
+        var wave = Live;
+        if (wave == null)
         {
+            if (UnityEngine.Time.time < _next) return;
+            _next = UnityEngine.Time.time + Period;
+            _ticks++;
             if (_ticks % 5 == 1)
                 Mod.Log.Msg($"[probe] waiting \u2014 {_ctorHits} construction(s), game has not sampled ex() yet");
             return;
         }
 
-        var candidates = new List<m>(Instances);
-        if (_sampledByGame != null && !candidates.Contains(_sampledByGame)) candidates.Add(_sampledByGame);
-
-        var summary = new StringBuilder();
-        var found = -1;
-
-        for (var idx = 0; idx < candidates.Count; idx++)
+        // Every frame, not every three seconds: the question is whether these
+        // points move at all, and sampling slowly would miss it.
+        if (!_watching)
         {
-            float min = float.MaxValue, max = float.MinValue;
-            var ok = true;
-
-            for (var i = 0; i < Samples; i += 10)
-            {
-                float h;
-                try { h = candidates[idx].ex(i); }
-                catch (Exception e) { summary.Append($"#{idx}:{e.GetType().Name} "); ok = false; break; }
-                if (float.IsNaN(h)) continue;
-                if (h < min) min = h;
-                if (h > max) max = h;
-            }
-
-            if (!ok) continue;
-            var tag = ReferenceEquals(candidates[idx], _sampledByGame) ? "*" : "";
-            summary.Append($"#{idx}{tag}:{min:F2}..{max:F2} ");
-
-            // Flat means the wrong instance, or a dead one. A range means water.
-            if (max - min > 0.001f && found < 0) found = idx;
+            _watching = true;
+            for (var k = 0; k < Watched.Length; k++) { Lo[k] = float.MaxValue; Hi[k] = float.MinValue; }
         }
 
-        if (found >= 0 && found != _live)
+        for (var k = 0; k < Watched.Length; k++)
         {
-            _live = found;
-            Mod.Log.Msg($"[probe] #{found} is the live wave \u2014 ex(int) IS a height sampler");
-            Dump(candidates[found]);
+            float h;
+            try { h = wave.ex(Watched[k]); }
+            catch (Exception) { continue; }
+            if (float.IsNaN(h)) continue;
+            if (h < Lo[k]) Lo[k] = h;
+            if (h > Hi[k]) Hi[k] = h;
         }
 
-        Mod.Log.Msg($"[wave] {candidates.Count} candidate(s) (* = game-sampled) | {summary}");
+        if (UnityEngine.Time.time < _next) return;
+        _next = UnityEngine.Time.time + Period;
+
+        var moved = 0f;
+        var row = new StringBuilder();
+        for (var k = 0; k < Watched.Length; k++)
+        {
+            if (Lo[k] > Hi[k]) continue;
+            var spread = Hi[k] - Lo[k];
+            if (spread > moved) moved = spread;
+            row.Append($"[{Watched[k]}]{Lo[k]:F2}~{Hi[k]:F2} ");
+            Lo[k] = float.MaxValue; Hi[k] = float.MinValue;
+        }
+
+        Mod.Log.Msg(moved > 0.001f
+            ? $"[wave] MOVING, max spread {moved:F3} over 3s \u2014 this is the water surface | {row}"
+            : $"[wave] static over 3s \u2014 this is terrain, not water | {row}");
     }
 
     /// <summary>One full read, to see the surface's shape rather than just its range.</summary>
