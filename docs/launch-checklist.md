@@ -7,7 +7,10 @@ Kept in the repo because this state otherwise lives only in a chat log.
 
 ## The plan for the day
 
-1. **10:00** — game unlocks. Play it. Nothing below waits on this.
+0. **Until 09:50** — the four items under "Open — yours", and tag `rc.10` if you
+   want the release chain proven on the code 1.0 will actually be built from.
+   Then stop and go refresh the store page.
+1. **10:00** — game unlocks. Buy it, play it. Nothing below waits on this.
 2. **Whenever** — make a beach in-game and save it. That is the only thing the
    Break Pack is blocked on, and it takes seconds.
 3. Read the beach JSON, fill in `FIELDS` and `GRID` in `tools/beach-format.mjs`,
@@ -71,6 +74,11 @@ game launches, nothing happens, no error anywhere.
   profile's plugins folder.
 - **The update check threw** because the Thunderstore community does not exist
   yet, showing a first-time user an error on a healthy install.
+- **A re-tagged release silently became a draft.** Deleting a tag turns its
+  published release back into a draft, and the workflow's idempotent edit path
+  never undid that — leaving the release absent from the anonymous API, every
+  asset link 404, and the download page locked, while the build still announced
+  it to Discord. Re-tagging after a bad build is exactly when that would bite.
 - **Toggling the loader off renamed a CoreCLR install** — 185 of the pack's 217
   DLLs. A disabled loader now refuses to launch instead of running vanilla while
   reporting itself modded.
@@ -97,3 +105,16 @@ game launches, nothing happens, no error anywhere.
 - **Tag `rc.10`.** The entire core has been rewritten since rc.9 — install,
   launch, launcher, ipc, preload, beaches, updates — and the release chain has
   not run on any of it. 1.0 will be built from this code.
+
+## If something goes wrong tomorrow
+
+- **Do not delete a tag to redo a release.** It turns the release into a draft.
+  The workflow now forces it back, but the safe move is a new tag (`v1.0.1`),
+  not a moved one.
+- **If the download page stays locked after tagging 1.0**, check the release is
+  not a draft and not marked prerelease — `download.js` counts neither.
+- **If Discord stays quiet**, the announcer runs inside the build job; check the
+  release job's log for "Announced ... to the ... channel".
+- **If the game launches unmodded**, check `winhttp.dll` is beside the exe and
+  that the profile's `BepInEx/core/BepInEx.Unity.IL2CPP.dll` exists — a disabled
+  loader looks identical to an uninstalled one, and both now refuse to launch.
