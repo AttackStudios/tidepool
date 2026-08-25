@@ -5,6 +5,7 @@ using MelonLoader;
 using UnityEngine;
 using Il2CppInterop.Runtime;
 using Il2CppSurf.UI;
+using Il2CppTMPro;
 
 namespace TidePool.SurfMod;
 
@@ -85,12 +86,16 @@ internal static class MapStartPatch
                 rect.anchoredPosition = new Vector2(bounds.minX - ColumnGap, bounds.top - step * added);
             }
 
+            Label(clone.transform, name, log);
+
             if (map.xl != null) map.xl.Add(clone.GetComponent<RectTransform>());
             added++;
             log.Msg($"  added marker: {name} at {clone.GetComponent<RectTransform>().anchoredPosition}");
         }
 
         log.Msg($"Custom levels on the map: {added} added, {root.childCount} markers total.");
+
+        DescribeMarker(template, log);
     }
 
     private readonly struct Bounds
@@ -122,5 +127,61 @@ internal static class MapStartPatch
         // than stacking everything at the origin.
         if (seen == 0) return new Bounds(-300f, 200f, -200f);
         return new Bounds(minX, top, bottom);
+    }
+
+    /// <summary>
+    /// Log what a marker is built from.
+    ///
+    /// Labels should use whatever text component the game already uses, so they
+    /// inherit its font and styling instead of looking bolted on. That cannot be
+    /// guessed from the type dump — it has to be read off a real one.
+    /// </summary>
+    private static void DescribeMarker(Transform marker, MelonLogger.Instance log)
+    {
+        log.Msg($"--- marker template: {marker.name} ---");
+        foreach (var c in marker.GetComponents<Component>())
+        {
+            log.Msg($"  component: {c.GetIl2CppType().FullName}");
+        }
+        for (var i = 0; i < marker.childCount; i++)
+        {
+            var child = marker.GetChild(i);
+            log.Msg($"  child [{i}] {child.name}");
+            foreach (var c in child.GetComponents<Component>())
+            {
+                log.Msg($"      {c.GetIl2CppType().FullName}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Put the level's name on the marker.
+    ///
+    /// Every marker already carries a TextMeshProUGUI child, so the clone
+    /// inherits one — still reading "Waikiki" from the template. Setting that
+    /// rather than adding our own means the label gets the game's font, size and
+    /// colour for free, and cannot drift from them.
+    ///
+    /// The bracket prefix is dropped: it exists to group the pack in the file
+    /// list, and the column on the map already does that job visually.
+    /// </summary>
+    private static void Label(Transform marker, string levelName, MelonLogger.Instance log)
+    {
+        var text = marker.Find("Text");
+        if (text == null) { log.Warning($"  {levelName}: no Text child to label"); return; }
+
+        var tmp = text.GetComponent<TextMeshProUGUI>();
+        if (tmp == null) { log.Warning($"  {levelName}: Text child has no TextMeshProUGUI"); return; }
+
+        var display = levelName.StartsWith("[BP] ", StringComparison.Ordinal)
+            ? levelName.Substring(5)
+            : levelName;
+
+        var wasActive = text.gameObject.activeSelf;
+        tmp.text = display;
+        // Presets may keep their label hidden until hover; ours have to be
+        // readable, because a column of identical diamonds says nothing.
+        text.gameObject.SetActive(true);
+        log.Msg($"    labelled {display} (text child was {(wasActive ? "visible" : "hidden")})");
     }
 }

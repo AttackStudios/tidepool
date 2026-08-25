@@ -36,6 +36,9 @@
     <Reference Include="UnityEngine.UI">
       <HintPath>$(MLDir)\Il2CppAssemblies\UnityEngine.UI.dll</HintPath>
     </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(MLDir)\Il2CppAssemblies\Unity.TextMeshPro.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>$(MLDir)\Il2CppAssemblies\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
