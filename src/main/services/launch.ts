@@ -9,6 +9,7 @@
  */
 
 import { LOADER_STAGING } from './install'
+import { DEFAULT_LOADER, type LoaderKind } from '../../shared/loaders'
 
 export type DoorstopVersion = 3 | 4
 
@@ -83,11 +84,40 @@ export function doorstopDisableArgs(version: DoorstopVersion): string[] {
   return version === 4 ? ['--doorstop-enabled', 'false'] : ['--doorstop-enable', 'false']
 }
 
+/**
+ * MelonLoader's on/off switch.
+ *
+ * It bootstraps from version.dll with no arguments at all, so a modded launch
+ * needs nothing. Turning it off is `--no-mods`, which its own documentation
+ * gives as the equivalent of the `disable` preference — the direct analogue of
+ * switching Doorstop off rather than merely passing no arguments.
+ */
+export function melonArgs(modded: boolean): string[] {
+  return modded ? [] : ['--no-mods']
+}
+
 export function buildLaunchPlan(
   profileDir: string,
-  options: { doorstop?: DoorstopVersion; platform?: NodeJS.Platform; modded?: boolean } = {},
+  options: {
+    loader?: LoaderKind
+    doorstop?: DoorstopVersion
+    platform?: NodeJS.Platform
+    modded?: boolean
+  } = {},
 ): LaunchPlan {
-  const { doorstop = 4, platform = process.platform, modded = true } = options
+  const {
+    loader = DEFAULT_LOADER,
+    doorstop = 4,
+    platform = process.platform,
+    modded = true,
+  } = options
+
+  if (loader === 'melonloader') {
+    // No Wine override: that exists to make the game load Doorstop's winhttp
+    // proxy, and MelonLoader does not use one.
+    return { args: melonArgs(modded), env: {} }
+  }
+
   if (!modded) return { args: doorstopDisableArgs(doorstop), env: {} }
   return { args: doorstopArgs(profileDir, doorstop), env: wineEnv(platform) }
 }

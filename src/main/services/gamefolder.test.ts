@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { detectBackend, inspectGameFolder, isPlausibleGameFolder } from './gamefolder'
+import { detectBackend, inspectGameFolder, isPlausibleGameFolder, detectLoader, installedLoaders } from './gamefolder'
 
 let root: string
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'tidepool-g-')) })
@@ -71,5 +71,39 @@ describe('detectBackend', () => {
   it('returns null when neither marker is there', () => {
     build('Game')
     expect(detectBackend(root, 'Game_Data')).toBeNull()
+  })
+})
+
+describe('detectLoader', () => {
+  const mk = () => mkdtempSync(join(tmpdir(), 'tp-loader-'))
+
+  it('finds MelonLoader by its own folder', () => {
+    const d = mk()
+    mkdirSync(join(d, 'MelonLoader'), { recursive: true })
+    expect(detectLoader(d)).toBe('melonloader')
+    rmSync(d, { recursive: true, force: true })
+  })
+
+  it('finds BepInEx by its own folder', () => {
+    const d = mk()
+    mkdirSync(join(d, 'BepInEx'), { recursive: true })
+    expect(detectLoader(d)).toBe('bepinex')
+    rmSync(d, { recursive: true, force: true })
+  })
+
+  it('is null for a clean install', () => {
+    const d = mk()
+    expect(detectLoader(d)).toBeNull()
+    rmSync(d, { recursive: true, force: true })
+  })
+
+  it('reports both when a stale proxy is left beside a working loader', () => {
+    // Exactly the state a half-finished uninstall leaves: MelonLoader working,
+    // BepInEx's winhttp.dll still there, both hooking the same process.
+    const d = mk()
+    mkdirSync(join(d, 'MelonLoader'), { recursive: true })
+    writeFileSync(join(d, 'winhttp.dll'), 'MZ')
+    expect(installedLoaders(d).sort()).toEqual(['bepinex', 'melonloader'])
+    rmSync(d, { recursive: true, force: true })
   })
 })

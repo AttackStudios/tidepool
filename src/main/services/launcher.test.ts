@@ -46,7 +46,7 @@ describe('canLaunchDirectly', () => {
 describe('launchGame', () => {
   it('spawns the derived executable with the Doorstop arguments', () => {
     const { spawn } = fakeSpawn()
-    const plan = buildLaunchPlan('/profiles/default', { platform: 'win32' })
+    const plan = buildLaunchPlan('/profiles/default', { loader: 'bepinex', platform: 'win32' })
     expect(launchGame(root, profile, plan, 'modded', 'win32', spawn).started).toBe(true)
 
     const [exe, args, options] = (spawn as unknown as ReturnType<typeof vi.fn>).mock.calls[0]!
@@ -57,7 +57,7 @@ describe('launchGame', () => {
 
   it('explains itself instead of failing on macOS', () => {
     const { spawn } = fakeSpawn()
-    const outcome = launchGame(root, profile, buildLaunchPlan('/p'), 'modded', 'darwin', spawn)
+    const outcome = launchGame(root, profile, buildLaunchPlan('/p', { loader: 'bepinex' }), 'modded', 'darwin', spawn)
     expect(outcome.started).toBe(false)
     expect(outcome.reason).toMatch(/Windows/)
     expect(spawn).not.toHaveBeenCalled()
@@ -65,7 +65,7 @@ describe('launchGame', () => {
 
   it('refuses a folder that is not a Unity build', () => {
     const empty = mkdtempSync(join(tmpdir(), 'tidepool-e-'))
-    const outcome = launchGame(empty, profile, buildLaunchPlan('/p'), 'modded', 'win32', fakeSpawn().spawn)
+    const outcome = launchGame(empty, profile, buildLaunchPlan('/p', { loader: 'bepinex' }), 'modded', 'win32', fakeSpawn().spawn)
     expect(outcome.started).toBe(false)
     expect(outcome.reason).toMatch(/Not a Unity game folder/)
     rmSync(empty, { recursive: true, force: true })
@@ -76,7 +76,7 @@ describe('launchGame', () => {
     // run, so passing nothing would let it load BepInEx off its config file and
     // defeat the point of an unmodded comparison.
     const { spawn } = fakeSpawn()
-    const plan = buildLaunchPlan('/p', { platform: 'win32', modded: false })
+    const plan = buildLaunchPlan('/p', { loader: 'bepinex', platform: 'win32', modded: false })
     launchGame(root, profile, plan, 'vanilla', 'win32', spawn)
     const [, args, options] = (spawn as unknown as ReturnType<typeof vi.fn>).mock.calls[0]!
     expect(args).toEqual(['--doorstop-enabled', 'false'])
@@ -85,7 +85,7 @@ describe('launchGame', () => {
 
   it('places the loader beside the executable before a modded launch', () => {
     const { spawn } = fakeSpawn()
-    launchGame(root, profile, buildLaunchPlan(profile, { platform: 'win32' }), 'modded', 'win32', spawn)
+    launchGame(root, profile, buildLaunchPlan(profile, { loader: 'bepinex', platform: 'win32' }), 'modded', 'win32', spawn)
     // Windows loads winhttp.dll out of the game's own folder. Anywhere else and
     // Doorstop never runs and the game starts unmodded, silently.
     expect(existsSync(join(root, 'winhttp.dll'))).toBe(true)
@@ -96,7 +96,7 @@ describe('launchGame', () => {
   it('refuses a modded launch when the profile has no loader', () => {
     const bare = mkdtempSync(join(tmpdir(), 'tidepool-b-'))
     const { spawn } = fakeSpawn()
-    const outcome = launchGame(root, bare, buildLaunchPlan(bare), 'modded', 'win32', spawn)
+    const outcome = launchGame(root, bare, buildLaunchPlan(bare, { loader: 'bepinex' }), 'modded', 'win32', spawn)
     expect(outcome.started).toBe(false)
     expect(outcome.reason).toMatch(/no mod loader/i)
     expect(spawn).not.toHaveBeenCalled()
@@ -106,7 +106,7 @@ describe('launchGame', () => {
   it('does not need a loader to launch vanilla', () => {
     const bare = mkdtempSync(join(tmpdir(), 'tidepool-b2-'))
     const { spawn } = fakeSpawn()
-    const plan = buildLaunchPlan(bare, { platform: 'win32', modded: false })
+    const plan = buildLaunchPlan(bare, { loader: 'bepinex', platform: 'win32', modded: false })
     expect(launchGame(root, bare, plan, 'vanilla', 'win32', spawn).started).toBe(true)
     rmSync(bare, { recursive: true, force: true })
   })
@@ -114,7 +114,7 @@ describe('launchGame', () => {
   it('reports a missing executable rather than spawning nothing', () => {
     const noExe = mkdtempSync(join(tmpdir(), 'tidepool-n-'))
     mkdirSync(join(noExe, 'Game_Data'), { recursive: true })
-    const outcome = launchGame(noExe, profile, buildLaunchPlan('/p'), 'modded', 'win32', fakeSpawn().spawn)
+    const outcome = launchGame(noExe, profile, buildLaunchPlan('/p', { loader: 'bepinex' }), 'modded', 'win32', fakeSpawn().spawn)
     expect(outcome.started).toBe(false)
     expect(outcome.reason).toMatch(/No executable/)
     rmSync(noExe, { recursive: true, force: true })

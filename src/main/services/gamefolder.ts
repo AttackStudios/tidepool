@@ -6,6 +6,7 @@
  * a build always contains `<Name>_Data` beside `<Name>.exe`.
  */
 import { existsSync, readdirSync } from 'node:fs'
+import { LOADERS, type LoaderKind } from '../../shared/loaders'
 import { join } from 'node:path'
 
 export interface GameFolder {
@@ -53,4 +54,29 @@ export function detectBackend(root: string, dataDir: string): 'mono' | 'il2cpp' 
 /** True when the folder is a Unity build we could plausibly mod. */
 export function isPlausibleGameFolder(root: string): boolean {
   return inspectGameFolder(root) !== null
+}
+
+
+/**
+ * Which loader, if any, is installed in a game folder.
+ *
+ * Detects by the loader's own marker folder rather than the proxy DLL, because
+ * a proxy can be left behind by an uninstall while the loader itself is gone —
+ * and a stale winhttp.dll beside a working MelonLoader is exactly how two
+ * loaders end up fighting over one process.
+ */
+export function detectLoader(root: string): LoaderKind | null {
+  if (!root || !existsSync(root)) return null
+  for (const spec of Object.values(LOADERS)) {
+    if (existsSync(join(root, spec.marker))) return spec.kind
+  }
+  return null
+}
+
+/** Loaders with files present, so a conflicting pair can be reported. */
+export function installedLoaders(root: string): LoaderKind[] {
+  if (!root || !existsSync(root)) return []
+  return Object.values(LOADERS)
+    .filter((s) => existsSync(join(root, s.marker)) || existsSync(join(root, s.proxyDll)))
+    .map((s) => s.kind)
 }

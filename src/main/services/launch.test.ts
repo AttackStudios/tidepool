@@ -54,11 +54,11 @@ describe('buildLaunchPlan', () => {
     // Not an empty plan. With no arguments at all Doorstop reads
     // doorstop_config.ini beside the game, where enabled is true — so a
     // "vanilla" run would load BepInEx anyway and prove nothing.
-    expect(buildLaunchPlan('/p', { modded: false })).toEqual({
+    expect(buildLaunchPlan('/p', { loader: 'bepinex', modded: false })).toEqual({
       args: ['--doorstop-enabled', 'false'],
       env: {},
     })
-    expect(buildLaunchPlan('/p', { modded: false, doorstop: 3 })).toEqual({
+    expect(buildLaunchPlan('/p', { loader: 'bepinex', modded: false, doorstop: 3 })).toEqual({
       args: ['--doorstop-enable', 'false'],
       env: {},
     })
@@ -67,16 +67,37 @@ describe('buildLaunchPlan', () => {
 
 describe('steamLaunchOptions', () => {
   it('puts env before %command% and args after it', () => {
-    const plan = buildLaunchPlan('/p', { doorstop: 4, platform: 'linux' })
+    const plan = buildLaunchPlan('/p', { loader: 'bepinex', doorstop: 4, platform: 'linux' })
     const opts = steamLaunchOptions(plan)
     expect(opts.indexOf('WINEDLLOVERRIDES')).toBeLessThan(opts.indexOf('%command%'))
     expect(opts.indexOf('%command%')).toBeLessThan(opts.indexOf('--doorstop-enabled'))
   })
 
   it('quotes arguments containing spaces', () => {
-    const opts = steamLaunchOptions(buildLaunchPlan('/Program Files/p', { platform: 'win32' }))
+    const opts = steamLaunchOptions(buildLaunchPlan('/Program Files/p', { loader: 'bepinex', platform: 'win32' }))
     expect(opts).toContain('"/Program Files/p/BepInEx/core/BepInEx.Unity.IL2CPP.dll"')
     // The CoreCLR paths carry the same space and need the same treatment.
     expect(opts).toContain('"/Program Files/p/_loader/dotnet"')
+  })
+})
+
+describe('MelonLoader plans', () => {
+  it('needs no arguments to load, because version.dll does it', () => {
+    expect(buildLaunchPlan('/p', { loader: 'melonloader' })).toEqual({ args: [], env: {} })
+  })
+
+  it('turns the loader off with --no-mods for a vanilla run', () => {
+    // Not "no arguments" — that is how the loader runs. Off is explicit.
+    expect(buildLaunchPlan('/p', { loader: 'melonloader', modded: false }))
+      .toEqual({ args: ['--no-mods'], env: {} })
+  })
+
+  it('carries no Wine override, which only exists for Doorstop', () => {
+    const plan = buildLaunchPlan('/p', { loader: 'melonloader', platform: 'darwin' })
+    expect(plan.env).toEqual({})
+  })
+
+  it('defaults to MelonLoader, the loader this game actually runs', () => {
+    expect(buildLaunchPlan('/p')).toEqual({ args: [], env: {} })
   })
 })
