@@ -14,6 +14,11 @@
   var version = document.getElementById('version')
 
   /** Work out what each asset is, from its name. */
+  /** Is this asset one of the app's own builds, rather than shipped content? */
+  function isAppBuild(name) {
+    return /^tidepool[-_]/i.test(name)
+  }
+
   function classify(asset) {
     var n = asset.name.toLowerCase()
     if (/setup.*\.exe$/.test(n)) {
@@ -78,7 +83,13 @@
     .then(function (releases) {
       // Only a full release counts. A prerelease is a test build and should not
       // be handed to someone arriving from an announcement.
-      var stable = releases.filter(function (r) { return !r.prerelease && !r.draft })
+      // Content ships as releases too, and Break Pack's zip classifies as a
+      // Windows portable purely because it ends in .zip. Newest-stable alone
+      // would eventually offer a 3 KB level pack as the app.
+      var stable = releases.filter(function (r) {
+        if (r.prerelease || r.draft) return false
+        return (r.assets || []).some(function (a) { return isAppBuild(a.name) })
+      })
       if (stable.length > 0) {
         render(stable[0])
       } else {
