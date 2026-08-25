@@ -56,7 +56,18 @@ describe('describeBeach', () => {
 })
 
 describe('findBeachDir', () => {
-  it('prefers an explicit override', () => {
+  it('follows the game install even when an override is set', () => {
+    // A folder picked once must not outlive the reason it was picked. If the
+    // game moves, or the pick was a guess made before the game was found, the
+    // game is still the right answer.
+    const levels = join(dir, 'SurfSandbox_Data', 'StreamingAssets', 'Levels')
+    mkdirSync(levels, { recursive: true })
+    const stale = mkdtempSync(join(tmpdir(), 'tp-stale-'))
+    expect(findBeachDir(dir, stale)).toBe(levels)
+    rmSync(stale, { recursive: true, force: true })
+  })
+
+  it('falls back to an override when the game cannot be found', () => {
     expect(findBeachDir(null, dir)).toBe(dir)
   })
 

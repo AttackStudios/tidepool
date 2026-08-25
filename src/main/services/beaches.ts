@@ -54,7 +54,19 @@ export function findBeachDir(
   gameRoot: string | null,
   override?: string | null,
 ): string | null {
-  if (override && existsSync(override)) return override
+  // The game wins. Beaches belong wherever the game currently reads them from,
+  // so resolving fresh each time means moving or reinstalling the game just
+  // works, and a manual folder picked once cannot go stale and start pointing
+  // somewhere the game never looks.
+  const derived = levelsDirIn(gameRoot)
+  if (derived) return derived
+
+  // Only a fallback, for an install we could not find.
+  return override && existsSync(override) ? override : null
+}
+
+/** `<game>/<Name>_Data/StreamingAssets/Levels`, if it is there. */
+function levelsDirIn(gameRoot: string | null): string | null {
   if (!gameRoot || !existsSync(gameRoot)) return null
 
   let entries: string[]
