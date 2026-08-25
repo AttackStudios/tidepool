@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using HarmonyLib;
@@ -25,18 +26,27 @@ internal static class WaveProbe
     private const int Samples = 321;
     private const float Period = 3f;
 
-    private static m _wave;
-    private static float _next;
-    private static bool _dead;
-    private static bool _announced;
+    /// <summary>
+    /// Every instance ever constructed, not just the first.
+    ///
+    /// The first attempt adopted instance #0 and held it, and every sample came
+    /// back exactly 0.00 forever \u2014 because that one is built about 60ms into
+    /// startup, long before a beach is loaded. It was never the live simulation.
+    /// Which one is cannot be known in advance, so keep them all and let the
+    /// numbers say: the live one is whichever stops reading flat.
+    /// </summary>
+    private static readonly List<m> Instances = new List<m>();
 
-    /// <summary>Patch every constructor, plus each candidate update method, independently.</summary>
+    private static float _next;
+    private static int _live = -1;
+
+    /// <summary>The instance actually carrying wave data, once one has proven itself.</summary>
+    internal static m Live => _live >= 0 && _live < Instances.Count ? Instances[_live] : null;
+
     internal static void Install(HarmonyLib.Harmony harmony)
     {
         var capture = new HarmonyMethod(typeof(WaveProbe).GetMethod(
             nameof(OnConstructed), BindingFlags.NonPublic | BindingFlags.Static));
-        var witness = new HarmonyMethod(typeof(WaveProbe).GetMethod(
-            nameof(OnCalled), BindingFlags.NonPublic | BindingFlags.Static));
 
         var ctors = 0;
         foreach (var ctor in AccessTools.GetDeclaredConstructors(typeof(m)))
@@ -45,72 +55,71 @@ internal static class WaveProbe
             catch (Exception e) { Mod.Log.Warning($"[probe] ctor ({ctor.GetParameters().Length} args): {e.Message}"); }
         }
         Mod.Log.Msg($"[probe] {ctors} constructor(s) patched");
-
-        // Which of these actually runs is unknown; eq produced nothing. Patch them
-        // all and let the game answer, rather than spending a launch per guess.
-        foreach (var name in new[] { "eq", "er", "es", "eu", "ey" })
-        {
-            try
-            {
-                var mi = AccessTools.Method(typeof(m), name, Type.EmptyTypes);
-                if (mi == null) { Mod.Log.Msg($"[probe] {name}() not found"); continue; }
-                harmony.Patch(mi, postfix: witness);
-            }
-            catch (Exception e) { Mod.Log.Warning($"[probe] {name}(): {e.Message}"); }
-        }
     }
 
-    private static void OnConstructed(m __instance) => Adopt(__instance, "constructor");
-
-    private static void OnCalled(m __instance, MethodBase __originalMethod)
-        => Adopt(__instance, $"{__originalMethod.Name}()");
-
-    private static void Adopt(m instance, string via)
+    private static void OnConstructed(m __instance)
     {
-        if (instance == null || _wave != null) return;
-        _wave = instance;
-        Mod.Log.Msg($"[probe] wave simulation captured via {via}");
+        if (__instance == null) return;
+        Instances.Add(__instance);
+        Mod.Log.Msg($"[probe] instance #{Instances.Count - 1} constructed at t={UnityEngine.Time.time:F1}s");
     }
 
-    /// <summary>Sample on our own clock — which is what a host broadcasting the wave needs anyway.</summary>
+    /// <summary>Sample on our own clock \u2014 which is what a host broadcasting the wave needs anyway.</summary>
     internal static void Tick()
     {
-        if (_dead) return;
-
-        if (_wave == null)
-        {
-            if (!_announced && UnityEngine.Time.time > 30f)
-            {
-                _announced = true;
-                Mod.Log.Warning("[probe] no wave instance after 30s — none of the patched members ran");
-            }
-            return;
-        }
-
+        if (Instances.Count == 0) return;
         if (UnityEngine.Time.time < _next) return;
         _next = UnityEngine.Time.time + Period;
 
-        try
-        {
-            var row = new StringBuilder();
-            float min = float.MaxValue, max = float.MinValue;
+        var summary = new StringBuilder();
+        var found = -1;
 
-            for (var i = 0; i < Samples; i += 20)
+        for (var idx = 0; idx < Instances.Count; idx++)
+        {
+            float min = float.MaxValue, max = float.MinValue;
+            var ok = true;
+
+            for (var i = 0; i < Samples; i += 10)
             {
-                var h = _wave.ex(i);
+                float h;
+                try { h = Instances[idx].ex(i); }
+                catch (Exception e)
+                {
+                    summary.Append($"#{idx}:{e.GetType().Name} ");
+                    ok = false;
+                    break;
+                }
+                if (float.IsNaN(h)) continue;
                 if (h < min) min = h;
                 if (h > max) max = h;
-                row.Append(h.ToString("F2")).Append(' ');
             }
 
-            Mod.Log.Msg($"[wave] range {min:F2}..{max:F2} | {row}");
+            if (!ok) continue;
+            summary.Append($"#{idx}:{min:F2}..{max:F2} ");
+
+            // Flat means either the wrong instance or a dead one. A range means water.
+            if (max - min > 0.001f && found < 0) found = idx;
         }
-        catch (Exception e)
+
+        if (found >= 0 && found != _live)
         {
-            // A negative answer is still an answer, and worth one clear line rather
-            // than the same exception every three seconds for the rest of the session.
-            Mod.Log.Error($"[wave] ex(int) is not a sampler: {e.GetType().Name}: {e.Message}");
-            _dead = true;
+            _live = found;
+            Mod.Log.Msg($"[probe] instance #{found} is the live wave \u2014 ex(int) IS a height sampler");
+            Dump(Instances[found]);
         }
+
+        Mod.Log.Msg($"[wave] {Instances.Count} instance(s) | {summary}");
+    }
+
+    /// <summary>One full read of the surface, to see its actual shape rather than its range.</summary>
+    private static void Dump(m wave)
+    {
+        var row = new StringBuilder();
+        for (var i = 0; i < Samples; i += 20)
+        {
+            try { row.Append(wave.ex(i).ToString("F2")).Append(' '); }
+            catch (Exception) { return; }
+        }
+        Mod.Log.Msg($"[wave] surface: {row}");
     }
 }
