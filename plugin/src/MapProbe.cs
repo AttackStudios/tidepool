@@ -100,6 +100,7 @@ internal static class MapStartPatch
 
         DescribeMarker(template, log);
         CompareLabels(root, log);
+        LabelWatch.Arm(map, root);
     }
 
     private readonly struct Bounds
@@ -159,7 +160,7 @@ internal static class MapStartPatch
     }
 
     /// <summary>The label object we add, named so it is never cloned twice.</summary>
-    private const string LabelName = "TidePoolName";
+    internal const string LabelName = "TidePoolName";
 
     /// <summary>
     /// Add the level's name to a marker.
@@ -178,7 +179,7 @@ internal static class MapStartPatch
     {
         var prompt = marker.Find("Text");
         if (prompt == null) { log.Warning($"  {levelName}: no Text child to hang a label on"); return; }
-        if (prompt.Find(LabelName) != null) return;
+        if (marker.Find(LabelName) != null) return;
 
         var promptTmp = prompt.GetComponent<TextMeshProUGUI>();
         if (promptTmp == null) { log.Warning($"  {levelName}: hover prompt has no TextMeshProUGUI"); return; }
@@ -188,9 +189,11 @@ internal static class MapStartPatch
             : levelName;
 
         // Copy the prompt so the label inherits the game's font and material.
-        var label = UnityEngine.Object.Instantiate(prompt.gameObject, prompt);
+        // Parented to the marker, not the prompt: the prompt is never shown,
+        // so a child of it could never be shown either.
+        var label = UnityEngine.Object.Instantiate(prompt.gameObject, marker);
         label.name = LabelName;
-        label.SetActive(true);
+        label.SetActive(false);
 
         var tmp = label.GetComponent<TextMeshProUGUI>();
         if (tmp == null) { log.Warning($"  {levelName}: label copy lost its TextMeshProUGUI"); return; }
