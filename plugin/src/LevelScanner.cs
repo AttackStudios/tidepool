@@ -53,4 +53,18 @@ internal static class LevelScanner
         log.Msg($"  {files.Length} level(s), {custom.Length} of them custom");
         foreach (var c in custom) log.Msg($"  custom: {c}");
     }
+
+    /// <summary>Level names in the folder that the game did not ship and are not player edits.</summary>
+    internal static string[] CustomLevels()
+    {
+        var dir = LevelsDir();
+        if (dir is null) return new string[0];
+
+        return Directory.GetFiles(dir, "*.lvl")
+            .Select(Path.GetFileNameWithoutExtension)
+            .Where(f => f != null
+                        && !Shipped.Contains(f)
+                        && !f.EndsWith("_User", StringComparison.Ordinal))
+            .ToArray();
+    }
 }
