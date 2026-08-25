@@ -19,22 +19,6 @@
       "dependencies": []
     },
     {
-      "id": "BepInEx-BepInExPack_IL2CPP",
-      "name": "BepInEx (IL2CPP)",
-      "owner": "BepInEx",
-      "summary": "The mod loader. Not usable on Surf Sandbox yet - see below.",
-      "description": "BepInEx is the loader that runs code mods. It does not work on Surf Sandbox yet, so this entry is here to say so rather than hand you something that fails quietly.\n\nSurf Sandbox is built on Unity 6.3 (6000.3.8f1). BepInEx 6 is the IL2CPP branch and Unity 6 support is still landing: the build Thunderstore ships (6.0.0-be.755) never starts at all, and the newest bleeding-edge build (be.785) does start - it loads CoreCLR and writes its config - but then spins indefinitely generating interop assemblies. Fourteen minutes at three cores, no output, flat memory. Tested against the real game on release day.\n\nNothing is lost by waiting. Beaches need no loader, which is why Break Pack works today. This entry becomes installable the moment a BepInEx build completes generation on Unity 6.3.",
-      "status": "planned",
-      "version": null,
-      "downloadUrl": null,
-      "icon": "https://gcdn.thunderstore.io/live/repository/icons/BepInEx-BepInExPack_IL2CPP-6.0.755.png",
-      "homepage": "https://github.com/BepInEx/BepInEx",
-      "categories": [
-        "Loader"
-      ],
-      "dependencies": []
-    },
-    {
       "id": "AttackStudioYT-SurfMP",
       "name": "SurfMP",
       "owner": "AttackStudioYT",
