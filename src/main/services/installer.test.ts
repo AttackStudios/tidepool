@@ -1,9 +1,10 @@
 import AdmZip from 'adm-zip'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Catalog } from './catalog'
+import { LOADER_STAGING } from './install'
 import { Installer, collapseByPackage } from './installer'
 import { ProfileStore } from './profiles'
 import type { Package } from '../../shared/types'
@@ -370,5 +371,37 @@ describe('duplicate packages', () => {
     const mods = profiles.read(profile.id)!.mods
     expect(mods).toHaveLength(1)
     expect(mods[0]!.version).toBe('2.0.0')
+  })
+})
+
+
+describe('toggling a loader off', () => {
+  // A BepInEx pack keeps its bundled .NET runtime in the staging folder: 185 of
+  // its 217 DLLs. A toggle renaming a whole CoreCLR install is not a toggle.
+  it('leaves the staged loader plumbing alone', () => {
+    const installer = new Installer(new Catalog(), profiles, cache)
+    const profile = profiles.create('Default')
+    const dir = profiles.dir(profile.id)
+    const staged = join(dir, LOADER_STAGING)
+    mkdirSync(join(staged, 'dotnet'), { recursive: true })
+    writeFileSync(join(staged, 'winhttp.dll'), 'MZ')
+    writeFileSync(join(staged, 'dotnet', 'coreclr.dll'), 'MZ')
+    mkdirSync(join(dir, 'BepInEx', 'core'), { recursive: true })
+    writeFileSync(join(dir, 'BepInEx', 'core', 'BepInEx.Unity.IL2CPP.dll'), 'MZ')
+
+    profiles.setMods(profile.id, [{
+      fullName: 'BepInEx-BepInExPack_IL2CPP', version: '6.0.755', enabled: true,
+      files: [
+        join(LOADER_STAGING, 'winhttp.dll'),
+        join(LOADER_STAGING, 'dotnet', 'coreclr.dll'),
+        join('BepInEx', 'core', 'BepInEx.Unity.IL2CPP.dll'),
+      ],
+    }])
+
+    installer.setEnabled(profile.id, 'BepInEx-BepInExPack_IL2CPP', false)
+    expect(existsSync(join(staged, 'winhttp.dll'))).toBe(true)
+    expect(existsSync(join(staged, 'dotnet', 'coreclr.dll'))).toBe(true)
+    // The preloader is what disabling actually turns off.
+    expect(existsSync(join(dir, 'BepInEx', 'core', 'BepInEx.Unity.IL2CPP.dll'))).toBe(false)
   })
 })

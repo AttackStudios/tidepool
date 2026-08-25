@@ -16,7 +16,7 @@ import type {
 import { compareVersions, parseRef } from '../../shared/deps'
 import type { Catalog } from './catalog'
 import type { ProfileStore } from './profiles'
-import { downloadPackage, extractInto } from './install'
+import { LOADER_STAGING, downloadPackage, extractInto } from './install'
 
 export type ProgressFn = (progress: InstallProgress) => void
 
@@ -250,6 +250,11 @@ export class Installer {
     const dir = this.profiles.dir(profileId)
     for (const rel of mod.files) {
       if (!rel.toLowerCase().endsWith('.dll')) continue
+      // The staging folder is loader plumbing, not mod content. A BepInEx pack
+      // keeps its bundled .NET runtime there — 185 of its 217 DLLs — and a
+      // toggle has no business renaming a CoreCLR install. Disabling is
+      // expressed by the preloader disappearing, which placeLoader checks.
+      if (rel.split(sep).includes(LOADER_STAGING)) continue
       const active = `${dir}${sep}${rel}`
       const parked = `${active}${DISABLED_SUFFIX}`
       const from = enabled ? parked : active

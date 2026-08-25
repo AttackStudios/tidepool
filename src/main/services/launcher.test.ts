@@ -19,6 +19,10 @@ beforeEach(() => {
   writeFileSync(join(profile, LOADER_STAGING, 'winhttp.dll'), 'MZ')
   writeFileSync(join(profile, LOADER_STAGING, 'doorstop_config.ini'), '[General]')
   writeFileSync(join(profile, LOADER_STAGING, 'dotnet', 'coreclr.dll'), 'MZ')
+  // The preloader Doorstop is aimed at. Without it there is nothing to load,
+  // which is what an uninstalled or toggled-off loader looks like on disk.
+  mkdirSync(join(profile, 'BepInEx', 'core'), { recursive: true })
+  writeFileSync(join(profile, 'BepInEx', 'core', 'BepInEx.Unity.IL2CPP.dll'), 'MZ')
 })
 afterEach(() => {
   rmSync(root, { recursive: true, force: true })
@@ -118,6 +122,15 @@ describe('launchGame', () => {
 })
 
 describe('placeLoader', () => {
+  it('refuses when the loader is installed but toggled off', () => {
+    // Disabling renames the preloader to .disabled. Copying the shim across
+    // anyway would start the game with Doorstop aimed at a file that no longer
+    // exists — unmodded, reported as modded.
+    rmSync(join(profile, 'BepInEx', 'core', 'BepInEx.Unity.IL2CPP.dll'))
+    writeFileSync(join(profile, 'BepInEx', 'core', 'BepInEx.Unity.IL2CPP.dll.disabled'), 'MZ')
+    expect(placeLoader(profile, root)).toBeNull()
+  })
+
   it('reports null when nothing is staged, so the caller can refuse to launch', () => {
     const bare = mkdtempSync(join(tmpdir(), 'tidepool-b3-'))
     expect(placeLoader(bare, root)).toBeNull()

@@ -48,6 +48,16 @@ export function placeLoader(profileDir: string, gameRoot: string): number | null
   const entries = readdirSync(staged)
   if (entries.length === 0) return null
 
+  // Placing the shim is pointless if there is nothing for it to load. This is
+  // the file Doorstop is pointed at, and it goes missing both when no loader is
+  // installed and when the installed one has been toggled off — either way,
+  // launching would produce a vanilla game while claiming to be modded.
+  const preloaders = [
+    join(profileDir, 'BepInEx', 'core', 'BepInEx.Unity.IL2CPP.dll'),
+    join(profileDir, 'BepInEx', 'core', 'BepInEx.Preloader.dll'),
+  ]
+  if (!preloaders.some((p) => existsSync(p))) return null
+
   for (const entry of entries) {
     // Overwrites on purpose: switching profiles must replace the previous
     // profile's loader rather than leave a stale one injecting itself.
