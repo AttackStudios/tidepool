@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMod.Mod), "TidePool", "0.2.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMod.Mod), "TidePool", "0.3.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMod;
@@ -20,20 +20,16 @@ namespace TidePool.SurfMod;
 /// </summary>
 public class Mod : MelonMod
 {
+    /// <summary>Shared so Harmony patches, which are static, can log.</summary>
+    internal static MelonLogger.Instance Log = null!;
+
     public override void OnInitializeMelon()
     {
+        Log = LoggerInstance;
         // The line that proves the whole chain. Everything else is downstream
         // of seeing this in MelonLoader's log.
         LoggerInstance.Msg("TidePool mod loaded.");
         LevelScanner.Report(LoggerInstance);
     }
 
-    /// <summary>
-    /// Polls for the map rather than hooking its Awake.
-    ///
-    /// A Harmony patch would be tidier, but the method names are obfuscated and
-    /// a wrong patch fails silently. Looking for the object is unambiguous, and
-    /// it reports once then costs a null check per frame.
-    /// </summary>
-    public override void OnUpdate() => MapProbe.Tick(LoggerInstance);
 }

@@ -1,4 +1,5 @@
 using System;
+using HarmonyLib;
 using MelonLoader;
 using UnityEngine;
 using Il2CppInterop.Runtime;
@@ -7,45 +8,33 @@ using Il2CppSurf.UI;
 namespace TidePool.SurfMod;
 
 /// <summary>
-/// Reports the break-select map's real structure, once, the first time it appears.
+/// Reports the break-select map's real structure the first time it is built.
+///
+/// Hooks the map's own Start rather than searching for it. Both FindObjectOfType
+/// overloads are stripped out of this IL2CPP build — interop tries to rebuild
+/// them and throws "Method unstripping failed" — so there is nothing to search
+/// with. A Harmony postfix is handed the instance directly, which is both more
+/// reliable and cheaper than polling every frame.
 ///
 /// The markers are authored in the scene rather than built from the Levels
-/// folder, so adding one for a custom level means cloning an existing button —
-/// against what is really there, since <c>MapLocationButton</c> has no fields
-/// and a dump cannot say how a marker binds to a level.
+/// folder, and <c>MapLocationButton</c> has no fields, so how a marker binds to
+/// a level can only be answered by looking at a real one.
 /// </summary>
-internal static class MapProbe
+[HarmonyPatch(typeof(Map), "Start")]
+internal static class MapStartPatch
 {
     private static bool _done;
 
-    internal static void Tick(MelonLogger.Instance log)
+    private static void Postfix(Map __instance)
     {
-        if (_done) return;
-
-        Map map;
-        try
-        {
-            // Not FindObjectOfType<T>(). The generic overload does not survive
-            // IL2CPP stripping and interop throws "Method unstripping failed"
-            // every frame. Passing the Il2Cpp type object goes through the
-            // non-generic method, which is still present.
-            var found = UnityEngine.Object.FindObjectOfType(Il2CppType.Of<Map>());
-            map = found == null ? null : found.TryCast<Map>();
-        }
-        catch (Exception e)
-        {
-            // Report once and stop. A probe that floods the log every frame is
-            // worse than one that fails.
-            _done = true;
-            log.Error($"Could not look for the map: {e.GetType().Name}: {e.Message}");
-            return;
-        }
-
-        if (map == null) return;
+        if (_done || __instance == null) return;
         _done = true;
+        Report(__instance, Mod.Log);
+    }
 
+    private static void Report(Map map, MelonLogger.Instance log)
+    {
         log.Msg("--- break-select map ---");
-
         try
         {
             log.Msg($"  buttons in list      : {(map.xl != null ? map.xl.Count : -1)}");

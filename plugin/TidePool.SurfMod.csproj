@@ -24,6 +24,9 @@
     <Reference Include="MelonLoader">
       <HintPath>$(MLDir)\net6\MelonLoader.dll</HintPath>
     </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(MLDir)\net6\0Harmony.dll</HintPath>
+    </Reference>
     <Reference Include="Il2CppInterop.Runtime">
       <HintPath>$(MLDir)\net6\Il2CppInterop.Runtime.dll</HintPath>
     </Reference>
