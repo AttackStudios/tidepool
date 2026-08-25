@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMod.Mod), "TidePool", "0.12.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMod.Mod), "TidePool", "1.0.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMod;
@@ -33,6 +33,4 @@ public class Mod : MelonMod
     }
 
 
-    /// <summary>Only watches for a state change; nothing is drawn or allocated.</summary>
-    public override void OnUpdate() => LabelWatch.Tick(LoggerInstance);
 }
