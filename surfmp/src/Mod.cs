@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.10.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.11.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;
@@ -25,8 +25,8 @@ public class Mod : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("SurfMP 0.10.0 — wave probe. No networking yet.");
-        WaveProbe.Install(HarmonyInstance);
+        Log.Msg("SurfMP 0.11.0 — reading the game through its named API.");
+        Sync.GameHook.Install(HarmonyInstance);
 
         // The netcode has no game dependency, so that it can be tested headless.
         // This is where it gets one.
@@ -36,5 +36,9 @@ public class Mod : MelonMod
     }
 
     /// <summary>Cheap: a float compare until the simulation exists.</summary>
-    public override void OnUpdate() => WaveProbe.Tick();
+    public override void OnUpdate()
+    {
+        Sync.WaveParams.Capture();
+        Sync.LocalSurfer.Tick(UnityEngine.Time.deltaTime);
+    }
 }
