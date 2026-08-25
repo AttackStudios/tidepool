@@ -15,6 +15,19 @@ export function GameBar({ profile }: { profile: Profile | null }) {
 
   useEffect(() => { void refreshGame() }, [refreshGame])
 
+  // Re-check whenever the window comes back to the front.
+  //
+  // The likeliest sequence on release day is: open TidePool, find no game, go
+  // and buy it, come back. Detecting only on mount means TidePool still says
+  // "not found" and the only remedy on offer is browsing to a Steam folder the
+  // user probably cannot name. Returning focus is exactly the moment the answer
+  // may have changed.
+  useEffect(() => {
+    const recheck = () => { void refreshGame() }
+    window.addEventListener('focus', recheck)
+    return () => window.removeEventListener('focus', recheck)
+  }, [refreshGame])
+
   useEffect(() => {
     if (!profile) { setLaunch(null); return }
     let cancelled = false
@@ -57,7 +70,12 @@ export function GameBar({ profile }: { profile: Profile | null }) {
 
         {game === null && (
           <span className="muted">
-            Game not found. It releases 25 Aug 2026 — or point TidePool at it manually.
+            Game not found.{' '}
+            <button className="linklike" onClick={() => void refreshGame()}>
+              Check again
+            </button>{' '}
+            — TidePool also re-checks whenever you come back to it, or point it at
+            the game manually.
           </span>
         )}
 
