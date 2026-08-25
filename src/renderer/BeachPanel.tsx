@@ -10,6 +10,13 @@ interface Beach {
   name: string
   sizeBytes: number
   modified: string
+  shape?: {
+    samples: number
+    swell: number
+    tide: number
+    maxDepthM: number
+    clamped: boolean
+  } | null
 }
 
 type Mode = null | { kind: 'share'; beach: Beach } | { kind: 'import' } | { kind: 'delete'; beach: Beach }
@@ -123,9 +130,20 @@ export function BeachPanel() {
               <div className="installed__body">
                 <div className="installed__title">
                   <span className="card__name">{b.name}</span>
-                  <span className="card__version">{(b.sizeBytes / 1024).toFixed(0)} KB</span>
+                  {b.shape ? (
+                    <span className="card__version">
+                      {b.shape.clamped ? '15+' : b.shape.maxDepthM} m deep
+                    </span>
+                  ) : (
+                    <span className="card__version">unreadable</span>
+                  )}
                 </div>
-                <p className="installed__name muted">{b.fileName}</p>
+                <p className="installed__name muted">
+                  {b.shape
+                    ? `swell ${b.shape.swell.toFixed(2)} · ${b.shape.samples} samples` +
+                      (b.shape.clamped ? ' · reaches the game floor' : '')
+                    : b.fileName}
+                </p>
               </div>
               <div className="installed__row-actions">
                 <button onClick={() => void openShare(b)}>Share</button>
