@@ -31,7 +31,7 @@ internal static class MapStartPatch
     private const float ColumnGap = 90f;
 
     /// <summary>Gap between a marker and its label, in pixels.</summary>
-    private const float LabelGap = 10f;
+    private const float LabelGap = 28f;
 
     private static void Postfix(Map __instance)
     {
@@ -99,6 +99,7 @@ internal static class MapStartPatch
         log.Msg($"Custom levels on the map: {added} added, {root.childCount} markers total.");
 
         DescribeMarker(template, log);
+        CompareLabels(root, log);
     }
 
     private readonly struct Bounds
@@ -157,47 +158,89 @@ internal static class MapStartPatch
         }
     }
 
+    /// <summary>The label object we add, named so it is never cloned twice.</summary>
+    private const string LabelName = "TidePoolName";
+
     /// <summary>
-    /// Put the level's name on the marker, the way the game does it.
+    /// Add the level's name to a marker.
     ///
-    /// Every marker already carries a TextMeshProUGUI child, so a clone
-    /// inherits one — still reading "Waikiki" from the template. Setting that
-    /// rather than adding our own means the label picks up the game's font,
-    /// size and colour for free.
+    /// The marker's existing Text child is not a name — it reads "select", and
+    /// is the game's hover prompt. Overwriting it replaced that prompt with a
+    /// level name, which is why the presets never showed names: the map has no
+    /// name labels at all.
     ///
-    /// Its visibility is left exactly as the template had it. The game reveals
-    /// these on hover, and forcing them on turned a tidy column into a wall of
-    /// overlapping text. Whatever shows the preset labels shows ours, because
-    /// the clone carries the same components.
-    ///
-    /// The label sits to the left of the marker and is right-aligned, so it
-    /// grows away from the island rather than across it.
+    /// So the label is a new object, parented *under* that prompt. The game
+    /// already activates the prompt on hover, and a child follows its parent's
+    /// activation — so the name appears and disappears exactly when "select"
+    /// does, with no hover handling of our own and nothing to keep in sync.
     /// </summary>
     private static void Label(Transform marker, string levelName, MelonLogger.Instance log)
     {
-        var text = marker.Find("Text");
-        if (text == null) { log.Warning($"  {levelName}: no Text child to label"); return; }
+        var prompt = marker.Find("Text");
+        if (prompt == null) { log.Warning($"  {levelName}: no Text child to hang a label on"); return; }
+        if (prompt.Find(LabelName) != null) return;
 
-        var tmp = text.GetComponent<TextMeshProUGUI>();
-        if (tmp == null) { log.Warning($"  {levelName}: Text child has no TextMeshProUGUI"); return; }
+        var promptTmp = prompt.GetComponent<TextMeshProUGUI>();
+        if (promptTmp == null) { log.Warning($"  {levelName}: hover prompt has no TextMeshProUGUI"); return; }
 
         var display = levelName.StartsWith("[BP] ", StringComparison.Ordinal)
             ? levelName.Substring(5)
             : levelName;
-        tmp.text = display;
 
-        var rect = text.GetComponent<RectTransform>();
-        var markerRect = marker.GetComponent<RectTransform>();
-        if (rect != null && markerRect != null)
+        // Copy the prompt so the label inherits the game's font and material.
+        var label = UnityEngine.Object.Instantiate(prompt.gameObject, prompt);
+        label.name = LabelName;
+        label.SetActive(true);
+
+        var tmp = label.GetComponent<TextMeshProUGUI>();
+        if (tmp == null) { log.Warning($"  {levelName}: label copy lost its TextMeshProUGUI"); return; }
+        tmp.text = display;
+        tmp.fontSize = promptTmp.fontSize * 0.7f;
+        tmp.alignment = TextAlignmentOptions.MidlineRight;
+
+        var rect = label.GetComponent<RectTransform>();
+        if (rect != null)
         {
-            var before = rect.anchoredPosition;
-            // Pivot on the right edge so the text extends leftwards from the
-            // marker however long the name is.
+            // Pivot right, sat left of the marker, so a long name grows away
+            // from the island rather than across it.
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(1f, 0.5f);
-            rect.anchoredPosition = new Vector2(-(markerRect.rect.width * 0.5f + LabelGap), 0f);
-            tmp.alignment = TextAlignmentOptions.MidlineRight;
-            log.Msg($"    {display}: label {before} -> {rect.anchoredPosition}, hover-only");
+            rect.anchoredPosition = new Vector2(-LabelGap, 0f);
+        }
+
+        log.Msg($"    {display}: label added under the hover prompt");
+    }
+
+    /// <summary>
+    /// Compare a preset's label with one of ours.
+    ///
+    /// Hovering does not reveal our labels, so the clone did not inherit
+    /// whatever drives that. Guessing which of a dozen properties differs is
+    /// slower than printing both and looking.
+    /// </summary>
+    private static void CompareLabels(Transform root, MelonLogger.Instance log)
+    {
+        log.Msg("--- label state: preset vs clone ---");
+        for (var i = 0; i < root.childCount; i++)
+        {
+            var marker = root.GetChild(i);
+            var ours = marker.name.StartsWith("[BP] ", StringComparison.Ordinal);
+            // One of each is enough to see the difference.
+            if (i > 0 && !ours) continue;
+            if (ours && i != root.childCount - 1) continue;
+
+            var text = marker.Find("Text");
+            var tmp = text == null ? null : text.GetComponent<TextMeshProUGUI>();
+            var btn = marker.GetComponent<UnityEngine.UI.Button>();
+
+            log.Msg($"  {(ours ? "CLONE " : "PRESET")} {marker.name}");
+            log.Msg($"    marker active={marker.gameObject.activeSelf} inHierarchy={marker.gameObject.activeInHierarchy}");
+            log.Msg($"    button        {(btn == null ? "none" : "enabled=" + btn.enabled + " interactable=" + btn.interactable)}");
+            if (text == null) { log.Msg("    Text child    missing"); continue; }
+            log.Msg($"    Text active={text.gameObject.activeSelf} inHierarchy={text.gameObject.activeInHierarchy}");
+            if (tmp == null) { log.Msg("    TMP           missing"); continue; }
+            log.Msg($"    TMP enabled={tmp.enabled} alpha={tmp.color.a:F2} size={tmp.fontSize:F0} text=\"{tmp.text}\"");
+            log.Msg($"    TMP rect      pos={tmp.rectTransform.anchoredPosition} size={tmp.rectTransform.sizeDelta}");
         }
     }
 }
