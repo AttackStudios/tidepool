@@ -23,6 +23,14 @@ internal static class LocalSurfer
 
     internal static bool Found => _transform != null;
 
+    /// <summary>
+    /// The object remote surfers are cloned from.
+    ///
+    /// Copying the local player is what lets a remote rider look like a rider
+    /// without the mod shipping a model or a prefab of its own.
+    /// </summary>
+    internal static GameObject Template { get; private set; }
+
     /// <summary>Where the rider is, in world space.</summary>
     internal static Vector3 Position => _transform != null ? _transform.position : Vector3.zero;
 
@@ -70,6 +78,7 @@ internal static class LocalSurfer
                 return;
             }
 
+            Template = character as GameObject ?? _transform.gameObject;
             _lastPosition = _transform.position;
             Mod.Log.Msg($"[surfer] found at {_lastPosition}");
         }
