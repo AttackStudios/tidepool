@@ -82,3 +82,24 @@ initialisation down with it.
 
 Copy it from `runtimes/win-x64/lib/netstandard2.1/` by explicit path. The
 reference stub under `ref/` is 307 KB and is also wrong, but at least says so.
+
+## Installing while the game is running
+
+`Stop-Process -Force` returns before Windows has released the file handle, so a
+`Copy-Item` in the same breath fails and leaves the old DLL in place. It does
+not error — the install reports the source it *meant* to copy, and the game then
+loads the previous build.
+
+Sleep after killing, and verify the destination afterwards:
+
+```powershell
+Get-Process SurfSandbox -EA SilentlyContinue | Stop-Process -Force
+Start-Sleep 3
+Copy-Item $newest '<game>\Mods\TidePool.SurfMP.dll' -Force
+(Get-Item '<game>\Mods\TidePool.SurfMP.dll').LastWriteTime   # must match $newest
+```
+
+Twice now a whole test has run against a stale build — once from this, once from
+the RID moving the output directory. The symptom is always the same: the change
+appears to do nothing, with no error anywhere. Check the log's `SurfMP vX.Y.Z`
+against what was just built before believing any negative result.
