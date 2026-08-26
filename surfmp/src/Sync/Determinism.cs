@@ -55,7 +55,15 @@ internal static class Determinism
     private static float _next;
     private static int _sample;
     private static bool _recording;
-    private static bool _armed = true;
+    /// <summary>
+    /// Off unless asked for.
+    ///
+    /// This ran automatically on every beach load, and since a run removes the
+    /// rider, it deleted the player mid-session during an unrelated test. A
+    /// diagnostic that answered its question months of debugging ago has no
+    /// business still reaching into a live game. F7 arms it when it is wanted.
+    /// </summary>
+    private static bool _armed;
     private static bool _riderOff;
 
     internal static void Tick(float now)
