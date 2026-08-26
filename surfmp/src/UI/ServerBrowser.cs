@@ -7,30 +7,33 @@ namespace TidePool.SurfMP.UI;
 /// <summary>
 /// The server list.
 ///
-/// Rich presence only reaches friends, and pasting a Steam ID is worse still.
-/// This lists every public session and joins one with a click — no friendship,
-/// no invite, nothing typed.
+/// Every session is listed publicly, so joining needs no friendship, no invite
+/// and nothing typed.
 ///
-/// Drawn with IMGUI because it needs no prefabs, no scene surgery and no
-/// dependency on the game's own UI, which is a Surf.UI type graph SurfMP would
-/// otherwise have to reverse-engineer. It is not beautiful; it is a browser that
-/// exists, which beats a browser that is still being designed.
+/// Laid out by hand with explicit rectangles rather than GUILayout. The game
+/// never uses IMGUI, so Unity stripped the auto-layout half out of the build
+/// entirely and Il2CppInterop cannot restore it — GUILayout.BeginArea throws
+/// "Method unstripping failed" and takes the whole window with it. The
+/// immediate-mode GUI calls survive, so those are what this uses.
 /// </summary>
 internal static class ServerBrowser
 {
-    private const int Width = 460;
-    private const int Height = 320;
+    private const float Width = 520f;
+    private const float Height = 340f;
+    private const float Pad = 14f;
+    private const float Row = 30f;
+    private const float HeaderH = 64f;
 
     private static bool _open;
-    private static Vector2 _scroll;
     private static float _lastRefresh;
+    private static int _scroll;
 
     internal static bool Open => _open;
 
     internal static void Toggle()
     {
         _open = !_open;
-        if (_open) Refresh();
+        if (_open) { _scroll = 0; Refresh(); }
     }
 
     internal static void Close() => _open = false;
@@ -45,61 +48,82 @@ internal static class ServerBrowser
     {
         if (!_open) return;
 
-        var x = (Screen.width - Width) / 2f;
-        var y = (Screen.height - Height) / 2f;
+        try { Paint(); }
+        catch (Exception e)
+        {
+            // A failure here fires every frame, so it closes itself rather than
+            // filling the log and hiding whatever else is happening.
+            _open = false;
+            Mod.Log.Error($"[ui] browser closed after: {e.GetType().Name}: {e.Message}");
+        }
+    }
 
-        // A backing box, or the list reads as text floating over the ocean.
-        GUI.Box(new Rect(x, y, Width, Height), GUIContent.none);
-        GUILayout.BeginArea(new Rect(x + 12, y + 10, Width - 24, Height - 20));
+    private static void Paint()
+    {
+        var x = (Screen.width - Width) * 0.5f;
+        var y = (Screen.height - Height) * 0.5f;
 
-        GUILayout.Label(SteamRelay.Ready
-            ? "<b>Sessions</b>"
-            : "<b>Sessions</b> — Steam unavailable, so nothing can be listed");
+        GUI.Box(new Rect(x, y, Width, Height), "");
+        GUI.Label(new Rect(x + Pad, y + Pad, 300f, 24f), "Sessions");
 
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button(SteamLobbies.Browsing ? "Refreshing..." : "Refresh", GUILayout.Width(100)))
+        if (GUI.Button(new Rect(x + Width - Pad - 80f, y + Pad - 4f, 80f, 24f), "Close")) { Close(); return; }
+        if (GUI.Button(new Rect(x + Width - Pad - 176f, y + Pad - 4f, 90f, 24f),
+                SteamLobbies.Browsing ? "..." : "Refresh"))
             Refresh();
-        GUILayout.FlexibleSpace();
-        if (GUILayout.Button("Close", GUILayout.Width(80))) Close();
-        GUILayout.EndHorizontal();
-
-        GUILayout.Space(6);
 
         var servers = SteamLobbies.Servers;
+
+        if (!SteamRelay.Ready)
+        {
+            GUI.Label(new Rect(x + Pad, y + HeaderH, Width - Pad * 2, 24f),
+                "Steam is unavailable, so no sessions can be listed.");
+            return;
+        }
+
         if (servers.Count == 0)
         {
-            GUILayout.Label(SteamLobbies.Browsing
-                ? "Looking..."
-                : "No sessions. Press F9 to host one, and others will see it here.");
+            GUI.Label(new Rect(x + Pad, y + HeaderH, Width - Pad * 2, 24f),
+                SteamLobbies.Browsing ? "Looking..." : "No sessions yet. F9 hosts one.");
+            GUI.Label(new Rect(x + Pad, y + HeaderH + 24f, Width - Pad * 2, 24f),
+                "Your own session is never listed here.");
         }
         else
         {
-            _scroll = GUILayout.BeginScrollView(_scroll);
-            foreach (var server in servers)
+            // Paged rather than scrolled: a scroll view is GUILayout, which does
+            // not exist in this build.
+            var visible = (int)((Height - HeaderH - Pad * 3) / Row);
+            if (_scroll > servers.Count - visible) _scroll = Math.Max(0, servers.Count - visible);
+
+            for (var i = 0; i < visible && i + _scroll < servers.Count; i++)
             {
-                GUILayout.BeginHorizontal();
+                var server = servers[i + _scroll];
+                var rowY = y + HeaderH + i * Row;
 
                 var beach = string.IsNullOrEmpty(server.Beach) ? "somewhere" : server.Beach;
-                GUILayout.Label($"{server.Name}   <i>{beach}</i>   {server.Players} surfing");
-                GUILayout.FlexibleSpace();
+                GUI.Label(new Rect(x + Pad, rowY, Width - Pad * 2 - 90f, Row),
+                    $"{server.Name}  -  {beach}  -  {server.Players} surfing");
 
-                if (GUILayout.Button("Join", GUILayout.Width(70)))
+                if (GUI.Button(new Rect(x + Width - Pad - 80f, rowY, 80f, 24f), "Join"))
                 {
                     SessionControl.Lobby.JoinSteam(server.Host);
                     Close();
+                    return;
                 }
-
-                GUILayout.EndHorizontal();
             }
-            GUILayout.EndScrollView();
+
+            if (servers.Count > visible)
+            {
+                if (GUI.Button(new Rect(x + Pad, y + Height - Pad - 24f, 40f, 24f), "^"))
+                    _scroll = Math.Max(0, _scroll - 1);
+                if (GUI.Button(new Rect(x + Pad + 46f, y + Height - Pad - 24f, 40f, 24f), "v"))
+                    _scroll++;
+            }
         }
 
-        GUILayout.FlexibleSpace();
-        GUILayout.Label("<size=11>F10 opens this  ·  F9 hosts  ·  F11 leaves</size>");
-        GUILayout.EndArea();
+        GUI.Label(new Rect(x + Pad + 100f, y + Height - Pad - 24f, Width - Pad * 2 - 100f, 24f),
+            "F9 host   F10 this list   F11 leave");
 
-        // Refresh occasionally while open, so a session that appears while
-        // someone is looking at the list actually shows up.
+        // Refresh while open, so a session that appears meanwhile shows up.
         if (!SteamLobbies.Browsing && Time.realtimeSinceStartup - _lastRefresh > 8f) Refresh();
     }
 }
