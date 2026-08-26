@@ -70,6 +70,51 @@ internal static class Determinism
         Mod.Log.Msg("[determinism] --- run start ---");
     }
 
+    /// <summary>
+    /// Take the rider out of the water's physics.
+    ///
+    /// Two runs with no input still diverged, and the position log said why: the
+    /// board floats. Buoyancy pushes water whether or not anyone paddles, the
+    /// surfer drifted metres, and the two runs began from different spots — so
+    /// the ocean was being forced differently before a single wave arrived.
+    /// A rider in the water cannot be held still, so the only clean test is one
+    /// with no rider in it.
+    ///
+    /// Disables only the components that couple the surfer to the fluid, rather
+    /// than the whole character, so the camera keeps working and the run stays
+    /// watchable.
+    /// </summary>
+    internal static void SuppressRider()
+    {
+        _suppressed = !_suppressed;
+
+        var template = LocalSurfer.Template;
+        if (template == null) { Mod.Log.Warning("[determinism] no rider found"); return; }
+
+        var touched = 0;
+        try
+        {
+            foreach (var b in template.GetComponentsInChildren<Behaviour>(true))
+            {
+                var name = b.GetType().Name;
+                // FluidSlicer and Buoyancy are what press on the water; WakeFx
+                // rides along with them.
+                if (name != "FluidSlicer" && name != "Buoyancy" && name != "WakeFx") continue;
+                b.enabled = !_suppressed;
+                touched++;
+            }
+        }
+        catch (Exception e) { Mod.Log.Error($"[determinism] suppressing: {e.Message}"); }
+
+        Mod.Log.Msg(_suppressed
+            ? $"[determinism] STILL WATER — {touched} rider/fluid component(s) off"
+            : $"[determinism] rider back in the water ({touched} restored)");
+
+        Restart();
+    }
+
+    private static bool _suppressed;
+
     private static void Locate()
     {
         if (!GameHook.Ready) { _looked = false; return; }

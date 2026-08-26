@@ -37,6 +37,9 @@ internal static class Lobby
             // Marks the start of a determinism run, so two runs can be lined up
             // step by step without depending on when each was launched.
             else if (Input.GetKeyDown(KeyCode.F8)) Sync.Determinism.Restart();
+            // Still water: takes the rider out of the fluid so the ocean runs
+            // unforced, which is the only way to test the simulation alone.
+            else if (Input.GetKeyDown(KeyCode.F7)) Sync.Determinism.SuppressRider();
         }
         catch (Exception) { /* input unavailable during load */ }
     }
