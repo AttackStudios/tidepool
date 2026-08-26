@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.30.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.31.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;
@@ -58,6 +58,9 @@ public class Mod : MelonMod
         Sync.WaveSync.Observe(now);
         Sync.BeachSync.Tick(now);
     }
+
+    /// <summary>The server browser draws here; IMGUI has nowhere else to run.</summary>
+    public override void OnGUI() => UI.ServerBrowser.Draw();
 
     /// <summary>Say goodbye rather than leaving peers to time us out.</summary>
     public override void OnApplicationQuit()

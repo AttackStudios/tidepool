@@ -17,16 +17,11 @@ forwards a port, and there is no server to keep alive.
 
 ## Doing it
 
-**Host:** load a beach, press **F9**. That advertises the session, and a **Join
-Game** button appears beside your name in your friends' Steam lists.
+**Host:** load a beach, press **F9**. The session is listed publicly straight
+away, and a **Join Game** button also appears beside your name for friends.
 
-**Testers:** load the same beach and either click **Join Game** in Steam, or
-press **F10**, which finds any friend who is hosting and joins them. Nobody
-types anything.
-
-Not on the host's friends list? The host's ID is written to
-`UserData/surfmp-my-id.txt`; put it in your own `UserData/surfmp-join.txt` and
-press F10.
+**Anyone else:** press **F10** for the server list, then click **Join**. No
+friendship, no invite, nothing typed.
 
 **Host, once everyone is in:** press **F6**. Everyone reloads the beach together
 and every wave generator starts at the same instant, which is what puts the
@@ -46,5 +41,5 @@ Not yet:
   on clones to stop them surfing on the local player's input, so your ocean is
   not pushed by the other people in it. Oceans will drift apart slightly.
 - **No nametags, chat, or kick.**
-- **Only one hosting friend is offered.** With several, the first is joined and
-  the rest are named in the log. Choosing between them wants a UI.
+- **The browser is IMGUI**, not the game's own interface. It works and it lists
+  real sessions; it is not pretty.

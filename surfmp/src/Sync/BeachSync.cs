@@ -101,6 +101,13 @@ internal static class BeachSync
         catch (Exception e) { Mod.Log.Error($"[beach] loading \"{name}\": {e.GetType().Name}: {e.Message}"); }
     }
 
+    /// <summary>The beach being surfed, for the server list to show.</summary>
+    internal static string CurrentBeach()
+    {
+        if (!_looked) { _looked = true; Locate(); }
+        return CurrentName() ?? "";
+    }
+
     private static string CurrentName()
     {
         try { return _current?.Invoke(_levels, null) as string; }

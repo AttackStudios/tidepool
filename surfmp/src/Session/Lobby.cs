@@ -33,7 +33,9 @@ internal static class Lobby
         try
         {
             if (Input.GetKeyDown(KeyCode.F9)) Host();
-            else if (Input.GetKeyDown(KeyCode.F10)) Join("127.0.0.1");
+            // F10 opens the list. Joining used to guess at a target, which only
+            // ever worked for a friend already hosting or a pasted ID.
+            else if (Input.GetKeyDown(KeyCode.F10)) UI.ServerBrowser.Toggle();
             else if (Input.GetKeyDown(KeyCode.F11)) Leave();
             // Marks the start of a determinism run, so two runs can be lined up
             // Still water: takes the rider out of the fluid so the ocean runs
@@ -70,6 +72,8 @@ internal static class Lobby
                 // your friends' Steam lists. The ID file stays as a fallback for
                 // anyone not on your friends list.
                 Net.SteamPresence.Advertise(id);
+                // And list it publicly, so people who are not friends can find it.
+                Net.SteamLobbies.Advertise(Name(), Sync.BeachSync.CurrentBeach());
                 Mod.Log.Msg($"[lobby] hosting over Steam — friends can Join Game, or use your ID: {id}");
                 WriteShareFile(id);
             }
@@ -188,6 +192,7 @@ internal static class Lobby
         // Take the Join Game button down with the session, so nobody clicks
         // through to a host that has gone.
         Net.SteamPresence.Withdraw();
+        Net.SteamLobbies.Withdraw();
 
         SurferSync.Detach();
         Current.Shutdown("left");
