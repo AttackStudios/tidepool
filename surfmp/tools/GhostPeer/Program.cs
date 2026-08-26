@@ -71,7 +71,10 @@ internal static class Program
         // The lineup sits inside the sim's walls: RightWallX is 7.75 and the
         // player was found at about y=3, so a rider tracks across that span
         // rather than somewhere off in the void where nobody would see it.
-        const float MinX = 1.0f, MaxX = 6.5f, WaterY = 3.06f;
+        // y = 3.06 was read once at startup, before a beach had loaded, and put the
+        // ghost in the sky. The rider actually sits near 1.10 in the water — a real
+        // peer sends its own position, so only this invented one needed fixing.
+        const float MinX = 1.0f, MaxX = 6.5f, WaterY = 1.10f;
 
         while (clock.Elapsed.TotalSeconds < seconds)
         {
