@@ -119,21 +119,33 @@ internal static class Program
     /// ten seconds. A client that starts producing waves every three seconds is
     /// obeying the host, and nothing else would cause that.
     /// </summary>
+    /// <summary>
+    /// Hosts wave starts.
+    ///
+    /// The wire format changed with the design: a wave is its size plus the two
+    /// counters, sent once when it begins rather than continuously. Sending the
+    /// old shape here would be read as generator state and written into the
+    /// game — which is exactly how a live session got corrupted.
+    ///
+    /// The size alternates between clearly small and clearly large so the effect
+    /// is unmistakable, and only ever changes at the start of a wave, which is
+    /// the signature worth confirming.
+    /// </summary>
     private static int HostWater(string[] argv)
     {
         var port = argv.Length > 1 ? int.Parse(argv[1]) : 27581;
         var seconds = argv.Length > 2 ? double.Parse(argv[2]) : 600.0;
-        var period = argv.Length > 3 ? float.Parse(argv[3]) : 3.0f;
+        var every = argv.Length > 3 ? double.Parse(argv[3]) : 8.0;
 
         var session = new Session();
-        session.Joined += p => Console.WriteLine($"  {p.Name} joined — sending generator state");
+        session.Joined += p => Console.WriteLine($"  {p.Name} joined — sending wave starts");
         session.Host(port, "WaveHost");
-        Console.WriteLine($"  hosting on {port}; period {period}s (game default is 10). Join with F10.");
+        Console.WriteLine($"  hosting on {port}; a wave start every {every}s. Join with F10.");
 
         var clock = Stopwatch.StartNew();
         var buffer = new byte[Wire.MaxPacket];
-        var next = 0.0;
-        var sent = 0;
+        var next = 2.0;
+        var n = 0;
 
         while (clock.Elapsed.TotalSeconds < seconds)
         {
@@ -142,24 +154,32 @@ internal static class Program
 
             if (now >= next)
             {
-                next = now + 0.5;
+                next = now + every;
+
+                // Alternating big and small, both well clear of the 1.4-2.2 the
+                // game was observed producing, so neither could be mistaken for
+                // the client's own wave.
+                var size = (n % 2 == 0) ? 4.5f : 0.6f;
 
                 var w = new PacketWriter(buffer, Op.WaveFrame);
-                w.Float(now);      // phase: our own clock, so waves march steadily
-                w.Float(period);   // period
-                w.Float(8f);       // lull, shortened so sets arrive often
-                w.Bool(true);      // right-hand waves
-                w.Bool(false);
+                w.Float(size);   // beh / bob
+                w.Float(0f);     // bei, reset as a wave begins
+                w.Float(0f);     // bej
+                w.Float(7f);     // period
+                w.Float(15f);    // lull
+                w.Bool(true);    // right
+                w.Bool(false);   // left
                 session.Broadcast(buffer, w.Length);
 
-                if (sent++ % 20 == 0) Console.WriteLine($"  {sent} generator updates sent, phase {now:F1}s");
+                n++;
+                Console.WriteLine($"  wave {n} sent, size {size:F1}");
             }
 
             Thread.Sleep(5);
         }
 
         session.Shutdown("done");
-        Console.WriteLine($"  finished — {sent} updates");
+        Console.WriteLine($"  finished — {n} wave starts");
         return 0;
     }
 }
