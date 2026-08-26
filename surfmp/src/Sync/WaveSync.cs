@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Text;
 using HarmonyLib;
 using UnityEngine;
 using TidePool.SurfMP.Net;
@@ -43,6 +44,20 @@ internal static class WaveSync
 
     private static object _surfaceData;
     private static MethodInfo _heightAt;
+
+    /// <summary>
+    /// FluidSim's per-column water height: a get/set/count triple.
+    ///
+    /// Intercepting the height query alone moved the physics but not the
+    /// picture — the renderer rasterises the fluid grid rather than asking
+    /// SurfaceData, so a rider surfed the host's wave while seeing frozen
+    /// water. Writing the surface into the grid is what makes both follow.
+    /// </summary>
+    private static object _fluidSim;
+    private static MethodInfo _setColumn;   // nl(int, float)
+    private static MethodInfo _getColumn;   // nn(int)
+    private static MethodInfo _columnCount; // no()
+    private static int _columns;
     private static bool _looked;
     private static float _nextSend;
 
@@ -68,7 +83,11 @@ internal static class WaveSync
         var w = new PacketWriter(Out, Op.WaveFrame);
         for (var i = 0; i < Columns; i++)
         {
-            var h = HeightFromGame(MinX + (MaxX - MinX) * i / (Columns - 1f));
+            // Sample the same array the client will be written into, so what is
+            // sent and what is applied are the same quantity.
+            var h = _columns > 0
+                ? Column(i * (_columns - 1) / (Columns - 1))
+                : HeightFromGame(MinX + (MaxX - MinX) * i / (Columns - 1f));
             w.Height(h, MinH, MaxH);
         }
         session.Broadcast(Out, w.Length);
@@ -99,6 +118,37 @@ internal static class WaveSync
     internal static void Release()
     {
         Overriding = false;
+    }
+
+    /// <summary>
+    /// Push the host's surface into the local grid.
+    ///
+    /// Every frame, not on each packet: the renderer reads the grid whenever it
+    /// draws, and a surface written only twenty times a second would flicker
+    /// between the host's water and whatever the paused simulation left behind.
+    /// </summary>
+    internal static void Paint()
+    {
+        if (!Overriding || _setColumn == null || _columns <= 0) return;
+
+        var arg = new object[2];
+        for (var i = 0; i < _columns; i++)
+        {
+            arg[0] = i;
+            arg[1] = HeightFromNetwork(MinX + (MaxX - MinX) * i / (_columns - 1f));
+            try { _setColumn.Invoke(_fluidSim, arg); }
+            catch (Exception) { return; } // one failure means all of them
+        }
+    }
+
+    private static float Column(int i)
+    {
+        try
+        {
+            var v = _getColumn.Invoke(_fluidSim, new object[] { i });
+            return v is float h && !float.IsNaN(h) ? h : 0f;
+        }
+        catch (Exception) { return 0f; }
     }
 
     /// <summary>
@@ -190,7 +240,52 @@ internal static class WaveSync
                 null, new[] { typeof(Vector3) }, null);
 
             if (_heightAt == null) Mod.Log.Error("[wave] SurfaceData.oc(Vector3) not found");
+
+            LocateGrid();
         }
         catch (Exception e) { Mod.Log.Error($"[wave] {e.GetType().Name}: {e.Message}"); }
+    }
+
+    /// <summary>
+    /// Find the per-column water height array on FluidSim.
+    ///
+    /// nl(int, float), nn(int) and no() are a get/set/count triple. If no()
+    /// reports about 321 — the length of GroundHeights and the sim's width in
+    /// cells — then this is indexed along the beach and is the surface itself.
+    /// It is logged rather than assumed, because everything else about this
+    /// class was obfuscated and one wrong guess costs a launch.
+    /// </summary>
+    private static void LocateGrid()
+    {
+        try
+        {
+            _fluidSim = GameHook.Manager.GetType()
+                .GetProperty("FluidSim", BindingFlags.Public | BindingFlags.Instance)
+                ?.GetValue(GameHook.Manager);
+            if (_fluidSim == null) return;
+
+            var t = _fluidSim.GetType();
+            const BindingFlags Any = BindingFlags.Public | BindingFlags.Instance;
+
+            _setColumn = t.GetMethod("nl", Any, null, new[] { typeof(int), typeof(float) }, null);
+            _getColumn = t.GetMethod("nn", Any, null, new[] { typeof(int) }, null);
+            _columnCount = t.GetMethod("no", Any, null, Type.EmptyTypes, null);
+
+            if (_setColumn == null || _getColumn == null || _columnCount == null)
+            {
+                Mod.Log.Warning("[wave] FluidSim column accessors not found; physics only");
+                return;
+            }
+
+            var n = _columnCount.Invoke(_fluidSim, null);
+            _columns = n is int c ? c : 0;
+
+            var sample = new StringBuilder();
+            for (var i = 0; i < 6 && i < _columns; i++)
+                sample.Append(Column(i * Math.Max(1, _columns / 6)).ToString("F3")).Append(' ');
+
+            Mod.Log.Msg($"[wave] FluidSim columns: {_columns}  sample: {sample}");
+        }
+        catch (Exception e) { Mod.Log.Error($"[wave] grid: {e.GetType().Name}: {e.Message}"); }
     }
 }
