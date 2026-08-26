@@ -65,17 +65,48 @@ internal sealed class Session : IDisposable
 
     // ---- lifecycle -------------------------------------------------------
 
-    internal void Host(int port, string name)
+    internal void Host(int port, string name, bool overSteam = false)
     {
         Shutdown("restarting");
         SelfName = name;
-        _transport = new UdpTransport(port);
+
+        // Steam when it is available, because that is the only way to connect
+        // without anyone sharing an IP address. UDP stays for localhost testing
+        // and for anyone Steam refuses.
+        _transport = overSteam ? new SteamTransport(true) : new UdpTransport(port);
         _transport.Received += Enqueue;
         _transport.Start();
         Role = Role.Host;
         SelfId = 0;
-        NetLog.Info($"[net] hosting on port {_transport.Port} as {name}");
+        NetLog.Info(overSteam
+            ? $"[net] hosting over the Steam relay as {name}"
+            : $"[net] hosting on port {_transport.Port} as {name}");
     }
+
+    /// <summary>Join by Steam ID. No address is exchanged, by design.</summary>
+    internal void JoinSteam(Steamworks.CSteamID host, string name)
+    {
+        Shutdown("restarting");
+        SelfName = name;
+        var steam = new SteamTransport(false, host);
+        _transport = steam;
+        _transport.Received += Enqueue;
+        _transport.Start();
+        Role = Role.Client;
+        _host = new Peer(0); // filled in when the connection completes
+
+        var w = new PacketWriter(_out, Op.Hello);
+        w.UShort(Wire.Protocol);
+        w.Str(name);
+        _pendingHello = w.Length;
+        NetLog.Info($"[net] joining {host} over the Steam relay as {name}");
+    }
+
+    /// <summary>
+    /// A Steam connection is not usable the instant it is asked for, so the
+    /// first Hello waits until one exists rather than being dropped silently.
+    /// </summary>
+    private int _pendingHello;
 
     internal void Join(string address, int port, string name)
     {
@@ -138,6 +169,20 @@ internal sealed class Session : IDisposable
     internal void Pump(float now)
     {
         if (Role == Role.Offline) return;
+
+        // Steam delivers on the main thread when asked, unlike the UDP socket
+        // thread, so this is where its messages arrive.
+        if (_transport is SteamTransport steam)
+        {
+            steam.Poll();
+
+            if (_pendingHello > 0 && steam.FirstPeer(out var peer))
+            {
+                _host = peer;
+                _transport.Send(_host, _out, _pendingHello);
+                _pendingHello = 0;
+            }
+        }
 
         while (_inbound.TryDequeue(out var packet))
         {

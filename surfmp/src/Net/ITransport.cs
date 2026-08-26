@@ -4,22 +4,39 @@ using System.Net;
 namespace TidePool.SurfMP.Net;
 
 /// <summary>Where a packet came from, and where a reply goes back to.</summary>
+/// <summary>
+/// Where a packet came from, and where a reply goes.
+///
+/// Carries either a UDP endpoint or a Steam connection handle, because the two
+/// transports address peers in completely different ways and the layers above
+/// should not care which is in use. Only one is ever set.
+/// </summary>
 internal readonly struct Peer : IEquatable<Peer>
 {
     internal readonly IPEndPoint EndPoint;
+    internal readonly uint Connection;
 
-    internal Peer(IPEndPoint endPoint) => EndPoint = endPoint;
+    internal Peer(IPEndPoint endPoint) { EndPoint = endPoint; Connection = 0; }
 
-    public bool Equals(Peer other) =>
-        EndPoint != null && other.EndPoint != null &&
-        EndPoint.Port == other.EndPoint.Port &&
-        EndPoint.Address.Equals(other.EndPoint.Address);
+    internal Peer(uint connection) { EndPoint = null; Connection = connection; }
+
+    internal bool IsSteam => EndPoint == null && Connection != 0;
+
+    public bool Equals(Peer other)
+    {
+        if (IsSteam || other.IsSteam) return Connection == other.Connection;
+        return EndPoint != null && other.EndPoint != null &&
+               EndPoint.Port == other.EndPoint.Port &&
+               EndPoint.Address.Equals(other.EndPoint.Address);
+    }
 
     public override bool Equals(object o) => o is Peer p && Equals(p);
 
-    public override int GetHashCode() => EndPoint == null ? 0 : EndPoint.GetHashCode();
+    public override int GetHashCode() =>
+        IsSteam ? Connection.GetHashCode() : EndPoint?.GetHashCode() ?? 0;
 
-    public override string ToString() => EndPoint?.ToString() ?? "<none>";
+    public override string ToString() =>
+        IsSteam ? $"steam:{Connection}" : EndPoint?.ToString() ?? "<none>";
 }
 
 /// <summary>

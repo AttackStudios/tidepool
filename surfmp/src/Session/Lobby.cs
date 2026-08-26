@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using UnityEngine;
 using TidePool.SurfMP.Sync;
 
@@ -46,44 +47,104 @@ internal static class Lobby
 
     internal static void Host()
     {
-        // Pressing F9 again while already hosting used to tear the session down
-        // and rebuild it, which silently kicked everyone who had joined. A
-        // second press is far more likely to mean "did that work?" than "throw
-        // everyone out", so say what the state is and change nothing.
         if (Current.Role == Net.Role.Host)
         {
             var count = 0;
             foreach (var _ in Current.Members) count++;
-            Mod.Log.Msg($"[lobby] already hosting on {DefaultPort} — {count} peer(s) connected");
+            Mod.Log.Msg($"[lobby] already hosting — {count} peer(s) connected");
             return;
         }
 
         try
         {
-            Current.Host(DefaultPort, Name());
+            // Steam whenever it is available: it is the only route that connects
+            // two people without either of them sharing an IP or touching a
+            // router. UDP remains for localhost testing.
+            var steam = Net.SteamRelay.Ready;
+            Current.Host(DefaultPort, Name(), steam);
+
+            if (steam)
+            {
+                var id = Net.SteamRelay.SelfId;
+                Mod.Log.Msg($"[lobby] hosting over Steam. Others join with your ID: {id}");
+                WriteShareFile(id);
+            }
+            else
+            {
+                Mod.Log.Msg($"[lobby] Steam unavailable — hosting on {DefaultPort} for localhost only");
+            }
+
             SurferSync.Attach(Current);
-            Mod.Log.Msg($"[lobby] hosting on {DefaultPort} — others press F10 to join");
         }
         catch (Exception e) { Mod.Log.Error($"[lobby] hosting: {e.Message}"); }
+    }
+
+    /// <summary>
+    /// Drop the host's Steam ID somewhere a person can find it.
+    ///
+    /// There is no UI yet, and reading it out of a log file is not something to
+    /// ask of a tester.
+    /// </summary>
+    private static void WriteShareFile(ulong id)
+    {
+        try
+        {
+            var path = Path.Combine(UserData(), "surfmp-my-id.txt");
+            File.WriteAllText(path, id.ToString());
+            Mod.Log.Msg($"[lobby] your ID is also in {path}");
+        }
+        catch (Exception e) { Mod.Log.Warning($"[lobby] could not write your ID: {e.Message}"); }
     }
 
     internal static void Join(string address)
     {
         if (Current.Role == Net.Role.Client)
         {
-            Mod.Log.Msg($"[lobby] already in a session — F11 to leave first");
+            Mod.Log.Msg("[lobby] already in a session — F11 to leave first");
             return;
         }
 
+        // A Steam ID in the file means join that person over the relay. With no
+        // file, fall back to localhost, which is what the ghost peer uses.
+        var target = ReadHostId();
+
         try
         {
-            // The client binds any free port, so a second instance on the same
-            // machine does not collide with the host's socket.
-            Current.Join(address, DefaultPort, Name());
+            if (target != 0 && Net.SteamRelay.Ready)
+            {
+                Current.JoinSteam(new Steamworks.CSteamID(target), Name());
+                Mod.Log.Msg($"[lobby] joining {target} over the Steam relay");
+            }
+            else
+            {
+                if (target != 0) Mod.Log.Warning("[lobby] Steam unavailable — falling back to localhost");
+                Current.Join(address, DefaultPort, Name());
+                Mod.Log.Msg($"[lobby] joining {address}:{DefaultPort}");
+            }
+
             SurferSync.Attach(Current);
-            Mod.Log.Msg($"[lobby] joining {address}:{DefaultPort}");
         }
         catch (Exception e) { Mod.Log.Error($"[lobby] joining: {e.Message}"); }
+    }
+
+    /// <summary>The host's Steam ID, if a tester has been given one to paste in.</summary>
+    private static ulong ReadHostId()
+    {
+        try
+        {
+            var path = Path.Combine(UserData(), "surfmp-join.txt");
+            if (!File.Exists(path)) return 0;
+            var text = File.ReadAllText(path).Trim();
+            return ulong.TryParse(text, out var id) ? id : 0;
+        }
+        catch (Exception) { return 0; }
+    }
+
+    private static string UserData()
+    {
+        var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UserData");
+        if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+        return dir;
     }
 
     internal static void Leave()

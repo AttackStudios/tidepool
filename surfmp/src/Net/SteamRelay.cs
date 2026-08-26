@@ -27,6 +27,9 @@ internal static class SteamRelay
 
     internal static bool Ready { get; private set; }
 
+    /// <summary>This player's Steam ID — what someone else needs in order to join.</summary>
+    internal static ulong SelfId { get; private set; }
+
     internal static void Start()
     {
         try
@@ -49,7 +52,8 @@ internal static class SteamRelay
             }
 
             Ready = true;
-            Mod.Log.Msg($"[steam] signed in as {SteamFriends.GetPersonaName()} ({SteamUser.GetSteamID()})");
+            SelfId = SteamUser.GetSteamID().m_SteamID;
+            Mod.Log.Msg($"[steam] signed in as {SteamFriends.GetPersonaName()} ({SelfId})");
 
             // The relay is the entire point: it is what removes IP addresses
             // from the picture. Access takes a moment to come up, so this only
