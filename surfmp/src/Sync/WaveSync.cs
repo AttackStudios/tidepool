@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Text;
 using UnityEngine;
 using TidePool.SurfMP.Net;
 
@@ -103,23 +105,58 @@ internal static class WaveSync
     /// guessed at. A value climbing at one unit per second is a clock and can be
     /// synced; anything else is not a phase and must not be written.
     /// </summary>
+    /// <summary>
+    /// Watch the generator's own state, without touching it.
+    ///
+    /// ol() turned out to be constant at 1.375 all session — not a clock, so
+    /// not a phase. Given Sim.Wave raises DistanceChanged, it is almost
+    /// certainly the wave distance, which is why feeding it a rising wall clock
+    /// wound the ocean steadily upward and glitched the game.
+    ///
+    /// Sim.Wave keeps five unnamed floats besides its configuration. If waves
+    /// arrive on a schedule then something here is counting, and whatever
+    /// counts is the phase worth syncing. This only reads: the last build wrote
+    /// to a guess and corrupted a live session, and nothing gets written again
+    /// until the log says what it is.
+    /// </summary>
     internal static void Observe(float now)
     {
         if (_wave == null || now < _nextObserve) return;
         var first = _nextObserve == 0f;
         _nextObserve = now + 1f;
 
-        var p = Phase();
-        if (!first)
+        if (_watched == null)
         {
-            var rate = (p - _lastPhase) / 1f;
-            Mod.Log.Msg($"[wave] ol() = {p:F3}  (changing {rate:+0.000;-0.000}/s)");
+            _watched = new List<PropertyInfo>();
+            foreach (var name in new[] { "beh", "bei", "bej", "bek", "bob" })
+            {
+                var p = _wave.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+                if (p != null && p.PropertyType == typeof(float)) _watched.Add(p);
+            }
+            _previous = new float[_watched.Count];
+            Mod.Log.Msg($"[wave] watching {_watched.Count} generator field(s)");
         }
-        _lastPhase = p;
+
+        var row = new StringBuilder();
+        for (var i = 0; i < _watched.Count; i++)
+        {
+            float v;
+            try { v = _watched[i].GetValue(_wave) is float f ? f : float.NaN; }
+            catch (Exception) { continue; }
+
+            // The rate is what identifies a timer; the value alone does not.
+            var rate = first ? 0f : v - _previous[i];
+            _previous[i] = v;
+            row.Append($"{_watched[i].Name}={v:F3}({rate:+0.00;-0.00;0}) ");
+        }
+
+        if (!first) Mod.Log.Msg($"[wave] {row}");
     }
 
+    private static List<PropertyInfo> _watched;
+    private static float[] _previous;
+
     private static float _nextObserve;
-    private static float _lastPhase;
 
     private static float Phase()
     {
