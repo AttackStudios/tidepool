@@ -45,6 +45,13 @@ internal static class Determinism
 
     private static float _next;
     private static int _sample;
+    private static bool _recording;
+
+    /// <summary>Range across the beach below which the surface counts as flat.</summary>
+    private const float FlatEnough = 0.01f;
+
+    /// <summary>Two minutes at half-second samples: long enough to see drift appear.</summary>
+    private const int MaxSamples = 240;
 
     internal static void Tick(float now)
     {
@@ -52,8 +59,37 @@ internal static class Determinism
         if (_heightAt == null || now < _next) return;
         _next = now + Every;
 
-        var heights = Heights();
-        if (heights == null) return;
+        var values = Sample();
+        if (values == null) return;
+
+        // Anchor each run to flat water.
+        //
+        // Three tests were spoiled by the two runs not starting from the same
+        // state, most recently one begun at load against one begun mid-session:
+        // flat 0.969 across the board versus waves already rolling. Pressing a
+        // key at the same moment twice is not something a person can do, and it
+        // should never have been asked of one.
+        //
+        // The simulation has one canonical state — the flat surface it starts
+        // from — so wait for that and begin there. Both runs then start
+        // identically by construction rather than by timing.
+        var flat = Flatness(values) < FlatEnough;
+
+        if (!_recording)
+        {
+            if (!flat) return;
+            _recording = true;
+            _sample = 0;
+            Mod.Log.Msg("[determinism] --- run start (flat water) ---");
+        }
+        else if (_sample >= MaxSamples)
+        {
+            _recording = false;
+            Mod.Log.Msg("[determinism] --- run end ---");
+            return;
+        }
+
+        var heights = Format(values);
 
         // The rider's position rides along so a run's cleanliness can be checked
         // rather than taken on trust. An earlier "I did not move" run turned out
@@ -70,7 +106,8 @@ internal static class Determinism
     {
         _sample = 0;
         _next = 0f;
-        Mod.Log.Msg("[determinism] --- run start ---");
+        _recording = false;
+        Mod.Log.Msg("[determinism] armed — recording begins when the water goes flat");
     }
 
     /// <summary>
@@ -127,9 +164,23 @@ internal static class Determinism
         catch (Exception e) { Mod.Log.Error($"[determinism] {e.GetType().Name}: {e.Message}"); }
     }
 
-    private static string Heights()
+    private static float Flatness(float[] v)
+    {
+        float lo = float.MaxValue, hi = float.MinValue;
+        foreach (var h in v) { if (h < lo) lo = h; if (h > hi) hi = h; }
+        return hi - lo;
+    }
+
+    private static string Format(float[] v)
     {
         var row = new StringBuilder();
+        foreach (var h in v) row.Append(h.ToString("F4")).Append(' ');
+        return row.ToString();
+    }
+
+    private static float[] Sample()
+    {
+        var values = new float[Columns];
         var read = 0;
 
         for (var i = 0; i < Columns; i++)
@@ -139,13 +190,13 @@ internal static class Determinism
             {
                 var v = _heightAt.Invoke(_surfaceData, new object[] { new Vector3(x, 0f, 0f) });
                 if (v is not float h || float.IsNaN(h)) continue;
-                row.Append(h.ToString("F4")).Append(' ');
+                values[i] = h;
                 read++;
             }
             catch (Exception) { break; }
         }
 
         // A partial read is not evidence of anything.
-        return read >= 8 ? row.ToString() : null;
+        return read == Columns ? values : null;
     }
 }
