@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.22.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.23.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;
@@ -25,9 +25,8 @@ public class Mod : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("SurfMP 0.21.0 — host-authoritative water.");
+        Log.Msg("SurfMP 0.23.0 — synced wave generator.");
         Sync.GameHook.Install(HarmonyInstance);
-        Sync.WaveSync.Install(HarmonyInstance);
 
         // The netcode has no game dependency, so that it can be tested headless.
         // This is where it gets one.
@@ -51,7 +50,6 @@ public class Mod : MelonMod
         SessionControl.Lobby.Tick(now);
         Sync.SurferSync.Tick(dt, now);
         Sync.WaveSync.Tick(now, Sync.SurferSync.Session);
-        Sync.WaveSync.Paint();
     }
 
     /// <summary>Say goodbye rather than leaving peers to time us out.</summary>
