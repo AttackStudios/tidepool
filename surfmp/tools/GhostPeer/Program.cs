@@ -110,23 +110,30 @@ internal static class Program
     /// is unmistakable on screen, so the test cannot be passed by the client
     /// quietly showing its own water.
     /// </summary>
+    /// <summary>
+    /// Hosts a wave generator set to something unmistakable.
+    ///
+    /// The surface itself is no longer sent — the water is a particle
+    /// simulation with no heightfield to overwrite. What syncs is the generator
+    /// behind it, so this sends a period far shorter than the game's default of
+    /// ten seconds. A client that starts producing waves every three seconds is
+    /// obeying the host, and nothing else would cause that.
+    /// </summary>
     private static int HostWater(string[] argv)
     {
         var port = argv.Length > 1 ? int.Parse(argv[1]) : 27581;
-        var seconds = argv.Length > 2 ? double.Parse(argv[2]) : 300.0;
-
-        const int Columns = 161;
-        const float MinH = -1f, MaxH = 7f;
+        var seconds = argv.Length > 2 ? double.Parse(argv[2]) : 600.0;
+        var period = argv.Length > 3 ? float.Parse(argv[3]) : 3.0f;
 
         var session = new Session();
-        session.Joined += p => Console.WriteLine($"  {p.Name} joined — sending water");
+        session.Joined += p => Console.WriteLine($"  {p.Name} joined — sending generator state");
         session.Host(port, "WaveHost");
-        Console.WriteLine($"  hosting water on {port}; join from the game with F10");
+        Console.WriteLine($"  hosting on {port}; period {period}s (game default is 10). Join with F10.");
 
         var clock = Stopwatch.StartNew();
         var buffer = new byte[Wire.MaxPacket];
         var next = 0.0;
-        var frames = 0;
+        var sent = 0;
 
         while (clock.Elapsed.TotalSeconds < seconds)
         {
@@ -135,26 +142,24 @@ internal static class Program
 
             if (now >= next)
             {
-                next = now + 1.0 / 20.0;
+                next = now + 0.5;
 
                 var w = new PacketWriter(buffer, Op.WaveFrame);
-                for (var i = 0; i < Columns; i++)
-                {
-                    // A metre-high swell rolling shorewards on a two-second period.
-                    var x = i / (Columns - 1f) * 10f;
-                    var h = 1.0f + 1.0f * (float)Math.Sin((x * 0.9) - now * 3.0);
-                    w.Height(h, MinH, MaxH);
-                }
+                w.Float(now);      // phase: our own clock, so waves march steadily
+                w.Float(period);   // period
+                w.Float(8f);       // lull, shortened so sets arrive often
+                w.Bool(true);      // right-hand waves
+                w.Bool(false);
                 session.Broadcast(buffer, w.Length);
 
-                if (frames++ % 100 == 0) Console.WriteLine($"  {frames} wave frames sent");
+                if (sent++ % 20 == 0) Console.WriteLine($"  {sent} generator updates sent, phase {now:F1}s");
             }
 
             Thread.Sleep(5);
         }
 
         session.Shutdown("done");
-        Console.WriteLine($"  finished — {frames} frames");
+        Console.WriteLine($"  finished — {sent} updates");
         return 0;
     }
 }
