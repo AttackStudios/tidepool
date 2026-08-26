@@ -25,6 +25,8 @@ internal enum Op : byte
     PeerLeave = 10,
     /// <summary>Host is going away; everyone falls back to single player.</summary>
     Bye = 11,
+    /// <summary>Everybody load this beach at the same moment. See BeachSync.</summary>
+    Beach = 12,
 }
 
 internal static class Wire
@@ -34,7 +36,12 @@ internal static class Wire
     /// tracked separately so a cosmetic release does not lock friends out of
     /// each other's sessions.
     /// </summary>
-    internal const ushort Protocol = 1;
+    /// <summary>
+    /// 2: pings carry a timestamp so latency can be measured, and Beach was
+    /// added. Both change what is on the wire, so older peers must be refused
+    /// rather than left to misread it.
+    /// </summary>
+    internal const ushort Protocol = 2;
 
     /// <summary>
     /// Well under a typical 1500-byte MTU once IP and UDP headers are taken off.

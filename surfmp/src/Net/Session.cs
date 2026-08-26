@@ -44,6 +44,12 @@ internal sealed class Session : IDisposable
     private float _nextPing;
 
     internal Role Role { get; private set; } = Role.Offline;
+
+    /// <summary>
+    /// One-way delay in seconds, from smoothed round trips. Used to land a
+    /// synchronised beach load on the same instant everywhere.
+    /// </summary>
+    internal float Latency { get; private set; }
     internal byte SelfId { get; private set; }
     internal string SelfName { get; private set; } = "Surfer";
     internal IEnumerable<Member> Members => _members.Values;
@@ -171,12 +177,23 @@ internal sealed class Session : IDisposable
                 return;
 
             case Op.Ping:
+                // Echo the sender's own clock reading back untouched. Only they
+                // can interpret it, and that avoids needing agreed clocks.
+                var stamp = r.Float();
                 var pong = new PacketWriter(_out, Op.Pong);
+                pong.Float(stamp);
                 if (Role == Role.Host) _transport.Send(from, _out, pong.Length);
                 else SendToHost(_out, pong.Length);
                 return;
 
             case Op.Pong:
+                var sent = r.Float();
+                if (!r.Ok) return;
+                var rtt = now - sent;
+                // Smoothed: a single sample includes whatever the frame was
+                // doing, and a scheduled beach load should not hinge on one
+                // unlucky packet.
+                Latency = Latency <= 0f ? rtt * 0.5f : Latency * 0.8f + rtt * 0.5f * 0.2f;
                 return;
 
             case Op.PeerJoin when Role == Role.Client:
@@ -262,6 +279,7 @@ internal sealed class Session : IDisposable
         {
             _nextPing = now + PingEvery;
             var ping = new PacketWriter(_out, Op.Ping);
+            ping.Float(now);
             if (Role == Role.Host) Broadcast(_out, ping.Length);
             else SendToHost(_out, ping.Length);
         }

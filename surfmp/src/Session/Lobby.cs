@@ -40,6 +40,9 @@ internal static class Lobby
             // Still water: takes the rider out of the fluid so the ocean runs
             // unforced, which is the only way to test the simulation alone.
             else if (Input.GetKeyDown(KeyCode.F7)) Sync.Determinism.SuppressRider();
+            // Host only: everyone loads this beach together, which is what puts
+            // every player in the same ocean.
+            else if (Input.GetKeyDown(KeyCode.F6)) Sync.BeachSync.Call(Current, Time.time);
         }
         catch (Exception) { /* input unavailable during load */ }
     }
