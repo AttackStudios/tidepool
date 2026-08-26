@@ -74,35 +74,43 @@ internal static class WaveSync
 
     // ---- client ----------------------------------------------------------
 
+    /// <summary>
+    /// Reads what the host sends and writes nothing.
+    ///
+    /// Three ways of driving this generator have now been tried on a live game
+    /// and all three did visible damage or nothing useful:
+    ///
+    ///  - Writing the surface into FluidSim's per-column array painted waves
+    ///    onto the seabed, because that array is the ground.
+    ///  - Writing ol() as a phase wound the wave distance upward all session and
+    ///    glitched the rendering; ol() is not a clock.
+    ///  - Writing beh/bob and zeroing bei/bej injected a block of water every
+    ///    few seconds, so those counters are not a phase to be set — the
+    ///    generator feeds water in as they advance, and resetting them makes it
+    ///    dump a wave's worth at once.
+    ///
+    /// The pattern is consistent: this generator's state is meant to be advanced
+    /// by the simulation, not assigned from outside. So nothing is written.
+    ///
+    /// Identical waves come instead from starting the same generator at the same
+    /// moment — a synchronised beach load — which needs no reaching inside at
+    /// all. The measurement supports it: two loads of one beach already agree to
+    /// within 3% of wave amplitude for a hundred seconds.
+    /// </summary>
     internal static void Apply(PacketReader r)
     {
         var size = r.Float();
-        var countA = r.Float();
-        var countB = r.Float();
+        r.Float();
+        r.Float();
         var period = r.Float();
         var lull = r.Float();
-        var right = r.Bool();
-        var left = r.Bool();
+        r.Bool();
+        r.Bool();
+        if (!r.Ok || _wave == null) return;
 
-        // A truncated read would reconfigure the ocean from whatever was left in
-        // the buffer — the same shape of mistake that glitched a session before.
-        if (!r.Ok || _wave == null || !_writable) return;
-
-        SetFloat(_period, period);
-        SetFloat(_lull, lull);
-        SetBool(_right, right);
-        SetBool(_left, left);
-
-        // Start the wave the host just started: same size, counters where theirs
-        // are. Between waves both sides count on their own at the same rate, so
-        // there is nothing to say until the next one begins.
-        SetFloat(_beh, size);
-        SetFloat(_bob, size);
-        SetFloat(_bei, countA);
-        SetFloat(_bej, countB);
-
-        if (_applied++ % 10 == 0)
-            Mod.Log.Msg($"[wave] wave {_applied} from host, size {size:F3} (now {GetFloat(_beh, -1):F3})");
+        if (_applied++ % 10 != 0) return;
+        Mod.Log.Msg($"[wave] host wave size {size:F2} period {period:F1} lull {lull:F1}; " +
+                    $"local size {GetFloat(_beh, -1):F2} (not applied)");
     }
 
     // ---- observation -----------------------------------------------------
