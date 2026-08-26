@@ -53,3 +53,21 @@ Not over SSH. Steam's IPC pipe is per-session: an SSH command runs in session 0
 while Steam runs on the desktop, so a standalone probe reports "Steam is
 probably not running" while Steam is plainly running. It has to run inside the
 game.
+
+## Installing the mod after the RID change
+
+`<RuntimeIdentifier>win-x64</RuntimeIdentifier>` moves the build output to
+`bin/Release/win-x64/`, and the old `bin/Release/` copy stays behind. An install
+that takes the **first** match found by a recursive search silently picks the
+stale one — a whole test ran against a version three builds old, hosting on UDP
+while the log cheerfully reported Steam had signed in.
+
+Always sort by `LastWriteTime` and take the newest:
+
+```powershell
+Get-ChildItem "$env:USERPROFILE\tidepool-recon\surfmp\bin\Release" -Filter 'TidePool.SurfMP.dll' -Recurse |
+  Sort-Object LastWriteTime -Descending | Select-Object -First 1
+```
+
+The give-away is the log's `SurfMP vX.Y.Z` line disagreeing with what was just
+built. Check it whenever a change appears to have had no effect.
