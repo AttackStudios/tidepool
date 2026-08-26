@@ -51,6 +51,9 @@ internal static class Lobby
                 else UI.ServerBrowser.Toggle();
             }
             else if (Input.GetKeyDown(KeyCode.F11)) Leave();
+            // Hand this client to the game's own AI surfer, so one person can
+            // watch two riders take the same wave.
+            else if (Input.GetKeyDown(KeyCode.F7)) Sync.AutoPilot.Toggle();
             // Marks the start of a determinism run, so two runs can be lined up
             // Still water: takes the rider out of the fluid so the ocean runs
             // unforced, which is the only way to test the simulation alone.

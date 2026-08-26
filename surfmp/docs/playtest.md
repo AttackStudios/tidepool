@@ -62,3 +62,18 @@ To exercise everything else without a second person, hold **shift**:
 Everything above the transport is then exactly what ships: surfer sync, remote
 surfers, synchronised beach loads. Only the Steam relay hop is skipped, and that
 part is proven separately by the session listing publicly.
+
+## Watching two riders take the same wave
+
+Two clients share one keyboard, so only the focused window responds — which
+makes the most interesting case, two people on one wave, the hardest to see.
+
+The game ships an AI surfer, `Surf.Character.AutoSurf`, with real turn and popup
+parameters. **F7** switches it on for that client:
+
+1. Both clients in a session, same beach.
+2. In the client you are not driving, press **F7** — its rider starts surfing.
+3. Focus the other window and paddle out alongside it.
+
+A genuine second surfer catching genuine waves, rather than a puppet replaying
+canned positions. F7 again takes control back.
