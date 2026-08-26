@@ -66,7 +66,11 @@ internal static class Lobby
             if (steam)
             {
                 var id = Net.SteamRelay.SelfId;
-                Mod.Log.Msg($"[lobby] hosting over Steam. Others join with your ID: {id}");
+                // Advertising is what puts a Join Game button beside your name in
+                // your friends' Steam lists. The ID file stays as a fallback for
+                // anyone not on your friends list.
+                Net.SteamPresence.Advertise(id);
+                Mod.Log.Msg($"[lobby] hosting over Steam — friends can Join Game, or use your ID: {id}");
                 WriteShareFile(id);
             }
             else
@@ -104,9 +108,11 @@ internal static class Lobby
             return;
         }
 
-        // A Steam ID in the file means join that person over the relay. With no
-        // file, fall back to localhost, which is what the ghost peer uses.
-        var target = ReadHostId();
+        // Look for a friend who is hosting before asking anyone to type anything.
+        // The file stays as a fallback for someone not on the friends list, and
+        // localhost for the ghost peer.
+        var target = FriendHosting();
+        if (target == 0) target = ReadHostId();
 
         try
         {
@@ -125,6 +131,23 @@ internal static class Lobby
             SurferSync.Attach(Current);
         }
         catch (Exception e) { Mod.Log.Error($"[lobby] joining: {e.Message}"); }
+    }
+
+    /// <summary>
+    /// A friend currently hosting, if there is one.
+    ///
+    /// Reads their Steam rich presence, so nothing is exchanged and nobody types
+    /// an ID. With more than one hosting, the first is taken and the rest are
+    /// named in the log — picking between them wants a UI, which this is not.
+    /// </summary>
+    private static ulong FriendHosting()
+    {
+        var hosts = Net.SteamPresence.HostingFriends();
+        if (hosts.Count == 0) return 0;
+
+        foreach (var h in hosts) Mod.Log.Msg($"[lobby] {h.Name} is hosting");
+        Mod.Log.Msg($"[lobby] joining {hosts[0].Name}");
+        return hosts[0].Id.m_SteamID;
     }
 
     /// <summary>The host's Steam ID, if a tester has been given one to paste in.</summary>
@@ -147,8 +170,25 @@ internal static class Lobby
         return dir;
     }
 
+    /// <summary>Join a specific host — used by Steam's Join Game button.</summary>
+    internal static void JoinSteam(Steamworks.CSteamID host)
+    {
+        if (Current.Role != Net.Role.Offline) Leave();
+        try
+        {
+            Current.JoinSteam(host, Name());
+            SurferSync.Attach(Current);
+            Mod.Log.Msg($"[lobby] joining {host} via Steam invite");
+        }
+        catch (Exception e) { Mod.Log.Error($"[lobby] invite join: {e.Message}"); }
+    }
+
     internal static void Leave()
     {
+        // Take the Join Game button down with the session, so nobody clicks
+        // through to a host that has gone.
+        Net.SteamPresence.Withdraw();
+
         SurferSync.Detach();
         Current.Shutdown("left");
         Mod.Log.Msg("[lobby] left the session");

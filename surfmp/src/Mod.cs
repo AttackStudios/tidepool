@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.29.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.30.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;
@@ -28,6 +28,10 @@ public class Mod : MelonMod
         Log.Msg("SurfMP 0.28.1 — F6 calls a synchronised beach load.");
         Sync.GameHook.Install(HarmonyInstance);
         Net.SteamRelay.Start();
+        Net.SteamPresence.Install();
+
+        // Clicking Join Game in Steam should drop you straight into their water.
+        Net.SteamPresence.JoinRequested += id => SessionControl.Lobby.JoinSteam(id);
 
         // The netcode has no game dependency, so that it can be tested headless.
         // This is where it gets one.
