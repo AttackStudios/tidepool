@@ -1,39 +1,47 @@
 using System;
 using System.Reflection;
+using System.Text;
 using UnityEngine;
 
 namespace TidePool.SurfMP.Sync;
 
 /// <summary>
-/// Asks the one question the whole design now rests on: does this simulation
-/// produce the same ocean twice?
+/// Asks whether this ocean can be reproduced.
 ///
-/// Identical waves for everyone means every client running the same simulation
-/// from the same inputs, because the alternative — broadcasting the surface —
-/// only sends what the water LOOKS like. SurfaceData's contours are render
-/// geometry derived from the fluid, so a client given those would see the
-/// host's wave while its physics still used its own. Surfing a wave you cannot
-/// see is worse than drifting apart.
+/// Identical waves for everyone needs every client running the same simulation
+/// from the same inputs. Broadcasting the surface is not an alternative on its
+/// own: SurfaceData's contours are render geometry derived from the fluid, so a
+/// client fed those would see the host's wave while its physics still used its
+/// own, and surfing a wave you cannot see is worse than drifting from it.
 ///
-/// So: lockstep, or nothing. And lockstep is impossible if the simulation
-/// cannot even reproduce itself on one machine.
+/// The test needs no second player. Load a beach, press F7 to lift the rider
+/// out of the water entirely, let it run, then do it again and compare.
 ///
-/// This needs no second player and no second instance. Load a beach, let it
-/// run, reload the same beach, and compare the two sequences. A simulation
-/// that diverges from itself under identical conditions will never agree with
-/// a copy on someone else's PC.
+/// Two instruments have been wrong here already, and both were wrong in the
+/// same direction — measuring something other than the question:
+///
+///  - Sampling while surfing measured the paddling, not the simulation.
+///  - Hashing measured bit-equality on a half-second grid, so a run a fifth of
+///    a second out of phase scored zero even if the ocean were identical.
+///
+/// So this logs heights. They compare with tolerance, at any alignment, and
+/// answer the question that matters: the same ocean, or a different one? A
+/// shape that matches once shifted is a timing problem, and timing has fixes.
 /// </summary>
 internal static class Determinism
 {
-    /// <summary>Sim-time between samples. Keyed to time, not frames, so frame rate cannot shift the comparison.</summary>
+    /// <summary>Sim-time between samples, so frame rate cannot shift the comparison.</summary>
     private const float Every = 0.5f;
 
-    /// <summary>Enough of the surface to catch a difference, few enough to stay cheap.</summary>
-    private const int Points = 64;
+    /// <summary>Inside the simulated span: LeftWallX is 0 and RightWallX 7.75.</summary>
+    private const float FirstX = 0.5f;
+    private const float StepX = 0.7f;
+    private const int Columns = 10;
 
-    private static MethodInfo _pointAt;
     private static object _surfaceData;
+    private static MethodInfo _heightAt;
     private static bool _looked;
+    private static bool _suppressed;
 
     private static float _next;
     private static int _sample;
@@ -41,28 +49,23 @@ internal static class Determinism
     internal static void Tick(float now)
     {
         if (!_looked) { _looked = true; Locate(); }
-        if (_pointAt == null || now < _next) return;
+        if (_heightAt == null || now < _next) return;
         _next = now + Every;
 
-        var hash = Hash();
-        if (hash == 0) return;
+        var heights = Heights();
+        if (heights == null) return;
 
-        // The rider's position goes in the same line as the hash.
-        //
-        // The first attempt at this test asked Jack to surf during both runs,
-        // which guaranteed different inputs and made the divergence impossible
-        // to attribute — a chaotic fluid being pushed differently will diverge
-        // whether or not it is deterministic. Recording where the surfer was
-        // turns "I did not move" from something to take on trust into something
-        // the two logs can be checked against.
+        // The rider's position rides along so a run's cleanliness can be checked
+        // rather than taken on trust. An earlier "I did not move" run turned out
+        // to have drifted two and a half metres, because the board floats.
         var p = LocalSurfer.Found ? LocalSurfer.Position : Vector3.zero;
 
-        // Sequence number, not timestamp: two runs are compared step by step,
-        // and wall-clock start times will never match.
-        Mod.Log.Msg($"[determinism] #{_sample++,-4} hash={hash:X8} at=({p.x:F2},{p.y:F2},{p.z:F2})");
+        // Sequence number, not timestamp: runs are compared step by step and
+        // wall-clock start times will never match.
+        Mod.Log.Msg($"[determinism] #{_sample++,-4} h= {heights} at=({p.x:F2},{p.y:F2},{p.z:F2})");
     }
 
-    /// <summary>Reset when a beach loads, so each run's sequence starts from zero.</summary>
+    /// <summary>Start a fresh sequence.</summary>
     internal static void Restart()
     {
         _sample = 0;
@@ -71,83 +74,31 @@ internal static class Determinism
     }
 
     /// <summary>
-    /// Take the rider out of the water's physics.
+    /// Take the rider out of the water.
     ///
-    /// Two runs with no input still diverged, and the position log said why: the
-    /// board floats. Buoyancy pushes water whether or not anyone paddles, the
-    /// surfer drifted metres, and the two runs began from different spots — so
-    /// the ocean was being forced differently before a single wave arrived.
-    /// A rider in the water cannot be held still, so the only clean test is one
-    /// with no rider in it.
-    ///
-    /// Disables only the components that couple the surfer to the fluid, rather
-    /// than the whole character, so the camera keeps working and the run stays
-    /// watchable.
+    /// A surfer cannot be held still: the board floats, so buoyancy presses on
+    /// the water whether or not anyone paddles. Disabling the whole GameObject
+    /// beats matching components by name, which failed twice — once to a lookup
+    /// that silently returned nothing, once to every result describing itself as
+    /// "Behaviour" because GetType() on an interop wrapper reports the wrapper.
+    /// An inactive object runs nothing, and there is no name to get wrong.
     /// </summary>
     internal static void SuppressRider()
     {
-        var template = LocalSurfer.Template;
-        if (template == null) { Mod.Log.Warning("[determinism] no rider found"); return; }
+        var rider = LocalSurfer.Template;
+        if (rider == null) { Mod.Log.Warning("[determinism] no rider found"); return; }
 
         _suppressed = !_suppressed;
 
-        // Switch the whole rider off rather than hunting for the components that
-        // touch the fluid. Matching by name failed twice: first the generic
-        // component lookup returned nothing, then every result reported its type
-        // as "Behaviour" because GetType() on an interop wrapper describes the
-        // wrapper. An inactive GameObject runs nothing at all, which needs no
-        // names and cannot be got wrong.
-        try { template.SetActive(!_suppressed); }
+        try { rider.SetActive(!_suppressed); }
         catch (Exception e) { Mod.Log.Error($"[determinism] toggling rider: {e.Message}"); return; }
 
         Mod.Log.Msg(_suppressed
-            ? "[determinism] STILL WATER \u2014 rider disabled, nothing is forcing the ocean"
+            ? "[determinism] STILL WATER — rider disabled, nothing is forcing the ocean"
             : "[determinism] rider back in the water");
-
-        // Report the real class names while we are here: RemoteSurfer.Silence
-        // needs them, and it is the same broken lookup that hid them.
-        if (_suppressed) Inventory(template);
 
         Restart();
     }
-
-    /// <summary>
-    /// The rider's actual Il2Cpp class names.
-    ///
-    /// GetType() on an interop wrapper reports the wrapper, so every component
-    /// looked like "Behaviour". Asking IL2CPP directly gives the real name.
-    /// </summary>
-    private static void Inventory(GameObject root)
-    {
-        try
-        {
-            var all = root.GetComponentsInChildren(
-                Il2CppInterop.Runtime.Il2CppType.Of<Component>(), true);
-            if (all == null) return;
-
-            var names = new System.Text.StringBuilder();
-            foreach (var component in all)
-            {
-                if (component == null) continue;
-                names.Append(ClassName(component.Pointer)).Append(' ');
-            }
-            Mod.Log.Msg($"[determinism] rider components: {names}");
-        }
-        catch (Exception e) { Mod.Log.Error($"[determinism] inventory: {e.Message}"); }
-    }
-
-    private static string ClassName(IntPtr obj)
-    {
-        try
-        {
-            var klass = Il2CppInterop.Runtime.IL2CPP.il2cpp_object_get_class(obj);
-            var namePtr = Il2CppInterop.Runtime.IL2CPP.il2cpp_class_get_name(klass);
-            return System.Runtime.InteropServices.Marshal.PtrToStringAnsi(namePtr) ?? "?";
-        }
-        catch (Exception) { return "?"; }
-    }
-
-    private static bool _suppressed;
 
     private static void Locate()
     {
@@ -160,53 +111,41 @@ internal static class Determinism
             _surfaceData = p?.GetValue(GameHook.Manager);
             if (_surfaceData == null) { _looked = false; return; }
 
-            // ob(int, int) -> Vector3: a point on one of the surface contours.
-            _pointAt = _surfaceData.GetType().GetMethod("ob",
-                BindingFlags.Public | BindingFlags.Instance, null,
-                new[] { typeof(int), typeof(int) }, null);
+            // oc(Vector3) -> Single is water height at a world position, which is
+            // very likely what the character's own physics asks. That makes it
+            // both the right thing to compare and, later, the right thing to
+            // override so clients read the host's water instead of their own.
+            var type = _surfaceData.GetType();
+            _heightAt =
+                type.GetMethod("oc", BindingFlags.Public | BindingFlags.Instance, null, new[] { typeof(Vector3) }, null) ??
+                type.GetMethod("od", BindingFlags.Public | BindingFlags.Instance, null, new[] { typeof(Vector3) }, null);
 
-            Mod.Log.Msg(_pointAt != null
-                ? "[determinism] watching the water surface"
-                : "[determinism] SurfaceData.ob(int,int) not found");
+            Mod.Log.Msg(_heightAt != null
+                ? $"[determinism] reading water height via {_heightAt.Name}(Vector3)"
+                : "[determinism] no height query found on SurfaceData");
         }
         catch (Exception e) { Mod.Log.Error($"[determinism] {e.GetType().Name}: {e.Message}"); }
     }
 
-    /// <summary>
-    /// FNV-1a over the raw bits of the sampled points.
-    ///
-    /// Raw bits deliberately: rounding first would hide exactly the small
-    /// divergences this is looking for, and in a chaotic simulation small is
-    /// how every large divergence begins.
-    /// </summary>
-    private static uint Hash()
+    private static string Heights()
     {
-        unchecked
+        var row = new StringBuilder();
+        var read = 0;
+
+        for (var i = 0; i < Columns; i++)
         {
-            var h = 2166136261u;
-            var read = 0;
-
-            for (var i = 0; i < Points; i++)
+            var x = FirstX + i * StepX;
+            try
             {
-                object value;
-                try { value = _pointAt.Invoke(_surfaceData, new object[] { 0, i * 4 }); }
-                catch (Exception) { break; } // ran off the end of the contour
-                if (value is not Vector3 v) break;
-
-                foreach (var component in new[] { v.x, v.y, v.z })
-                {
-                    var bits = (uint)BitConverter.SingleToInt32Bits(component);
-                    for (var b = 0; b < 4; b++)
-                    {
-                        h ^= (bits >> (b * 8)) & 0xFF;
-                        h *= 16777619u;
-                    }
-                }
+                var v = _heightAt.Invoke(_surfaceData, new object[] { new Vector3(x, 0f, 0f) });
+                if (v is not float h || float.IsNaN(h)) continue;
+                row.Append(h.ToString("F4")).Append(' ');
                 read++;
             }
-
-            // A hash of nothing is not evidence of agreement.
-            return read < 8 ? 0u : h;
+            catch (Exception) { break; }
         }
+
+        // A partial read is not evidence of anything.
+        return read >= 8 ? row.ToString() : null;
     }
 }
