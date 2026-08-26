@@ -70,33 +70,98 @@ internal sealed class RemoteSurfer
     /// </summary>
     private static void Silence(GameObject clone)
     {
-        foreach (var behaviour in clone.GetComponentsInChildren<Behaviour>(true))
+        // Il2CppInterop returns nothing from the generic
+        // GetComponentsInChildren<T>() — proven when a hunt for the rider's
+        // components found zero on an object that plainly had twenty-six. The
+        // non-generic overload with an Il2Cpp type works. This mattered: with
+        // the generic call, nothing here ran, so a remote clone kept its Surf
+        // behaviours and tried to surf on the local player's input, which is
+        // the one thing this method exists to prevent.
+        Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<Component> all;
+        try
         {
+            all = clone.GetComponentsInChildren(
+                Il2CppInterop.Runtime.Il2CppType.Of<Component>(), true);
+        }
+        catch (Exception e)
+        {
+            Mod.Log.Error($"[surfer] cannot read clone components: {e.Message}");
+            return;
+        }
+
+        if (all == null || all.Length == 0) { Mod.Log.Error("[surfer] clone has no components"); return; }
+
+        var silenced = 0;
+
+        foreach (var component in all)
+        {
+            if (component == null) continue;
+
+            // GetType() on an interop wrapper reports the wrapper, so every
+            // component looks like "Component". Ask IL2CPP for the real name.
+            var name = ClassName(component.Pointer);
+
             try
             {
-                var ns = behaviour.GetType().Namespace;
-                if (ns != null && ns.StartsWith("Il2CppSurf", StringComparison.Ordinal))
-                    behaviour.enabled = false;
+                switch (name)
+                {
+                    // Physics would fight the transform the wire owns.
+                    case "Rigidbody":
+                        component.TryCast<Rigidbody>()!.isKinematic = true;
+                        silenced++;
+                        continue;
+
+                    // There can only be one of each that matters, and it is the
+                    // local player's.
+                    case "Camera":
+                        component.TryCast<Camera>()!.enabled = false;
+                        silenced++;
+                        continue;
+                    case "AudioListener":
+                        component.TryCast<AudioListener>()!.enabled = false;
+                        silenced++;
+                        continue;
+                }
+
+                // Everything the game itself drives: movement, input, buoyancy,
+                // wave-catching. A remote rider is a puppet, not a surfer.
+                if (!IsGameLogic(name)) continue;
+                var behaviour = component.TryCast<Behaviour>();
+                if (behaviour == null) continue;
+                behaviour.enabled = false;
+                silenced++;
             }
             catch (Exception) { /* a component that refuses is not fatal */ }
         }
 
-        foreach (var body in clone.GetComponentsInChildren<Rigidbody>(true))
-        {
-            try { body.isKinematic = true; }
-            catch (Exception) { }
-        }
+        Mod.Log.Msg($"[surfer] silenced {silenced} of {all.Length} component(s) on the clone");
+    }
 
-        // Cameras and listeners come along with the clone and would fight the
-        // local player's view. There can only be one of each that matters.
-        foreach (var camera in clone.GetComponentsInChildren<Camera>(true))
+    /// <summary>
+    /// Named explicitly rather than by namespace.
+    ///
+    /// The namespace is unavailable — GetType() describes the interop wrapper —
+    /// so the list comes from the rider's actual component inventory, logged
+    /// from a running game.
+    /// </summary>
+    private static bool IsGameLogic(string name) => name switch
+    {
+        "Controls" or "Buoyancy" or "FluidSlicer" or "SurfMode" or "AutoSurf"
+            or "ExpertSurf" or "TutorialSurf" or "Movement" or "MovementState"
+            or "MovementTime" or "MovementFx" or "WakeFxSpawner" or "Sounds"
+            or "Parallax" or "Profile" => true,
+        _ => false,
+    };
+
+    private static string ClassName(IntPtr obj)
+    {
+        try
         {
-            try { camera.enabled = false; } catch (Exception) { }
+            var klass = Il2CppInterop.Runtime.IL2CPP.il2cpp_object_get_class(obj);
+            var namePtr = Il2CppInterop.Runtime.IL2CPP.il2cpp_class_get_name(klass);
+            return System.Runtime.InteropServices.Marshal.PtrToStringAnsi(namePtr) ?? "";
         }
-        foreach (var listener in clone.GetComponentsInChildren<AudioListener>(true))
-        {
-            try { listener.enabled = false; } catch (Exception) { }
-        }
+        catch (Exception) { return ""; }
     }
 
     internal void Apply(Vector3 position, float heading, Vector3 velocity)
