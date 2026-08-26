@@ -86,31 +86,62 @@ internal static class Determinism
     /// </summary>
     internal static void SuppressRider()
     {
-        _suppressed = !_suppressed;
-
         var template = LocalSurfer.Template;
         if (template == null) { Mod.Log.Warning("[determinism] no rider found"); return; }
 
-        var touched = 0;
-        try
+        // The generic GetComponentsInChildren<Behaviour>() found nothing at all,
+        // which is a lie — the surfer plainly has components. Generic calls are
+        // routinely empty through Il2CppInterop, so go through the non-generic
+        // overload with an Il2Cpp type instead. RemoteSurfer.Silence has the same
+        // bug and gets the same fix once this confirms which call works.
+        var found = Components(template);
+        if (found == null || found.Length == 0)
         {
-            foreach (var b in template.GetComponentsInChildren<Behaviour>(true))
-            {
-                var name = b.GetType().Name;
-                // FluidSlicer and Buoyancy are what press on the water; WakeFx
-                // rides along with them.
-                if (name != "FluidSlicer" && name != "Buoyancy" && name != "WakeFx") continue;
-                b.enabled = !_suppressed;
-                touched++;
-            }
+            Mod.Log.Error("[determinism] no components reachable by either route");
+            return;
         }
-        catch (Exception e) { Mod.Log.Error($"[determinism] suppressing: {e.Message}"); }
 
+        _suppressed = !_suppressed;
+
+        var names = new System.Text.StringBuilder();
+        var touched = 0;
+
+        foreach (var component in found)
+        {
+            if (component == null) continue;
+            var behaviour = component.TryCast<Behaviour>();
+            if (behaviour == null) continue;
+
+            var name = behaviour.GetType().Name;
+            names.Append(name).Append(' ');
+
+            if (name != "FluidSlicer" && name != "Buoyancy" && name != "WakeFx") continue;
+            try { behaviour.enabled = !_suppressed; touched++; } catch (Exception) { }
+        }
+
+        // Print everything present, so if the names are wrong this says what the
+        // right ones are rather than costing another launch to find out.
+        Mod.Log.Msg($"[determinism] rider has: {names}");
         Mod.Log.Msg(_suppressed
-            ? $"[determinism] STILL WATER — {touched} rider/fluid component(s) off"
+            ? $"[determinism] STILL WATER \u2014 {touched} fluid coupling(s) off"
             : $"[determinism] rider back in the water ({touched} restored)");
 
         Restart();
+    }
+
+    /// <summary>Non-generic component lookup, which survives Il2CppInterop.</summary>
+    private static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<Component> Components(GameObject root)
+    {
+        try
+        {
+            return root.GetComponentsInChildren(
+                Il2CppInterop.Runtime.Il2CppType.Of<Component>(), true);
+        }
+        catch (Exception e)
+        {
+            Mod.Log.Error($"[determinism] component lookup: {e.GetType().Name}: {e.Message}");
+            return null;
+        }
     }
 
     private static bool _suppressed;
