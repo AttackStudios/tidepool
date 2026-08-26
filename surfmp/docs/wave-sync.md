@@ -1,76 +1,78 @@
 # Will everyone see the same wave?
 
-Short answer: **not by default, and not for long.** Same ocean in character —
-same period, same set rhythm, same break shape — but not the same wave at the
-same instant. Anyone expecting to drop in together on one peak would notice.
+Yes — but only one design can promise it, and the measurement below is what
+rules the other one out.
 
-This corrects an earlier, breezier claim that clients would simply "grow the
-same sea". They grow the same *kind* of sea. Staying in step is extra work.
+## The measurement
 
-## Why it drifts
+Two runs on one machine. Same beach, same binary, both started from the ocean's
+canonical flat surface (0.9062 across the beach), rider removed so nothing was
+forcing the water. 200 samples each, half a second apart.
 
-Ordered by how certain each one is.
+```
+bit-identical samples:  2 / 200
+first real divergence:  #25  (t = 12.5s)
+mean distance:          1.49x the natural change between samples
+```
 
-**1. Riders push the water back.** The most important reason, and structural
-rather than numerical. `Character.FluidSlicer`, `Character.Buoyancy`,
-`Fx.WakeFx` and `Prop.FollowFluidSlicer` all say the surfer perturbs the fluid.
-Each client only has its *own* player physically in its simulation, so client A's
-ocean is being shoved by A's board and client B's by B's. Two different sets of
-forces on two copies of a fluid produce two different oceans, and no amount of
-float care fixes that. It is a modelling difference, not a rounding one.
+**Identical for twelve and a half seconds, then it drifts.**
 
-**2. FLIP is chaotic.** `FlipRatio`, `Density`, `NumParticleIterations` and
-`SeparateParticles` mark this as particle-based. Particles push the grid and the
-grid moves the particles, so any difference — one bit in one cell — grows
-instead of fading. Chaotic systems do not forgive small errors, they multiply
-them.
+That is on *one PC*. Anything that cannot reproduce itself locally will do
+worse across two machines with different CPUs. The likely cause is the job
+system: Burst parallelises the solver, and results accumulating in
+thread-completion order vary run to run. Nothing a mod can fix.
 
-**3. Burst may not agree across machines.** Same binary is not the same maths:
-Burst picks SIMD paths by CPU features, and an AVX2 machine can produce results
-an SSE4 one does not. Fine on one PC, not guaranteed between two.
+Getting to this took six attempts, and every failure was the instrument rather
+than the game — worth recording, because they are all the same mistake:
 
-**4. Timestep.** `FluidSim` exposes `FPS` and `UpdateSpeed` and steps in
-`FixedUpdate`, which is the good case. But if the number of substeps ever
-depends on frame rate, machines diverge the moment one of them stutters.
+| Attempt | What it actually measured |
+| --- | --- |
+| Surf during both runs | The paddling |
+| Do not move | The rider anyway; a board floats |
+| Hash the surface | Bit-equality on a half-second grid, blind to phase |
+| Press a key to start | When the key was pressed — one run began mid-swell |
+| Detect flat water | An unloaded scene, which reads zero everywhere |
+| Remove the rider on a keypress | A rider that respawned on reload |
 
-**5. Seed and phase.** `Lull` implies gaps between sets, which implies
-randomness, which implies a seed. The constructor takes an int alongside its
-five floats — a likely candidate. And a client joining mid-session starts from a
-different point in the cycle unless elapsed sim time is synced too.
+Each fix addressed the symptom and left the flaw: a person was being asked to
+hit a mark. The run that worked removes the person — it waits for a surface
+that is uniform *and* wet, disables the rider in code at that instant, records a
+fixed length, and stops.
 
-## What would keep them together
+## What this rules out
 
-- **Put every rider in every simulation.** Since positions are already synced,
-  remote surfers can drive fluid interaction locally. This means undoing part of
-  what `RemoteSurfer.Silence` currently does: it disables *all* `Surf`
-  behaviours on a clone, which is right for movement and input but wrong for
-  `FluidSlicer` and `Buoyancy`. Those want re-enabling and feeding from network
-  position. Necessary for shared waves, and not sufficient alone.
-- **Sync seed, parameters and elapsed sim time on join.** Cheap, obvious, and
-  worth doing regardless.
-- **Correct periodically from the host.** Not the surface — that is the 124 KB
-  a frame this design exists to avoid — but the generator's phase and state,
-  which is small. Nudges clients back before drift becomes visible.
-- **Pin the timestep** so the simulation never depends on frame rate.
+**Lockstep is dead.** Twelve seconds of agreement is nothing against a session
+of minutes. Clients cannot each simulate and stay together, no matter how
+carefully the inputs are synced.
 
-## How to find out for real
+## What it leaves
 
-Do not reason about this further; measure it. Both clients checksum the same
-surface region every second and log it. Identical means it holds; diverging
-means it does not, and the log shows how fast. `Surf.m`'s grid is reachable by
-reflection, so this is an afternoon, not a project.
+**Host-authoritative water.** The host simulates; clients do not simulate at
+all. They are given the surface and read it for both what they see and what
+they surf. Two clients cannot disagree about a wave neither of them computes.
 
-Run it three ways: two instances on one machine, two machines, and again with
-one rider actually surfing — reason 1 predicts that last one diverges fastest,
-and that prediction is worth testing because it decides how much of the rest
-matters.
+`SurfaceData` is the seam:
 
-## If it cannot be fixed
+- `bdw : List<List<Vector3>>` — the surface contours, which the renderer draws
+- `oc(Vector3) -> Single` — water height at a position, which the character's
+  physics asks
 
-Waves stay local and only surfers sync. Everyone gets their own ocean and sees
-everybody else paddling, riding and wiping out in it. Positions are real,
-conversation is real, the session is real; two people simply are not reliably
-on the same peak.
+Both come off the same data, so replacing the contours on a client should carry
+the visuals and the physics together. That matters: overriding only the height
+query would leave a rider surfing a wave they cannot see, which is worse than
+drifting apart.
 
-That still delivers what people came for, which is each other — and it is the
-honest fallback rather than a promise of shared waves that quietly is not true.
+Cost is affordable. A 2D slice needs x and y only, quantised to 16 bits: a few
+hundred points is roughly 1.6 KB a frame, about 32 KB/s at 20 Hz. Compare the
+full fluid volume — 321 x 97 cells, 124 KB a frame — which is what made
+broadcasting look impossible earlier. The surface is not the simulation.
+
+Clients also want `FluidSim.Paused` set, so a local simulation is not fighting
+the incoming surface or burning a core computing water nobody will see.
+
+## Open
+
+Whether the renderer reads the contours late enough for an overwrite to take,
+and whether `oc` derives from them or from the grid underneath. If the physics
+reads the grid directly, the override has to go deeper — but the host-authority
+principle is unchanged, only the seam moves.
