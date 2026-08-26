@@ -30,6 +30,9 @@ internal sealed class RemoteSurfer
 
     internal string Name { get; }
 
+    /// <summary>Where the rider is drawn right now, for a nametag to sit above.</summary>
+    internal Vector3 Position => _transform != null ? _transform.position : Vector3.zero;
+
     private RemoteSurfer(string name, GameObject clone)
     {
         Name = name;

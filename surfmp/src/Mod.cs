@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.34.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.36.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;
@@ -29,6 +29,7 @@ public class Mod : MelonMod
         Sync.GameHook.Install(HarmonyInstance);
         Net.SteamRelay.Start();
         Net.SteamPresence.Install();
+        UI.ChatPanel.Install();
 
         // Clicking Join Game in Steam should drop you straight into their water.
         Net.SteamPresence.JoinRequested += id => SessionControl.Lobby.JoinSteam(id);
@@ -52,6 +53,7 @@ public class Mod : MelonMod
         // Packets arrive on the socket thread and are queued; this is where they
         // get handled, because Unity's API is main-thread-only.
         Net.SteamRelay.Tick();
+        UI.ChatPanel.Tick();
         SessionControl.Lobby.Tick(now);
         Sync.SurferSync.Tick(dt, now);
         Sync.WaveSync.Tick(now, Sync.SurferSync.Session);
@@ -60,7 +62,12 @@ public class Mod : MelonMod
     }
 
     /// <summary>The server browser draws here; IMGUI has nowhere else to run.</summary>
-    public override void OnGUI() => UI.ServerBrowser.Draw();
+    public override void OnGUI()
+    {
+        UI.Nametags.Draw(Sync.SurferSync.Surfers());
+        UI.ServerBrowser.Draw();
+        UI.ChatPanel.Draw();
+    }
 
     /// <summary>Say goodbye rather than leaving peers to time us out.</summary>
     public override void OnApplicationQuit()

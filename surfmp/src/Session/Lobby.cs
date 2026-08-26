@@ -37,6 +37,9 @@ internal static class Lobby
             // tell them apart — the connection is simply never established.
             // Nothing else can be tested without a second person unless there is
             // a way around Steam entirely, so shift is it.
+            // F-keys while typing would fire mid-sentence.
+            if (UI.ChatPanel.Typing) return;
+
             var local = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
             if (Input.GetKeyDown(KeyCode.F9)) Host(local);
@@ -213,11 +216,25 @@ internal static class Lobby
     }
 
     /// <summary>
-    /// No Steamworks in this game, so there is no Steam name to borrow. The
-    /// account name stands in until SurfMP asks for one.
+    /// What other players see you called.
+    ///
+    /// The Steam persona name when Steam is up, which is the name a person
+    /// actually goes by and the one they will be recognised under. The Windows
+    /// account name only stands in when Steam is unavailable — it was never a
+    /// good answer, only an available one.
     /// </summary>
     private static string Name()
     {
+        try
+        {
+            if (Net.SteamRelay.Ready)
+            {
+                var persona = Steamworks.SteamFriends.GetPersonaName();
+                if (!string.IsNullOrWhiteSpace(persona)) return persona;
+            }
+        }
+        catch (Exception) { }
+
         try { return Environment.UserName ?? "Surfer"; }
         catch (Exception) { return "Surfer"; }
     }

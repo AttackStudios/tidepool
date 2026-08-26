@@ -38,6 +38,7 @@ internal static class SurferSync
         Detach();
 
         _session = session;
+        ChatSync.Attach(session);
         session.Payload += OnPayload;
         session.Left += OnLeft;
     }
@@ -47,12 +48,20 @@ internal static class SurferSync
         if (_session != null)
         {
             _session.Payload -= OnPayload;
+            ChatSync.Detach();
             _session.Left -= OnLeft;
             _session = null;
         }
 
         foreach (var r in Remotes.Values) r.Despawn();
         Remotes.Clear();
+    }
+
+    /// <summary>Everyone else's name and where they are, for the nametags.</summary>
+    internal static IEnumerable<(string Name, Vector3 Position)> Surfers()
+    {
+        foreach (var r in Remotes.Values)
+            if (r != null) yield return (r.Name, r.Position);
     }
 
     internal static void Tick(float dt, float now)
@@ -94,6 +103,7 @@ internal static class SurferSync
     {
         if (op == Op.WaveFrame) { WaveSync.Apply(r); return; }
         if (op == Op.Beach) { BeachSync.Receive(r, _session, UnityEngine.Time.time); return; }
+        if (op == Op.Chat) { ChatSync.Receive(from, r); return; }
         if (op != Op.SurferState) return;
 
         var id = r.Byte();
