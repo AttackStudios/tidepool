@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.26.1", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.27.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;
@@ -43,7 +43,6 @@ public class Mod : MelonMod
 
         Sync.WaveParams.Capture();
         Sync.LocalSurfer.Tick(dt);
-        Sync.Determinism.Tick(now);
 
         // Packets arrive on the socket thread and are queued; this is where they
         // get handled, because Unity's API is main-thread-only.

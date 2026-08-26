@@ -35,11 +35,8 @@ internal static class Lobby
             else if (Input.GetKeyDown(KeyCode.F10)) Join("127.0.0.1");
             else if (Input.GetKeyDown(KeyCode.F11)) Leave();
             // Marks the start of a determinism run, so two runs can be lined up
-            // step by step without depending on when each was launched.
-            else if (Input.GetKeyDown(KeyCode.F8)) Sync.Determinism.Restart();
             // Still water: takes the rider out of the fluid so the ocean runs
             // unforced, which is the only way to test the simulation alone.
-            else if (Input.GetKeyDown(KeyCode.F7)) Sync.Determinism.SuppressRider();
             // Host only: everyone loads this beach together, which is what puts
             // every player in the same ocean.
             else if (Input.GetKeyDown(KeyCode.F6)) Sync.BeachSync.Call(Current, Time.time);
