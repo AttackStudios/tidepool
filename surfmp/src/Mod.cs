@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.16.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.17.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;
@@ -25,7 +25,7 @@ public class Mod : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("SurfMP 0.16.0 — F7 still-water test.");
+        Log.Msg("SurfMP 0.17.0 — F7 still-water test.");
         Sync.GameHook.Install(HarmonyInstance);
 
         // The netcode has no game dependency, so that it can be tested headless.

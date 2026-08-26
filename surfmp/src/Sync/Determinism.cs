@@ -89,59 +89,62 @@ internal static class Determinism
         var template = LocalSurfer.Template;
         if (template == null) { Mod.Log.Warning("[determinism] no rider found"); return; }
 
-        // The generic GetComponentsInChildren<Behaviour>() found nothing at all,
-        // which is a lie — the surfer plainly has components. Generic calls are
-        // routinely empty through Il2CppInterop, so go through the non-generic
-        // overload with an Il2Cpp type instead. RemoteSurfer.Silence has the same
-        // bug and gets the same fix once this confirms which call works.
-        var found = Components(template);
-        if (found == null || found.Length == 0)
-        {
-            Mod.Log.Error("[determinism] no components reachable by either route");
-            return;
-        }
-
         _suppressed = !_suppressed;
 
-        var names = new System.Text.StringBuilder();
-        var touched = 0;
+        // Switch the whole rider off rather than hunting for the components that
+        // touch the fluid. Matching by name failed twice: first the generic
+        // component lookup returned nothing, then every result reported its type
+        // as "Behaviour" because GetType() on an interop wrapper describes the
+        // wrapper. An inactive GameObject runs nothing at all, which needs no
+        // names and cannot be got wrong.
+        try { template.SetActive(!_suppressed); }
+        catch (Exception e) { Mod.Log.Error($"[determinism] toggling rider: {e.Message}"); return; }
 
-        foreach (var component in found)
-        {
-            if (component == null) continue;
-            var behaviour = component.TryCast<Behaviour>();
-            if (behaviour == null) continue;
-
-            var name = behaviour.GetType().Name;
-            names.Append(name).Append(' ');
-
-            if (name != "FluidSlicer" && name != "Buoyancy" && name != "WakeFx") continue;
-            try { behaviour.enabled = !_suppressed; touched++; } catch (Exception) { }
-        }
-
-        // Print everything present, so if the names are wrong this says what the
-        // right ones are rather than costing another launch to find out.
-        Mod.Log.Msg($"[determinism] rider has: {names}");
         Mod.Log.Msg(_suppressed
-            ? $"[determinism] STILL WATER \u2014 {touched} fluid coupling(s) off"
-            : $"[determinism] rider back in the water ({touched} restored)");
+            ? "[determinism] STILL WATER \u2014 rider disabled, nothing is forcing the ocean"
+            : "[determinism] rider back in the water");
+
+        // Report the real class names while we are here: RemoteSurfer.Silence
+        // needs them, and it is the same broken lookup that hid them.
+        if (_suppressed) Inventory(template);
 
         Restart();
     }
 
-    /// <summary>Non-generic component lookup, which survives Il2CppInterop.</summary>
-    private static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<Component> Components(GameObject root)
+    /// <summary>
+    /// The rider's actual Il2Cpp class names.
+    ///
+    /// GetType() on an interop wrapper reports the wrapper, so every component
+    /// looked like "Behaviour". Asking IL2CPP directly gives the real name.
+    /// </summary>
+    private static void Inventory(GameObject root)
     {
         try
         {
-            return root.GetComponentsInChildren(
+            var all = root.GetComponentsInChildren(
                 Il2CppInterop.Runtime.Il2CppType.Of<Component>(), true);
+            if (all == null) return;
+
+            var names = new System.Text.StringBuilder();
+            foreach (var component in all)
+            {
+                if (component == null) continue;
+                names.Append(ClassName(component.Pointer)).Append(' ');
+            }
+            Mod.Log.Msg($"[determinism] rider components: {names}");
         }
-        catch (Exception e)
+        catch (Exception e) { Mod.Log.Error($"[determinism] inventory: {e.Message}"); }
+    }
+
+    private static string ClassName(IntPtr obj)
+    {
+        try
         {
-            Mod.Log.Error($"[determinism] component lookup: {e.GetType().Name}: {e.Message}");
-            return null;
+            var klass = Il2CppInterop.Runtime.IL2CPP.il2cpp_object_get_class(obj);
+            var namePtr = Il2CppInterop.Runtime.IL2CPP.il2cpp_class_get_name(klass);
+            return System.Runtime.InteropServices.Marshal.PtrToStringAnsi(namePtr) ?? "?";
         }
+        catch (Exception) { return "?"; }
     }
 
     private static bool _suppressed;
