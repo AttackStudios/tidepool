@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.28.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.28.1", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;
@@ -25,7 +25,7 @@ public class Mod : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("SurfMP 0.25.0 — F6 calls a synchronised beach load.");
+        Log.Msg("SurfMP 0.28.1 — F6 calls a synchronised beach load.");
         Sync.GameHook.Install(HarmonyInstance);
         Net.SteamRelay.Start();
 

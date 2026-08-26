@@ -12,6 +12,11 @@
          Steamworks.NET.dll never appeared next to the mod and had nothing to
          install. This puts it there. -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!-- Without a RID, the build copies the reference assembly, which MelonLoader
+         refuses with "cannot load a reference assembly for execution". The
+         runtime one lives under runtimes/win-x64. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
   </PropertyGroup>
 
   <!--
