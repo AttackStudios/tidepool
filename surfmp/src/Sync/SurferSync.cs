@@ -42,6 +42,7 @@ internal static class SurferSync
 
         _session = session;
         ChatSync.Attach(session);
+        BeachSync.Watch(session);
         session.Payload += OnPayload;
         session.Left += OnLeft;
     }

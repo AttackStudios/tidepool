@@ -17,14 +17,30 @@ namespace TidePool.SurfMP.UI;
 /// </summary>
 internal static class Nametags
 {
-    /// <summary>Above the board rather than over it, so a name never hides a rider.</summary>
-    private const float HeightOffset = 0.9f;
+    /// <summary>
+    /// Just clear of the rider's head.
+    ///
+    /// 0.9 put names noticeably high — the world offset and the label's own
+    /// height stack, so the gap was nearly twice what it looked like in code.
+    /// </summary>
+    private const float HeightOffset = 0.35f;
 
     /// <summary>Beyond this the lineup turns to noise, so names fade out.</summary>
     private const float FadeStart = 12f;
     private const float FadeEnd = 22f;
 
     private static Camera _camera;
+
+    /// <summary>
+    /// Roughly how wide a character is, for centring.
+    ///
+    /// GUI.Label aligns upper-left, so a name in a fixed-width box sits well
+    /// left of the surfer. Centring properly would mean a GUIStyle with a
+    /// TextAnchor, which drags in another Unity module and an Il2Cpp
+    /// constructor that does not map cleanly — for one line of text, estimating
+    /// the width is the smaller thing to get wrong.
+    /// </summary>
+    private const float CharWidth = 8f;
 
     internal static void Draw(IEnumerable<(string Name, Vector3 Position)> surfers)
     {
@@ -52,7 +68,8 @@ internal static class Nametags
             var previous = GUI.color;
             GUI.color = new Color(1f, 1f, 1f, alpha);
 
-            const float w = 180f, h = 22f;
+            const float h = 20f;
+            var w = name.Length * CharWidth + 8f;
             GUI.Label(new Rect(screen.x - w * 0.5f, Screen.height - screen.y - h, w, h), name);
 
             GUI.color = previous;

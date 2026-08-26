@@ -40,6 +40,30 @@ internal static class BeachSync
     private static string _pending;
     private static float _loadAt;
 
+    /// <summary>
+    /// When to call a beach because somebody joined.
+    ///
+    /// A client that joins mid-session has its own wave generator running from
+    /// whenever it loaded, so it sees a different ocean from everyone else — the
+    /// beach is the same, the waves are not. Reloading together is what puts
+    /// every generator back on the same clock.
+    ///
+    /// Delayed a little so several people arriving at once cause one reload
+    /// rather than one each.
+    /// </summary>
+    private static float _resyncAt;
+    private static Session _session;
+
+    internal static void Watch(Session session)
+    {
+        _session = session;
+        session.Joined += _ =>
+        {
+            if (session.Role != Role.Host) return;
+            _resyncAt = UnityEngine.Time.time + 2f;
+        };
+    }
+
     /// <summary>Host: tell everyone to load the beach we are on, together.</summary>
     internal static void Call(Session session, float now)
     {
@@ -86,6 +110,15 @@ internal static class BeachSync
     internal static void Tick(float now)
     {
         if (!_looked) { _looked = true; Locate(); }
+
+        // Someone joined: put the whole lineup back on one clock.
+        if (_resyncAt > 0f && now >= _resyncAt)
+        {
+            _resyncAt = 0f;
+            Mod.Log.Msg("[beach] syncing everyone to the host's waves");
+            Call(_session, now);
+        }
+
         if (_pending == null || now < _loadAt) return;
 
         var name = _pending;
