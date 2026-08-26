@@ -51,7 +51,6 @@ internal static class WaveSync
     private static PropertyInfo _period, _lull, _right, _left;
     private static bool _looked;
     private static float _nextSend;
-    private static int _corrections;
 
     internal static void Tick(float now, Session session)
     {
@@ -69,34 +68,58 @@ internal static class WaveSync
         session.Broadcast(Out, w.Length);
     }
 
+    /// <summary>
+    /// Read-only for now.
+    ///
+    /// The previous build wrote Period, Lull and a phase straight into the live
+    /// generator, and it visibly corrupted the game: the log shows the phase
+    /// being forced by 0.51s a hundred times running, never converging. Two
+    /// things were wrong. The test host has no game behind it, so the phase it
+    /// sent was its own wall clock and meant nothing here. And the constant
+    /// delta says the value did not move after being set, which suggests om()
+    /// is not the phase setter at all.
+    ///
+    /// Writing unverified state into a running simulation is how that ends. So
+    /// this observes and reports until ol() is understood, and applies nothing.
+    /// </summary>
     internal static void Apply(PacketReader r)
     {
         var phase = r.Float();
         var period = r.Float();
         var lull = r.Float();
-        var right = r.Bool();
-        var left = r.Bool();
-
-        // Half a packet is worse than none: acting on a truncated read would
-        // reconfigure the ocean from whatever happened to be in the buffer.
+        r.Bool();
+        r.Bool();
         if (!r.Ok || _wave == null) return;
 
-        SetFloat(_period, period);
-        SetFloat(_lull, lull);
-        SetBool(_right, right);
-        SetBool(_left, left);
-
-        var slip = Math.Abs(Phase() - phase);
-        if (slip <= MaxSlip || _setPhase == null) return;
-
-        try
-        {
-            _setPhase.Invoke(_wave, new object[] { phase });
-            if (_corrections++ % 20 == 0)
-                Mod.Log.Msg($"[wave] phase corrected by {slip:F2}s ({_corrections} so far)");
-        }
-        catch (Exception e) { Mod.Log.Error($"[wave] setting phase: {e.Message}"); }
+        if (_reports++ % 20 != 0) return;
+        Mod.Log.Msg($"[wave] host says phase {phase:F2} period {period:F1} lull {lull:F1}; " +
+                    $"local phase {Phase():F2} period {GetFloat(_period, -1):F1}");
     }
+
+    private static int _reports;
+
+    /// <summary>
+    /// Watch what ol() does on its own, so it can be identified rather than
+    /// guessed at. A value climbing at one unit per second is a clock and can be
+    /// synced; anything else is not a phase and must not be written.
+    /// </summary>
+    internal static void Observe(float now)
+    {
+        if (_wave == null || now < _nextObserve) return;
+        var first = _nextObserve == 0f;
+        _nextObserve = now + 1f;
+
+        var p = Phase();
+        if (!first)
+        {
+            var rate = (p - _lastPhase) / 1f;
+            Mod.Log.Msg($"[wave] ol() = {p:F3}  (changing {rate:+0.000;-0.000}/s)");
+        }
+        _lastPhase = p;
+    }
+
+    private static float _nextObserve;
+    private static float _lastPhase;
 
     private static float Phase()
     {

@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.23.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.23.1", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;
@@ -50,6 +50,7 @@ public class Mod : MelonMod
         SessionControl.Lobby.Tick(now);
         Sync.SurferSync.Tick(dt, now);
         Sync.WaveSync.Tick(now, Sync.SurferSync.Session);
+        Sync.WaveSync.Observe(now);
     }
 
     /// <summary>Say goodbye rather than leaving peers to time us out.</summary>
