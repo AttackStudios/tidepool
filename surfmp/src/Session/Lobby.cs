@@ -49,6 +49,18 @@ internal static class Lobby
 
     internal static void Host()
     {
+        // Pressing F9 again while already hosting used to tear the session down
+        // and rebuild it, which silently kicked everyone who had joined. A
+        // second press is far more likely to mean "did that work?" than "throw
+        // everyone out", so say what the state is and change nothing.
+        if (Current.Role == Net.Role.Host)
+        {
+            var count = 0;
+            foreach (var _ in Current.Members) count++;
+            Mod.Log.Msg($"[lobby] already hosting on {DefaultPort} — {count} peer(s) connected");
+            return;
+        }
+
         try
         {
             Current.Host(DefaultPort, Name());
@@ -60,6 +72,12 @@ internal static class Lobby
 
     internal static void Join(string address)
     {
+        if (Current.Role == Net.Role.Client)
+        {
+            Mod.Log.Msg($"[lobby] already in a session — F11 to leave first");
+            return;
+        }
+
         try
         {
             // The client binds any free port, so a second instance on the same
