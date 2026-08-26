@@ -40,36 +40,36 @@ internal static class SteamRelay
             var beside = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "steam_appid.txt");
             if (!File.Exists(beside)) File.WriteAllText(beside, AppId.ToString());
         }
-        catch (Exception e) { Mod.Log.Warning($"[steam] steam_appid.txt: {e.Message}"); }
+        catch (Exception e) { NetLog.Warn($"[steam] steam_appid.txt: {e.Message}"); }
 
         try
         {
             var result = SteamAPI.InitEx(out var error);
             if (result != ESteamAPIInitResult.k_ESteamAPIInitResult_OK)
             {
-                Mod.Log.Warning($"[steam] not available: {result} — {error}");
+                NetLog.Warn($"[steam] not available: {result} — {error}");
                 return;
             }
 
             Ready = true;
             SelfId = SteamUser.GetSteamID().m_SteamID;
-            Mod.Log.Msg($"[steam] signed in as {SteamFriends.GetPersonaName()} ({SelfId})");
+            NetLog.Info($"[steam] signed in as {SteamFriends.GetPersonaName()} ({SelfId})");
 
             // The relay is the entire point: it is what removes IP addresses
             // from the picture. Access takes a moment to come up, so this only
             // starts it and the status is reported later.
             SteamNetworkingUtils.InitRelayNetworkAccess();
-            Mod.Log.Msg("[steam] relay network requested");
+            NetLog.Info("[steam] relay network requested");
         }
         catch (DllNotFoundException)
         {
             // Expected until steam_api64.dll ships beside the game. Worth naming
             // precisely rather than letting it look like a Steam outage.
-            Mod.Log.Warning("[steam] steam_api64.dll not found — relay unavailable");
+            NetLog.Warn("[steam] steam_api64.dll not found — relay unavailable");
         }
         catch (Exception e)
         {
-            Mod.Log.Error($"[steam] {e.GetType().Name}: {e.Message}");
+            NetLog.Error($"[steam] {e.GetType().Name}: {e.Message}");
         }
     }
 

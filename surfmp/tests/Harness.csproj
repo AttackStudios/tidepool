@@ -19,6 +19,16 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
+  <!--
+    The Net sources now include the Steam transport, so this needs the same
+    package to compile them. Nothing here exercises Steam — it cannot be, since
+    Steam's IPC pipe is per-session and these tests run headless — but the UDP
+    transport and the session logic above it still can be, and that is the point.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Steamworks.NET" Version="2024.8.0" />
+  </ItemGroup>
+
   <ItemGroup>
     <Compile Include="Harness.cs" />
     <Compile Include="../src/Net/*.cs" />

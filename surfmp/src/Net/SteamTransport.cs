@@ -43,7 +43,7 @@ internal sealed class SteamTransport : ITransport
         if (host)
         {
             _listen = SteamNetworkingSockets.CreateListenSocketP2P(0, options.Length, options);
-            Mod.Log.Msg("[steam] listening for relayed connections");
+            NetLog.Info("[steam] listening for relayed connections");
         }
         else
         {
@@ -51,7 +51,7 @@ internal sealed class SteamTransport : ITransport
             identity.SetSteamID(connectTo);
             var conn = SteamNetworkingSockets.ConnectP2P(ref identity, 0, options.Length, options);
             _peers[conn.m_HSteamNetConnection] = conn;
-            Mod.Log.Msg($"[steam] connecting to {connectTo} over the relay");
+            NetLog.Info($"[steam] connecting to {connectTo} over the relay");
         }
     }
 
@@ -86,17 +86,17 @@ internal sealed class SteamTransport : ITransport
                 if (!_hosting) break;
                 SteamNetworkingSockets.AcceptConnection(conn);
                 _peers[conn.m_HSteamNetConnection] = conn;
-                Mod.Log.Msg($"[steam] accepted {e.m_info.m_identityRemote.GetSteamID()}");
+                NetLog.Info($"[steam] accepted {e.m_info.m_identityRemote.GetSteamID()}");
                 break;
 
             case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected:
                 _peers[conn.m_HSteamNetConnection] = conn;
-                Mod.Log.Msg("[steam] connected over the relay");
+                NetLog.Info("[steam] connected over the relay");
                 break;
 
             case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer:
             case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
-                Mod.Log.Msg($"[steam] connection closed: {e.m_info.m_szEndDebug}");
+                NetLog.Info($"[steam] connection closed: {e.m_info.m_szEndDebug}");
                 SteamNetworkingSockets.CloseConnection(conn, 0, null, false);
                 _peers.Remove(conn.m_HSteamNetConnection);
                 break;
@@ -118,7 +118,7 @@ internal sealed class SteamTransport : ITransport
                 conn, buffer, (uint)length,
                 Constants.k_nSteamNetworkingSend_Unreliable, out _);
         }
-        catch (Exception e) { Mod.Log.Warning($"[steam] send: {e.Message}"); }
+        catch (Exception e) { NetLog.Warn($"[steam] send: {e.Message}"); }
         finally { Marshal.FreeHGlobal(buffer); }
     }
 
@@ -154,7 +154,7 @@ internal sealed class SteamTransport : ITransport
                     Marshal.Copy(message.m_pData, bytes, 0, message.m_cbSize);
                     Received?.Invoke(new Peer(handle), bytes, bytes.Length);
                 }
-                catch (Exception e) { Mod.Log.Warning($"[steam] receive: {e.Message}"); }
+                catch (Exception e) { NetLog.Warn($"[steam] receive: {e.Message}"); }
                 finally { SteamNetworkingMessage_t.Release(_inbox[i]); }
             }
         }
