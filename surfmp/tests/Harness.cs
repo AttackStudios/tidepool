@@ -12,7 +12,15 @@ namespace TidePool.SurfMP.Harness;
 /// </summary>
 internal static class Harness
 {
-    private const int HostPort = 27581;
+    /// <summary>
+    /// Chosen by the OS, not fixed.
+    ///
+    /// A hardcoded 27581 collided twice with a real session hosting on the same
+    /// machine, and both times the harness looked broken when it was only shut
+    /// out of the port. Tests should not fail because the thing they test is
+    /// running.
+    /// </summary>
+    private static int _hostPort;
 
     private static int _failed;
     private static readonly Stopwatch Clock = Stopwatch.StartNew();
@@ -50,9 +58,10 @@ internal static class Harness
 
         try
         {
-            host.Host(HostPort, "Jack");
-            a.Join("127.0.0.1", HostPort, "Ripper");
-            b.Join("127.0.0.1", HostPort, "Kook");
+            host.Host(0, "Jack");
+            _hostPort = host.Port;
+            a.Join("127.0.0.1", _hostPort, "Ripper");
+            b.Join("127.0.0.1", _hostPort, "Kook");
 
             Settle(host, a, b);
 
@@ -76,7 +85,8 @@ internal static class Harness
         var host = new Session();
         try
         {
-            host.Host(HostPort, "Jack");
+            host.Host(0, "Jack");
+            _hostPort = host.Port;
 
             // Speak by hand from a socket that stays open, so the host's reply can
             // actually be read. No real client joins here: the whole point is that
@@ -93,7 +103,7 @@ internal static class Harness
             w.UShort((ushort)(Wire.Protocol + 99));
             w.Str("Stranger");
             sock.SendTo(buf, 0, w.Length, System.Net.Sockets.SocketFlags.None,
-                new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, HostPort));
+                new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, _hostPort));
 
             Settle(host);
 
@@ -153,9 +163,10 @@ internal static class Harness
 
         try
         {
-            host.Host(HostPort, "Jack");
-            a.Join("127.0.0.1", HostPort, "Ripper");
-            b.Join("127.0.0.1", HostPort, "Kook");
+            host.Host(0, "Jack");
+            _hostPort = host.Port;
+            a.Join("127.0.0.1", _hostPort, "Ripper");
+            b.Join("127.0.0.1", _hostPort, "Kook");
             Settle(host, a, b);
 
             var msg = new byte[Wire.MaxPacket];
@@ -182,8 +193,9 @@ internal static class Harness
 
         try
         {
-            host.Host(HostPort, "Jack");
-            client.Join("127.0.0.1", HostPort, "Ghost");
+            host.Host(0, "Jack");
+            _hostPort = host.Port;
+            client.Join("127.0.0.1", _hostPort, "Ghost");
             Settle(host, client);
             Is(Count(host) == 1, "the client is in");
 
@@ -208,7 +220,8 @@ internal static class Harness
         var host = new Session();
         try
         {
-            host.Host(HostPort, "Jack");
+            host.Host(0, "Jack");
+            _hostPort = host.Port;
 
             // A Hello claiming a name far longer than the bytes that follow: the
             // shape of a truncated packet, and of a hostile one.
@@ -216,11 +229,11 @@ internal static class Harness
             buf[0] = (byte)Op.Hello;
             buf[1] = 1; buf[2] = 0;
             buf[3] = 200;
-            RawSend(buf, 8, HostPort);
+            RawSend(buf, 8, _hostPort);
 
-            RawSend(new byte[] { (byte)Op.Hello }, 1, HostPort);
-            RawSend(new byte[] { 200, 200, 200 }, 3, HostPort);
-            RawSend(new byte[0], 0, HostPort);
+            RawSend(new byte[] { (byte)Op.Hello }, 1, _hostPort);
+            RawSend(new byte[] { 200, 200, 200 }, 3, _hostPort);
+            RawSend(new byte[0], 0, _hostPort);
 
             Settle(host);
 

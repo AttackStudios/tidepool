@@ -45,6 +45,9 @@ internal sealed class Session : IDisposable
 
     internal Role Role { get; private set; } = Role.Offline;
 
+    /// <summary>The port actually bound, which differs from the one asked for when that was 0.</summary>
+    internal int Port => _transport?.Port ?? 0;
+
     /// <summary>
     /// One-way delay in seconds, from smoothed round trips. Used to land a
     /// synchronised beach load on the same instant everywhere.
