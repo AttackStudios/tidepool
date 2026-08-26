@@ -24,6 +24,12 @@ internal static class Program
 
     private static int Main(string[] argv)
     {
+        // "host" mode broadcasts a wave nobody could mistake for the game's own.
+        // The game joins as a client, and if its water becomes this shape then
+        // host-authoritative water works end to end — with one instance, which
+        // matters because a second copy of the game dies on launch.
+        if (argv.Length > 0 && argv[0] == "host") return HostWater(argv);
+
         var host = argv.Length > 0 ? argv[0] : "127.0.0.1";
         var port = argv.Length > 1 ? int.Parse(argv[1]) : 27581;
         var name = argv.Length > 2 ? argv[2] : "Ghost";
@@ -95,5 +101,60 @@ internal static class Program
             ? $"  finished — {sent} updates sent"
             : "  never got a Welcome; is the host up and hosting?");
         return joined ? 0 : 1;
+    }
+
+    /// <summary>
+    /// Sends a travelling sine as the ocean surface.
+    ///
+    /// Deliberately nothing like a real break: a clean, obvious, repeating swell
+    /// is unmistakable on screen, so the test cannot be passed by the client
+    /// quietly showing its own water.
+    /// </summary>
+    private static int HostWater(string[] argv)
+    {
+        var port = argv.Length > 1 ? int.Parse(argv[1]) : 27581;
+        var seconds = argv.Length > 2 ? double.Parse(argv[2]) : 300.0;
+
+        const int Columns = 161;
+        const float MinH = -1f, MaxH = 7f;
+
+        var session = new Session();
+        session.Joined += p => Console.WriteLine($"  {p.Name} joined — sending water");
+        session.Host(port, "WaveHost");
+        Console.WriteLine($"  hosting water on {port}; join from the game with F10");
+
+        var clock = Stopwatch.StartNew();
+        var buffer = new byte[Wire.MaxPacket];
+        var next = 0.0;
+        var frames = 0;
+
+        while (clock.Elapsed.TotalSeconds < seconds)
+        {
+            var now = (float)clock.Elapsed.TotalSeconds;
+            session.Pump(now);
+
+            if (now >= next)
+            {
+                next = now + 1.0 / 20.0;
+
+                var w = new PacketWriter(buffer, Op.WaveFrame);
+                for (var i = 0; i < Columns; i++)
+                {
+                    // A metre-high swell rolling shorewards on a two-second period.
+                    var x = i / (Columns - 1f) * 10f;
+                    var h = 1.0f + 1.0f * (float)Math.Sin((x * 0.9) - now * 3.0);
+                    w.Height(h, MinH, MaxH);
+                }
+                session.Broadcast(buffer, w.Length);
+
+                if (frames++ % 100 == 0) Console.WriteLine($"  {frames} wave frames sent");
+            }
+
+            Thread.Sleep(5);
+        }
+
+        session.Shutdown("done");
+        Console.WriteLine($"  finished — {frames} frames");
+        return 0;
     }
 }

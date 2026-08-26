@@ -92,6 +92,7 @@ internal static class SurferSync
 
     private static void OnPayload(Member from, Op op, PacketReader r)
     {
+        if (op == Op.WaveFrame) { WaveSync.Apply(r); return; }
         if (op != Op.SurferState) return;
 
         var id = r.Byte();
