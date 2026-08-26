@@ -47,9 +47,19 @@ internal static class Determinism
         var hash = Hash();
         if (hash == 0) return;
 
+        // The rider's position goes in the same line as the hash.
+        //
+        // The first attempt at this test asked Jack to surf during both runs,
+        // which guaranteed different inputs and made the divergence impossible
+        // to attribute — a chaotic fluid being pushed differently will diverge
+        // whether or not it is deterministic. Recording where the surfer was
+        // turns "I did not move" from something to take on trust into something
+        // the two logs can be checked against.
+        var p = LocalSurfer.Found ? LocalSurfer.Position : Vector3.zero;
+
         // Sequence number, not timestamp: two runs are compared step by step,
         // and wall-clock start times will never match.
-        Mod.Log.Msg($"[determinism] #{_sample++,-4} hash={hash:X8}");
+        Mod.Log.Msg($"[determinism] #{_sample++,-4} hash={hash:X8} at=({p.x:F2},{p.y:F2},{p.z:F2})");
     }
 
     /// <summary>Reset when a beach loads, so each run's sequence starts from zero.</summary>
