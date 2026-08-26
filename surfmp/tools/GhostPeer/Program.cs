@@ -93,14 +93,20 @@ internal static class Program
                 var x = MinX + (MaxX - MinX) * phase;
                 var z = (float)Math.Sin(now * 1.3) * 0.4f;
                 var vx = (float)(Math.Cos(now * 0.5) * 0.5 * (MaxX - MinX) * 0.5);
-                var heading = vx >= 0 ? 90f : 270f;
+                // Protocol 3 carries a quaternion, so the ghost has to send one too.
+                var yaw = vx >= 0 ? 90.0 : 270.0;
+                var half = yaw * Math.PI / 360.0;
+                float qy = (float)Math.Sin(half), qw = (float)Math.Cos(half);
 
                 var w = new PacketWriter(buffer, Op.SurferState);
                 w.Byte(session.SelfId);
                 w.Height(x, -Extent, Extent);
                 w.Height(WaterY, -Extent, Extent);
                 w.Height(z, -Extent, Extent);
-                w.Height(heading, 0f, 360f);
+                w.Height(0f, -1f, 1f);
+                w.Height(qy, -1f, 1f);
+                w.Height(0f, -1f, 1f);
+                w.Height(qw, -1f, 1f);
                 w.Height(vx, -64f, 64f);
                 w.Height(0f, -64f, 64f);
                 w.Height(0f, -64f, 64f);

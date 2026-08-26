@@ -25,6 +25,9 @@ internal static class SurferSync
     /// <summary>Position is quantised over this range, in metres, per axis.</summary>
     private const float Extent = 512f;
 
+    /// <summary>Quaternion components are always within this, by definition.</summary>
+    private const float Unit = 1f;
+
     private static readonly Dictionary<byte, RemoteSurfer> Remotes = new();
     private static readonly byte[] Out = new byte[Wire.MaxPacket];
 
@@ -77,7 +80,7 @@ internal static class SurferSync
 
         var w = new PacketWriter(Out, Op.SurferState);
         w.Byte(_session.SelfId);
-        Write(ref w, p, v, LocalSurfer.Heading);
+        Write(ref w, p, v, LocalSurfer.Rotation);
 
         // Clients send to the host, which relays. Peer-to-peer would be one hop
         // shorter and would also put every player beyond the reach of a kick.
@@ -85,14 +88,21 @@ internal static class SurferSync
         else _session.SendToHost(Out, w.Length);
     }
 
-    private static void Write(ref PacketWriter w, Vector3 p, Vector3 v, float heading)
+    private static void Write(ref PacketWriter w, Vector3 p, Vector3 v, Quaternion r)
     {
         // 16 bits an axis over 512 m is about 8 mm — well under anything visible
         // on a rider, and half the size of sending floats.
         w.Height(p.x, -Extent, Extent);
         w.Height(p.y, -Extent, Extent);
         w.Height(p.z, -Extent, Extent);
-        w.Height(heading, 0f, 360f);
+
+        // All four components, rather than a yaw angle. Six bytes more per
+        // update buys an orientation that cannot be mistaken for its mirror.
+        w.Height(r.x, -Unit, Unit);
+        w.Height(r.y, -Unit, Unit);
+        w.Height(r.z, -Unit, Unit);
+        w.Height(r.w, -Unit, Unit);
+
         // Velocity only needs to be good enough to carry a rider between updates.
         w.Height(v.x, -64f, 64f);
         w.Height(v.y, -64f, 64f);
@@ -109,8 +119,13 @@ internal static class SurferSync
         var id = r.Byte();
         var p = new Vector3(
             r.Height(-Extent, Extent), r.Height(-Extent, Extent), r.Height(-Extent, Extent));
-        var heading = r.Height(0f, 360f);
+        var rot = new Quaternion(
+            r.Height(-Unit, Unit), r.Height(-Unit, Unit), r.Height(-Unit, Unit), r.Height(-Unit, Unit));
         var v = new Vector3(r.Height(-64f, 64f), r.Height(-64f, 64f), r.Height(-64f, 64f));
+
+        // Quantising each component independently leaves the quaternion slightly
+        // off unit length, which skews a rotation if left uncorrected.
+        rot = Normalise(rot);
 
         // A truncated packet leaves the reader short; acting on half-read numbers
         // would teleport somebody to the origin.
@@ -126,7 +141,7 @@ internal static class SurferSync
             Remotes[id] = surfer;
         }
 
-        surfer.Apply(p, heading, v);
+        surfer.Apply(p, rot, v);
 
         // The host is the only one that hears from everybody, so it is the only
         // one that can pass a rider on to the rest of the lineup.
@@ -134,9 +149,16 @@ internal static class SurferSync
         {
             var w = new PacketWriter(Out, Op.SurferState);
             w.Byte(id);
-            Write(ref w, p, v, heading);
+            Write(ref w, p, v, rot);
             _session.Broadcast(Out, w.Length, id);
         }
+    }
+
+    private static Quaternion Normalise(Quaternion q)
+    {
+        var len = Mathf.Sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+        if (len < 0.0001f) return Quaternion.identity;
+        return new Quaternion(q.x / len, q.y / len, q.z / len, q.w / len);
     }
 
     private static void OnLeft(Member who, string why)

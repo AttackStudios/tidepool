@@ -26,7 +26,7 @@ internal sealed class RemoteSurfer
 
     private Vector3 _target;
     private Vector3 _velocity;
-    private float _heading;
+    private Quaternion _facing = Quaternion.identity;
 
     internal string Name { get; }
 
@@ -186,10 +186,10 @@ internal sealed class RemoteSurfer
         catch (Exception) { return ""; }
     }
 
-    internal void Apply(Vector3 position, float heading, Vector3 velocity)
+    internal void Apply(Vector3 position, Quaternion rotation, Vector3 velocity)
     {
         _target = position;
-        _heading = heading;
+        _facing = rotation;
         _velocity = velocity;
     }
 
@@ -205,8 +205,10 @@ internal sealed class RemoteSurfer
         var t = 1f - Mathf.Exp(-Converge * dt);
         _transform.position = Vector3.Lerp(_transform.position, _target, t);
 
-        var facing = Quaternion.Euler(0f, _heading, 0f);
-        _transform.rotation = Quaternion.Slerp(_transform.rotation, facing, t);
+        // Slerped from the rotation as sent, rather than rebuilt from a yaw.
+        // Rebuilding discarded the lean and, worse, could face a rider backwards
+        // whenever Unity chose the mirrored euler decomposition.
+        _transform.rotation = Quaternion.Slerp(_transform.rotation, _facing, t);
     }
 
     internal void Despawn()

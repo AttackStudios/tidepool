@@ -34,8 +34,19 @@ internal static class LocalSurfer
     /// <summary>Where the rider is, in world space.</summary>
     internal static Vector3 Position => _transform != null ? _transform.position : Vector3.zero;
 
-    /// <summary>Facing, as a yaw in degrees. A board only meaningfully turns about one axis.</summary>
-    internal static float Heading => _transform != null ? _transform.eulerAngles.y : 0f;
+    /// <summary>
+    /// The rider's full orientation.
+    ///
+    /// Not a yaw angle. Euler decomposition is ambiguous — the same orientation
+    /// can be described as (0, 210, 0) or (180, 30, 180), and Unity switches
+    /// between them when a board leans past vertical. Rebuilding a rotation from
+    /// the yaw alone therefore flipped remote surfers around on hard carves,
+    /// which is exactly when somebody is worth watching.
+    ///
+    /// A quaternion has no such ambiguity, and carrying the lean as well means
+    /// remote riders bank into turns instead of sliding about upright.
+    /// </summary>
+    internal static Quaternion Rotation => _transform != null ? _transform.rotation : Quaternion.identity;
 
     /// <summary>
     /// Derived rather than read off a rigidbody: velocity is wanted for

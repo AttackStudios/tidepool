@@ -38,10 +38,11 @@ internal static class Wire
     /// </summary>
     /// <summary>
     /// 2: pings carry a timestamp so latency can be measured, and Beach was
-    /// added. Both change what is on the wire, so older peers must be refused
-    /// rather than left to misread it.
+    /// added. 3: surfers send a full rotation instead of a yaw angle. All change
+    /// what is on the wire, so older peers must be refused rather than left to
+    /// misread it.
     /// </summary>
-    internal const ushort Protocol = 2;
+    internal const ushort Protocol = 3;
 
     /// <summary>
     /// Well under a typical 1500-byte MTU once IP and UDP headers are taken off.
