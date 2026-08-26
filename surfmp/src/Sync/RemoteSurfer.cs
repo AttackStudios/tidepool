@@ -110,6 +110,25 @@ internal sealed class RemoteSurfer
                         component.TryCast<Rigidbody>()!.isKinematic = true;
                         silenced++;
                         continue;
+                }
+
+                // No collisions between surfers.
+                //
+                // A kinematic body still carries its collider, so a remote rider
+                // was a solid wall: someone sitting further inside could pen you
+                // in with no way past them. Two people occupying the same water
+                // costs nothing, and being unable to paddle out costs the
+                // session.
+                var collider = component.TryCast<Collider>();
+                if (collider != null)
+                {
+                    collider.enabled = false;
+                    silenced++;
+                    continue;
+                }
+
+                switch (name)
+                {
 
                     // There can only be one of each that matters, and it is the
                     // local player's.

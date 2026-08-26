@@ -40,6 +40,10 @@ Not yet:
 - **Remote riders do not displace water.** Buoyancy and FluidSlicer are disabled
   on clones to stop them surfing on the local player's input, so your ocean is
   not pushed by the other people in it. Oceans will drift apart slightly.
+- **Surfers pass through each other**, deliberately. A remote rider used to be a
+  solid wall, so someone sitting further inside could pen you in with no way
+  past. Two people in the same water costs nothing; being unable to paddle out
+  costs the session.
 - **No nametags, chat, or kick.**
 - **The browser is IMGUI**, not the game's own interface. It works and it lists
   real sessions; it is not pretty.
