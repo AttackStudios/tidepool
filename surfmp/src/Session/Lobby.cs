@@ -32,10 +32,21 @@ internal static class Lobby
     {
         try
         {
-            if (Input.GetKeyDown(KeyCode.F9)) Host();
+            // Shift picks the local path. Steam addresses peers by Steam ID, so
+            // two clients on one machine share an identity and the relay cannot
+            // tell them apart — the connection is simply never established.
+            // Nothing else can be tested without a second person unless there is
+            // a way around Steam entirely, so shift is it.
+            var local = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+
+            if (Input.GetKeyDown(KeyCode.F9)) Host(local);
             // F10 opens the list. Joining used to guess at a target, which only
             // ever worked for a friend already hosting or a pasted ID.
-            else if (Input.GetKeyDown(KeyCode.F10)) UI.ServerBrowser.Toggle();
+            else if (Input.GetKeyDown(KeyCode.F10))
+            {
+                if (local) Join("127.0.0.1");
+                else UI.ServerBrowser.Toggle();
+            }
             else if (Input.GetKeyDown(KeyCode.F11)) Leave();
             // Marks the start of a determinism run, so two runs can be lined up
             // Still water: takes the rider out of the fluid so the ocean runs
@@ -47,7 +58,7 @@ internal static class Lobby
         catch (Exception) { /* input unavailable during load */ }
     }
 
-    internal static void Host()
+    internal static void Host(bool forceLocal = false)
     {
         if (Current.Role == Net.Role.Host)
         {
@@ -62,7 +73,7 @@ internal static class Lobby
             // Steam whenever it is available: it is the only route that connects
             // two people without either of them sharing an IP or touching a
             // router. UDP remains for localhost testing.
-            var steam = Net.SteamRelay.Ready;
+            var steam = Net.SteamRelay.Ready && !forceLocal;
             Current.Host(DefaultPort, Name(), steam);
 
             if (steam)
@@ -79,7 +90,9 @@ internal static class Lobby
             }
             else
             {
-                Mod.Log.Msg($"[lobby] Steam unavailable — hosting on {DefaultPort} for localhost only");
+                Mod.Log.Msg(forceLocal
+                    ? $"[lobby] hosting locally on {DefaultPort} — for testing two clients on one machine"
+                    : $"[lobby] Steam unavailable — hosting on {DefaultPort} for localhost only");
             }
 
             SurferSync.Attach(Current);

@@ -43,3 +43,18 @@ Not yet:
 - **No nametags, chat, or kick.**
 - **The browser is IMGUI**, not the game's own interface. It works and it lists
   real sessions; it is not pretty.
+
+## Testing alone, with two clients on one machine
+
+Steam addresses peers by Steam ID, and two clients on one PC share one account —
+so the relay cannot tell them apart and a Steam join between them never
+connects. It is not a fault in the code and does not affect two real people.
+
+To exercise everything else without a second person, hold **shift**:
+
+- **Shift+F9** — host locally, over UDP on 127.0.0.1
+- **Shift+F10** — join that local host
+
+Everything above the transport is then exactly what ships: surfer sync, remote
+surfers, synchronised beach loads. Only the Steam relay hop is skipped, and that
+part is proven separately by the session listing publicly.
