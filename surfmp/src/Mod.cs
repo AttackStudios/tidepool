@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.27.0", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.28.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;
@@ -27,6 +27,7 @@ public class Mod : MelonMod
         Log = LoggerInstance;
         Log.Msg("SurfMP 0.25.0 — F6 calls a synchronised beach load.");
         Sync.GameHook.Install(HarmonyInstance);
+        Net.SteamRelay.Start();
 
         // The netcode has no game dependency, so that it can be tested headless.
         // This is where it gets one.
@@ -46,6 +47,7 @@ public class Mod : MelonMod
 
         // Packets arrive on the socket thread and are queued; this is where they
         // get handled, because Unity's API is main-thread-only.
+        Net.SteamRelay.Tick();
         SessionControl.Lobby.Tick(now);
         Sync.SurferSync.Tick(dt, now);
         Sync.WaveSync.Tick(now, Sync.SurferSync.Session);
@@ -54,5 +56,9 @@ public class Mod : MelonMod
     }
 
     /// <summary>Say goodbye rather than leaving peers to time us out.</summary>
-    public override void OnApplicationQuit() => SessionControl.Lobby.Leave();
+    public override void OnApplicationQuit()
+    {
+        SessionControl.Lobby.Leave();
+        Net.SteamRelay.Stop();
+    }
 }

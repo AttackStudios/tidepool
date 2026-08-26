@@ -8,6 +8,10 @@
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>disable</ImplicitUsings>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- A library project leaves NuGet dependencies out of its output, so
+         Steamworks.NET.dll never appeared next to the mod and had nothing to
+         install. This puts it there. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <!--
@@ -30,6 +34,16 @@
     <None Remove="tests/**" />
     <Compile Remove="tools/**" />
     <None Remove="tools/**" />
+  </ItemGroup>
+
+  <!--
+    Steamworks.NET is a managed wrapper over Valve's native steam_api64.dll.
+    The game ships no Steam integration at all, so SurfMP brings its own: that
+    is what buys Steam Datagram Relay, where Valve's network carries the traffic
+    and no player ever learns another's IP or configures a router.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Steamworks.NET" Version="2024.8.0" />
   </ItemGroup>
 
   <ItemGroup>
