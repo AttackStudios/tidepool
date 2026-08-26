@@ -39,16 +39,31 @@ internal static class Program
         NetLog.Warn = m => Console.WriteLine("  warn: " + m);
         NetLog.Error = m => Console.WriteLine("  error: " + m);
 
+        var clock = Stopwatch.StartNew();
         var session = new Session();
         var joined = false;
         string refused = null;
 
         session.Joined += p => { joined = true; Console.WriteLine($"  saw peer: {p.Name}"); };
+
+        // Report a called beach and the moment this peer would load it. The
+        // countdown minus one trip time is what should put every peer on the
+        // same instant, and this is where that arithmetic can be checked rather
+        // than assumed.
+        session.Payload += (from, op, r) =>
+        {
+            if (op != Op.Beach) return;
+            var beach = r.Str();
+            var delay = r.Float();
+            if (!r.Ok) { Console.WriteLine("  beach call was truncated"); return; }
+            var at = (float)clock.Elapsed.TotalSeconds + delay - session.Latency;
+            Console.WriteLine($"  beach \"{beach}\" called: delay {delay:F2}s, " +
+                              $"latency {session.Latency:F4}s, loading at t={at:F3}s");
+        };
         session.Refused += r => refused = r;
 
         session.Join(host, port, name);
 
-        var clock = Stopwatch.StartNew();
         var buffer = new byte[Wire.MaxPacket];
         var nextSend = 0.0;
         var sent = 0;
