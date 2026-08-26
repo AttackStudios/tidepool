@@ -17,7 +17,7 @@ for.
 
 | File | Where | Which one |
 | --- | --- | --- |
-| `Steamworks.NET.dll` | `<game>/UserLibs/` | The **runtime** assembly, `runtimes/win-x64/` in the NuGet package — 379 KB |
+| `Steamworks.NET.dll` | `<game>/UserLibs/` | The **runtime** assembly, copied from `runtimes/win-x64/` **by path** |
 | `steam_api64.dll` | `<game>/` | Valve's native redistributable |
 
 Both are easy to get wrong, and each cost a launch:
@@ -71,3 +71,14 @@ Get-ChildItem "$env:USERPROFILE\tidepool-recon\surfmp\bin\Release" -Filter 'Tide
 
 The give-away is the log's `SurfMP vX.Y.Z` line disagreeing with what was just
 built. Check it whenever a change appears to have had no effect.
+
+## Never pick Steamworks.NET.dll by size
+
+The package ships several builds and they are within a kilobyte of each other:
+`win-x64` is 379 KB and `win-x86` is 380 KB. Sorting by size and taking the
+largest installs the 32-bit assembly, which fails with a FileLoadException that
+names only the assembly and not the reason — and takes the whole Steam
+initialisation down with it.
+
+Copy it from `runtimes/win-x64/lib/netstandard2.1/` by explicit path. The
+reference stub under `ref/` is 307 KB and is also wrong, but at least says so.
