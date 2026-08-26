@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.23.2", "AttackStudioYT")]
+[assembly: MelonInfo(typeof(TidePool.SurfMP.Mod), "SurfMP", "0.24.0", "AttackStudioYT")]
 [assembly: MelonGame("nocanwin", "SurfSandbox")]
 
 namespace TidePool.SurfMP;

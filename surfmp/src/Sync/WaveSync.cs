@@ -2,175 +2,150 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
-using UnityEngine;
 using TidePool.SurfMP.Net;
 
 namespace TidePool.SurfMP.Sync;
 
 /// <summary>
-/// Keeps everyone's ocean in step by syncing what generates it.
+/// Keeps everyone on the same wave by syncing the generator that makes them.
 ///
-/// Two earlier designs are ruled out by measurement, and both are worth
-/// recording so they are not tried again:
+/// Three designs were tried and two are ruled out by measurement:
 ///
-/// Broadcasting the surface does not work. The water is a FLIP particle
-/// simulation, not a heightfield — FluidSim's only per-column array, nl/nn/no,
-/// turned out to be the seabed, and writing waves into it painted them onto the
-/// sand. There is nothing to overwrite because the surface is emergent.
+/// Broadcasting the surface cannot work — the water is a FLIP particle
+/// simulation, and FluidSim's only per-column array turned out to be the
+/// seabed, so writing waves into it painted them onto the sand.
 ///
-/// Bit-exact lockstep does not work either. Two runs on one machine from an
-/// identical flat start held bit-identical for twelve seconds and then parted,
-/// almost certainly because Burst accumulates in thread-completion order.
+/// Bit-exact lockstep cannot work either: two runs from an identical flat start
+/// on one machine held bit-identical for twelve seconds and then parted.
 ///
-/// But the same measurement, read at the scale a surfer cares about, is far
-/// kinder than it first looked: mean surface height across those runs
-/// correlates at r = 0.75, and the difference is 3% of wave amplitude. The wave
-/// train is reproducible; only the froth is not. Waves arrive at the same time,
-/// the same size, in the same order.
+/// But read at the scale a surfer cares about, those same runs correlate at
+/// r = 0.75 and differ by 3% of wave amplitude. The wave train reproduces;
+/// only the froth does not. So the generator is what needs syncing.
 ///
-/// So sync the generator, not the water. Sim.Wave holds Period, Lull, the
-/// side flags and a phase, and ol()/om() read and write that phase. Give every
-/// client the same generator state and they grow the same swell — a few dozen
-/// bytes, and the detail no one can see is allowed to differ.
+/// Its state was found by watching, not guessing — which matters, because
+/// guessing here already corrupted a live session. ol() looked like a phase and
+/// is actually the wave distance; it sat at 1.375 for an entire session while a
+/// rising clock was written into it. What actually counts is bei and bej, which
+/// climb and reset together as beh and bob take the next wave's size.
+///
+/// A wave therefore starts on an edge, and that is the only moment anything is
+/// sent: one small message every ten seconds or so, rather than continuous
+/// writes into a running simulation.
 /// </summary>
 internal static class WaveSync
 {
-    /// <summary>Generator state changes slowly; there is nothing to gain from spamming it.</summary>
-    private const float SendEvery = 0.5f;
-
-    /// <summary>
-    /// Only correct phase when it has slipped by more than this, in seconds.
-    /// Writing it constantly would fight the local generator and stutter the
-    /// swell; letting it slide would put people on different waves.
-    /// </summary>
-    private const float MaxSlip = 0.05f;
-
     private static readonly byte[] Out = new byte[Wire.MaxPacket];
 
     private static object _wave;
-    private static MethodInfo _getPhase;   // ol()
-    private static MethodInfo _setPhase;   // om(float)
     private static PropertyInfo _period, _lull, _right, _left;
+
+    /// <summary>Live generator state, named by observation.</summary>
+    private static PropertyInfo _beh, _bei, _bej, _bob;
+
     private static bool _looked;
-    private static float _nextSend;
+    private static bool _writable;
+    private static float _lastCount;
+    private static int _sent, _applied;
+
+    // ---- host ------------------------------------------------------------
 
     internal static void Tick(float now, Session session)
     {
         if (!_looked) { _looked = true; Locate(); }
         if (_wave == null || session == null || session.Role != Role.Host) return;
-        if (now < _nextSend) return;
-        _nextSend = now + SendEvery;
+
+        var count = GetFloat(_bei, 0f);
+        var started = count < _lastCount - 0.001f;
+        _lastCount = count;
+        if (!started) return;
 
         var w = new PacketWriter(Out, Op.WaveFrame);
-        w.Float(Phase());
+        w.Float(GetFloat(_beh, 0f));
+        w.Float(count);
+        w.Float(GetFloat(_bej, 0f));
         w.Float(GetFloat(_period, 10f));
         w.Float(GetFloat(_lull, 30f));
         w.Bool(GetBool(_right, true));
         w.Bool(GetBool(_left, false));
         session.Broadcast(Out, w.Length);
+
+        if (_sent++ % 10 == 0) Mod.Log.Msg($"[wave] sent wave {_sent}, size {GetFloat(_beh, -1):F3}");
     }
 
-    /// <summary>
-    /// Read-only for now.
-    ///
-    /// The previous build wrote Period, Lull and a phase straight into the live
-    /// generator, and it visibly corrupted the game: the log shows the phase
-    /// being forced by 0.51s a hundred times running, never converging. Two
-    /// things were wrong. The test host has no game behind it, so the phase it
-    /// sent was its own wall clock and meant nothing here. And the constant
-    /// delta says the value did not move after being set, which suggests om()
-    /// is not the phase setter at all.
-    ///
-    /// Writing unverified state into a running simulation is how that ends. So
-    /// this observes and reports until ol() is understood, and applies nothing.
-    /// </summary>
+    // ---- client ----------------------------------------------------------
+
     internal static void Apply(PacketReader r)
     {
-        var phase = r.Float();
+        var size = r.Float();
+        var countA = r.Float();
+        var countB = r.Float();
         var period = r.Float();
         var lull = r.Float();
-        r.Bool();
-        r.Bool();
-        if (!r.Ok || _wave == null) return;
+        var right = r.Bool();
+        var left = r.Bool();
 
-        if (_reports++ % 20 != 0) return;
-        Mod.Log.Msg($"[wave] host says phase {phase:F2} period {period:F1} lull {lull:F1}; " +
-                    $"local phase {Phase():F2} period {GetFloat(_period, -1):F1}");
+        // A truncated read would reconfigure the ocean from whatever was left in
+        // the buffer — the same shape of mistake that glitched a session before.
+        if (!r.Ok || _wave == null || !_writable) return;
+
+        SetFloat(_period, period);
+        SetFloat(_lull, lull);
+        SetBool(_right, right);
+        SetBool(_left, left);
+
+        // Start the wave the host just started: same size, counters where theirs
+        // are. Between waves both sides count on their own at the same rate, so
+        // there is nothing to say until the next one begins.
+        SetFloat(_beh, size);
+        SetFloat(_bob, size);
+        SetFloat(_bei, countA);
+        SetFloat(_bej, countB);
+
+        if (_applied++ % 10 == 0)
+            Mod.Log.Msg($"[wave] wave {_applied} from host, size {size:F3} (now {GetFloat(_beh, -1):F3})");
     }
 
-    private static int _reports;
+    // ---- observation -----------------------------------------------------
+
+    private static List<PropertyInfo> _watched;
+    private static float[] _previous;
+    private static float _nextObserve;
 
     /// <summary>
-    /// Watch what ol() does on its own, so it can be identified rather than
-    /// guessed at. A value climbing at one unit per second is a clock and can be
-    /// synced; anything else is not a phase and must not be written.
-    /// </summary>
-    /// <summary>
-    /// Watch the generator's own state, without touching it.
-    ///
-    /// ol() turned out to be constant at 1.375 all session — not a clock, so
-    /// not a phase. Given Sim.Wave raises DistanceChanged, it is almost
-    /// certainly the wave distance, which is why feeding it a rising wall clock
-    /// wound the ocean steadily upward and glitched the game.
-    ///
-    /// Sim.Wave keeps five unnamed floats besides its configuration. If waves
-    /// arrive on a schedule then something here is counting, and whatever
-    /// counts is the phase worth syncing. This only reads: the last build wrote
-    /// to a guess and corrupted a live session, and nothing gets written again
-    /// until the log says what it is.
+    /// Report the generator's state periodically. This is what identified the
+    /// fields in the first place, and it stays so a wrong one shows up as a
+    /// number rather than as a glitching game.
     /// </summary>
     internal static void Observe(float now)
     {
         if (_wave == null || now < _nextObserve) return;
         var first = _nextObserve == 0f;
-        _nextObserve = now + 1f;
+        _nextObserve = now + 5f;
 
         if (_watched == null)
         {
             _watched = new List<PropertyInfo>();
-            foreach (var name in new[] { "beh", "bei", "bej", "bek", "bob" })
-            {
-                var p = _wave.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
-                if (p != null && p.PropertyType == typeof(float)) _watched.Add(p);
-            }
+            foreach (var p in new[] { _beh, _bei, _bej, _bob })
+                if (p != null) _watched.Add(p);
             _previous = new float[_watched.Count];
-            Mod.Log.Msg($"[wave] watching {_watched.Count} generator field(s)");
         }
 
         var row = new StringBuilder();
         for (var i = 0; i < _watched.Count; i++)
         {
-            float v;
-            try { v = _watched[i].GetValue(_wave) is float f ? f : float.NaN; }
-            catch (Exception) { continue; }
-
-            // The rate is what identifies a timer; the value alone does not.
-            var rate = first ? 0f : v - _previous[i];
+            var v = GetFloat(_watched[i], float.NaN);
+            row.Append($"{_watched[i].Name}={v:F3} ");
             _previous[i] = v;
-            row.Append($"{_watched[i].Name}={v:F3}({rate:+0.00;-0.00;0}) ");
         }
 
         if (!first) Mod.Log.Msg($"[wave] {row}");
     }
 
-    private static List<PropertyInfo> _watched;
-    private static float[] _previous;
-
-    private static float _nextObserve;
-
-    private static float Phase()
-    {
-        try
-        {
-            var v = _getPhase?.Invoke(_wave, null);
-            return v is float f && !float.IsNaN(f) ? f : 0f;
-        }
-        catch (Exception) { return 0f; }
-    }
+    // ---- plumbing --------------------------------------------------------
 
     private static float GetFloat(PropertyInfo p, float fallback)
     {
-        try { return p?.GetValue(_wave) is float f ? f : fallback; }
+        try { return p?.GetValue(_wave) is float f && !float.IsNaN(f) ? f : fallback; }
         catch (Exception) { return fallback; }
     }
 
@@ -209,15 +184,17 @@ internal static class WaveSync
             _right = t.GetProperty("RightWave", Any);
             _left = t.GetProperty("LeftWave", Any);
 
-            // ol() and om(float) are a get/set pair on Sim.Wave, and the only
-            // float-valued state it carries besides its configuration — so the
-            // phase the swell is generated from. Logged, not assumed.
-            _getPhase = t.GetMethod("ol", Any, null, Type.EmptyTypes, null);
-            _setPhase = t.GetMethod("om", Any, null, new[] { typeof(float) }, null);
+            _beh = t.GetProperty("beh", Any);
+            _bei = t.GetProperty("bei", Any);
+            _bej = t.GetProperty("bej", Any);
+            _bob = t.GetProperty("bob", Any);
+
+            _writable = _beh is { CanWrite: true } && _bei is { CanWrite: true }
+                     && _bej is { CanWrite: true } && _bob is { CanWrite: true };
 
             Mod.Log.Msg($"[wave] generator found — period {GetFloat(_period, -1):F1}, " +
-                        $"lull {GetFloat(_lull, -1):F1}, phase {Phase():F2}, " +
-                        $"settable {(_setPhase != null ? "yes" : "no")}");
+                        $"lull {GetFloat(_lull, -1):F1}, size {GetFloat(_beh, -1):F3}, " +
+                        $"syncable {(_writable ? "yes" : "NO")}");
         }
         catch (Exception e) { Mod.Log.Error($"[wave] {e.GetType().Name}: {e.Message}"); }
     }
