@@ -149,9 +149,12 @@ internal static class SteamLobbies
                 var host = SteamMatchmaking.GetLobbyData(lobby, KeyHost);
                 if (!ulong.TryParse(host, out var id) || id == 0) continue;
 
-                // Our own session is in the list too, and joining yourself does
-                // not work.
-                if (id == SteamRelay.SelfId) continue;
+                // Skip the lobby we created, not every lobby belonging to this
+                // account. Two clients on one machine share a Steam ID, so
+                // filtering by account hid the host from the other client and
+                // made the list permanently empty — which is exactly the case
+                // this has to be testable in.
+                if (lobby == _current) continue;
 
                 found.Add(new Server(
                     new CSteamID(id),
