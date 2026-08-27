@@ -41,6 +41,9 @@ internal static class ServerBrowser
     private static void Refresh()
     {
         SteamLobbies.Browse();
+        // Sessions on the same network answer a broadcast, so they show up with
+        // nothing typed and connect directly rather than out through Valve.
+        LanDiscovery.Sweep();
         _lastRefresh = Time.realtimeSinceStartup;
     }
 
@@ -72,15 +75,35 @@ internal static class ServerBrowser
             Refresh();
 
         var servers = SteamLobbies.Servers;
+        var lan = LanDiscovery.Servers();
 
-        if (!SteamRelay.Ready)
+        if (!SteamRelay.Ready && lan.Count == 0)
         {
             GUI.Label(new Rect(x + Pad, y + HeaderH, Width - Pad * 2, 24f),
-                "Steam is unavailable, so no sessions can be listed.");
+                "Steam is unavailable and nothing is hosting on this network.");
             return;
         }
 
-        if (servers.Count == 0)
+        // Sessions on this network first: same room beats a round trip to Valve.
+        var rows = 0;
+        foreach (var found in lan)
+        {
+            var rowY = y + HeaderH + rows * Row;
+            var beach = string.IsNullOrEmpty(found.Beach) ? "somewhere" : found.Beach;
+            GUI.Label(new Rect(x + Pad, rowY, Width - Pad * 2 - 90f, Row),
+                $"{found.Name}  -  {beach}  -  on this network");
+
+            if (GUI.Button(new Rect(x + Width - Pad - 80f, rowY, 80f, 24f), "Join"))
+            {
+                SessionControl.Lobby.JoinAddress(found.Address.ToString(), found.GamePort);
+                Close();
+                return;
+            }
+            rows++;
+        }
+
+        if (servers.Count == 0 && lan.Count > 0) { /* the LAN rows above are the list */ }
+        else if (servers.Count == 0)
         {
             GUI.Label(new Rect(x + Pad, y + HeaderH, Width - Pad * 2, 24f),
                 SteamLobbies.Browsing ? "Looking..." : "No sessions yet. F9 hosts one.");
@@ -91,13 +114,13 @@ internal static class ServerBrowser
         {
             // Paged rather than scrolled: a scroll view is GUILayout, which does
             // not exist in this build.
-            var visible = (int)((Height - HeaderH - Pad * 3) / Row);
+            var visible = (int)((Height - HeaderH - Pad * 3) / Row) - rows;
             if (_scroll > servers.Count - visible) _scroll = Math.Max(0, servers.Count - visible);
 
             for (var i = 0; i < visible && i + _scroll < servers.Count; i++)
             {
                 var server = servers[i + _scroll];
-                var rowY = y + HeaderH + i * Row;
+                var rowY = y + HeaderH + (rows + i) * Row;
 
                 var beach = string.IsNullOrEmpty(server.Beach) ? "somewhere" : server.Beach;
                 GUI.Label(new Rect(x + Pad, rowY, Width - Pad * 2 - 90f, Row),

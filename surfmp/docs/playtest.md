@@ -92,3 +92,18 @@ a beach.
 
 Expect a brief reload a couple of seconds after editing. That pause is everyone
 being put back into the same ocean.
+
+## Playing with someone on the same network
+
+**Host:** load a beach and press **Shift+F9**. That hosts on this network and
+answers discovery probes.
+
+**Them:** press **F10**. The session appears at the top of the list, marked
+*on this network*, with nothing typed. Click **Join**.
+
+Traffic goes straight across the network rather than out to Valve and back, so
+it is the lowest-latency way to play, and it keeps working if Steam does not.
+They still need TidePool, SurfMP and the same beach.
+
+Plain **F9** hosts over the Steam relay instead, which is what to use for
+someone who is not on your network.

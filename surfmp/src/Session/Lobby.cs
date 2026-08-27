@@ -96,9 +96,16 @@ internal static class Lobby
             }
             else
             {
+                // A UDP host is reachable by anyone on the same network, so it
+                // answers probes and appears in their browser. A Steam host has
+                // no socket to connect to directly, which is why LAN hosting is
+                // this path rather than an option on the other one.
+                Net.LanDiscovery.StartAnswering(
+                    () => $"{Name()}|{Sync.BeachSync.CurrentBeach()}", DefaultPort);
+
                 Mod.Log.Msg(forceLocal
-                    ? $"[lobby] hosting locally on {DefaultPort} — for testing two clients on one machine"
-                    : $"[lobby] Steam unavailable — hosting on {DefaultPort} for localhost only");
+                    ? $"[lobby] hosting on this network, port {DefaultPort} — others will see it in their browser"
+                    : $"[lobby] Steam unavailable — hosting on {DefaultPort} for this network only");
             }
 
             SurferSync.Attach(Current);
@@ -193,6 +200,19 @@ internal static class Lobby
         return dir;
     }
 
+    /// <summary>Join a host on this network, found by broadcast rather than typed.</summary>
+    internal static void JoinAddress(string address, int port)
+    {
+        if (Current.Role != Net.Role.Offline) Leave();
+        try
+        {
+            Current.Join(address, port, Name());
+            SurferSync.Attach(Current);
+            Mod.Log.Msg($"[lobby] joining {address}:{port} on this network");
+        }
+        catch (Exception e) { Mod.Log.Error($"[lobby] joining {address}: {e.Message}"); }
+    }
+
     /// <summary>Join a specific host — used by Steam's Join Game button.</summary>
     internal static void JoinSteam(Steamworks.CSteamID host)
     {
@@ -212,6 +232,7 @@ internal static class Lobby
         // through to a host that has gone.
         Net.SteamPresence.Withdraw();
         Net.SteamLobbies.Withdraw();
+        Net.LanDiscovery.StopAnswering();
 
         SurferSync.Detach();
         Current.Shutdown("left");
