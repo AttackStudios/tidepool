@@ -15,6 +15,7 @@ export function InstalledPanel({
 }) {
   const [updates, setUpdates] = useState<ModUpdate[]>([])
   const [checking, setChecking] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -57,6 +58,20 @@ export function InstalledPanel({
       `Updated ${updates.length} mod${updates.length === 1 ? '' : 's'}`,
     )
 
+  const importFile = async () => {
+    setImporting(true)
+    try {
+      const res = await window.tidepool.importLocalMod()
+      if (!res.ok) return toastError(res.message)
+      // Cancelling the picker is not a failure, and should not congratulate
+      // anyone on installing nothing.
+      if (res.data.installed === 0) return
+      toast(`Installed ${res.data.installed} file${res.data.installed === 1 ? '' : 's'}`)
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <div className="installed">
       <div className="installed__head">
@@ -67,6 +82,15 @@ export function InstalledPanel({
         <div className="installed__actions">
           <button className="button--ghost" onClick={() => void check()} disabled={checking}>
             {checking ? 'Checking…' : 'Check for updates'}
+          </button>
+          {/*
+            Mods normally come from the catalogue, but sharing one with a friend
+            means sending a file. Without this the instruction is "unzip it into
+            your game folder, keeping the folder names" — which is exactly how a
+            DLL ends up in the wrong place and the mod gets reported as broken.
+          */}
+          <button className="button--ghost" onClick={() => void importFile()} disabled={importing}>
+            {importing ? 'Installing…' : 'Install from file…'}
           </button>
           {updates.length > 0 && (
             <button onClick={() => void updateAll()} disabled={busy !== null}>

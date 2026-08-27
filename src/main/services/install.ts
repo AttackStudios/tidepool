@@ -1,7 +1,7 @@
 /** Downloading and unpacking Thunderstore packages into a profile. */
 import AdmZip from 'adm-zip'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 import type { DependencyRef, PackageVersion } from '../../shared/types'
 
@@ -144,6 +144,65 @@ export function extractInto(zipPath: string, profileDir: string, ref: Dependency
  * point — but every target is still checked for containment, because this
  * writes into a folder the user did not choose.
  */
+/**
+ * Files a shared pack carries that are notes for a person, not part of the mod.
+ */
+const NOTES = /^(icon\.png|manifest\.json|read-?me(\.[a-z]+)?|changelog(\.[a-z]+)?)$/i
+
+/**
+ * Install a mod someone handed you.
+ *
+ * Mods normally arrive from a catalogue, but a friend sending a zip is how
+ * people actually share things — and until now the only answer was "unzip this
+ * into your game folder, keeping the folder names", which is exactly the
+ * instruction that gets a DLL dropped in the wrong place and reported as a
+ * broken mod.
+ *
+ * Accepts a folder as readily as a zip, because half the people who receive one
+ * will have already extracted it.
+ *
+ * Entries are game-root-relative, the same layout a loader pack uses, so a pack
+ * containing `Mods/Thing.dll` and a loose `steam_api64.dll` lands correctly
+ * without knowing anything about what those files are for.
+ */
+export function importLocalPack(source: string, gameRoot: string): string[] {
+  const written: string[] = []
+
+  const place = (name: string, data: Buffer): void => {
+    const clean = name.replace(/\\/g, '/')
+    if (NOTES.test(clean.split('/').pop() ?? '')) return
+    // Absolute entries have no business in a pack, and `..` must not escape:
+    // this writes into the game folder, so Zip Slip here is arbitrary file write.
+    if (clean.startsWith('/') || /^[a-zA-Z]:/.test(clean)) return
+
+    const target = join(gameRoot, clean)
+    if (!isInside(gameRoot, target)) return
+
+    mkdirSync(join(target, '..'), { recursive: true })
+    writeFileSync(target, data)
+    written.push(target)
+  }
+
+  if (statSync(source).isDirectory()) {
+    const walk = (dir: string, prefix: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const child = join(dir, entry.name)
+        const rel = prefix ? `${prefix}/${entry.name}` : entry.name
+        if (entry.isDirectory()) walk(child, rel)
+        else place(rel, readFileSync(child))
+      }
+    }
+    walk(source, '')
+    return written
+  }
+
+  for (const entry of new AdmZip(source).getEntries()) {
+    if (entry.isDirectory) continue
+    place(entry.entryName, entry.getData())
+  }
+  return written
+}
+
 export function installLoaderPack(zipPath: string, gameRoot: string): string[] {
   const zip = new AdmZip(zipPath)
   const written: string[] = []

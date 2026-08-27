@@ -1,9 +1,9 @@
 import { tmpdir } from 'node:os'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import AdmZip from 'adm-zip'
 import { describe, expect, it } from 'vitest'
 import { join } from 'node:path'
-import { cacheKey, isInside, LOADER_STAGING, targetPathFor, installLoaderPack } from './install'
+import { cacheKey, importLocalPack, isInside, LOADER_STAGING, targetPathFor, installLoaderPack } from './install'
 import type { PackageVersion } from '../../shared/types'
 
 const version = (url: string): PackageVersion => ({
@@ -175,5 +175,96 @@ describe('installLoaderPack', () => {
     expect(existsSync(join(game, 'version.dll'))).toBe(true)
     expect(existsSync(join(game, '..', '..', 'evil.dll'))).toBe(false)
     rmSync(game, { recursive: true, force: true })
+  })
+})
+
+describe('importLocalPack', () => {
+  const scratch = (): string => mkdtempSync(join(tmpdir(), 'tidepool-import-'))
+
+  it('places a shared pack where the game expects it', () => {
+    const game = scratch()
+    const packDir = scratch()
+    const zipPath = join(packDir, 'SurfMP.zip')
+
+    const zip = new AdmZip()
+    zip.addFile('Mods/TidePool.SurfMP.dll', Buffer.from('mod'))
+    zip.addFile('UserLibs/Steamworks.NET.dll', Buffer.from('wrapper'))
+    zip.addFile('steam_api64.dll', Buffer.from('native'))
+    zip.writeZip(zipPath)
+
+    const written = importLocalPack(zipPath, game)
+
+    expect(written).toHaveLength(3)
+    expect(existsSync(join(game, 'Mods', 'TidePool.SurfMP.dll'))).toBe(true)
+    expect(existsSync(join(game, 'UserLibs', 'Steamworks.NET.dll'))).toBe(true)
+    expect(existsSync(join(game, 'steam_api64.dll'))).toBe(true)
+
+    rmSync(game, { recursive: true, force: true })
+    rmSync(packDir, { recursive: true, force: true })
+  })
+
+  it('accepts a folder someone already extracted', () => {
+    // Half the people who receive a zip will unzip it before asking what to do.
+    const game = scratch()
+    const pack = scratch()
+    mkdirSync(join(pack, 'Mods'), { recursive: true })
+    writeFileSync(join(pack, 'Mods', 'Thing.dll'), 'mod')
+    writeFileSync(join(pack, 'steam_api64.dll'), 'native')
+
+    const written = importLocalPack(pack, game)
+
+    expect(written).toHaveLength(2)
+    expect(readFileSync(join(game, 'Mods', 'Thing.dll'), 'utf8')).toBe('mod')
+
+    rmSync(game, { recursive: true, force: true })
+    rmSync(pack, { recursive: true, force: true })
+  })
+
+  it('never writes outside the game folder', () => {
+    // This writes into the game directory, so a bad entry name is arbitrary file
+    // write on someone's machine from a zip a stranger sent them.
+    //
+    // AdmZip normalises some of these on the way in: `..` segments are stripped
+    // entirely, and a leading slash is removed, which leaves those entries
+    // relative and therefore contained. A drive letter survives, so that is the
+    // one this guard has to catch itself. The invariant worth asserting is the
+    // outcome rather than the count: nothing lands outside the root.
+    const game = scratch()
+    const packDir = scratch()
+    const zipPath = join(packDir, 'evil.zip')
+
+    const zip = new AdmZip()
+    zip.addFile('/etc/passwd', Buffer.from('no'))
+    zip.addFile('C:/Windows/System32/evil.dll', Buffer.from('no'))
+    zip.addFile('Mods/fine.dll', Buffer.from('yes'))
+    zip.writeZip(zipPath)
+
+    const written = importLocalPack(zipPath, game)
+
+    for (const file of written) expect(isInside(game, file)).toBe(true)
+    expect(written.some((f) => f.includes('System32'))).toBe(false)
+    expect(existsSync(join(game, 'Mods', 'fine.dll'))).toBe(true)
+
+    rmSync(game, { recursive: true, force: true })
+    rmSync(packDir, { recursive: true, force: true })
+  })
+
+  it('skips the notes meant for a person', () => {
+    const game = scratch()
+    const packDir = scratch()
+    const zipPath = join(packDir, 'pack.zip')
+
+    const zip = new AdmZip()
+    zip.addFile('READ-ME.txt', Buffer.from('instructions'))
+    zip.addFile('Mods/Thing.dll', Buffer.from('mod'))
+    zip.writeZip(zipPath)
+
+    const written = importLocalPack(zipPath, game)
+
+    expect(written).toHaveLength(1)
+    expect(existsSync(join(game, 'READ-ME.txt'))).toBe(false)
+
+    rmSync(game, { recursive: true, force: true })
+    rmSync(packDir, { recursive: true, force: true })
   })
 })

@@ -29,7 +29,7 @@ import {
   findEssential,
   toSummary as essentialToSummary,
 } from './services/essentials'
-import { downloadPackage, installLoaderPack } from './services/install'
+import { downloadPackage, importLocalPack, installLoaderPack } from './services/install'
 import { Installer } from './services/installer'
 import type {
   BrowseQuery,
@@ -78,6 +78,7 @@ export const CHANNELS = {
   installEssential: 'essentials:install',
   catalogStatus: 'catalog:status',
   analyseRemoval: 'mods:analyse-removal',
+  importLocalMod: 'mods:import-local',
   exportProfile: 'profiles:export',
   importProfile: 'profiles:import',
 } as const
@@ -432,6 +433,53 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
       const dir = beachDir()
       if (dir) await shell.openPath(dir)
       return Boolean(dir)
+    }),
+  )
+
+  // ---- a mod someone sent you -------------------------------------------
+
+  /**
+   * Install a pack a friend handed over, from a zip or an already-extracted
+   * folder.
+   *
+   * Mods normally come from a catalogue, but sharing one with a friend means
+   * sending a file — and the only answer until now was "unzip this into your
+   * game folder, keeping the folder names", which is precisely the instruction
+   * that ends with a DLL in the wrong place and a mod reported as broken.
+   *
+   * A folder is accepted as readily as a zip, because half the people who
+   * receive one will have extracted it before thinking to ask.
+   */
+  ipcMain.handle(CHANNELS.importLocalMod, (event) =>
+    attempt(async () => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const root = resolveGame()?.root
+      if (!root) {
+        throw new Error(
+          'Surf Sandbox has not been found yet. Point TidePool at the game folder first.',
+        )
+      }
+
+      const picked = await (win
+        ? dialog.showOpenDialog(win, {
+            title: 'Choose a mod someone sent you',
+            properties: ['openFile'],
+            filters: [{ name: 'Mod pack', extensions: ['zip'] }],
+            buttonLabel: 'Install',
+          })
+        : dialog.showOpenDialog({ properties: ['openFile'] }))
+
+      const chosen = picked.filePaths[0]
+      if (picked.canceled || !chosen) return { installed: 0, files: [] }
+
+      const files = importLocalPack(chosen, root)
+      if (files.length === 0) {
+        throw new Error(
+          'Nothing in that pack looked like mod files. It should contain folders such ' +
+            'as Mods or UserLibs.',
+        )
+      }
+      return { installed: files.length, files }
     }),
   )
 

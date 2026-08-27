@@ -49,6 +49,7 @@ const api = {
   importBeach: (code: string) => ipcRenderer.invoke(CHANNELS.importBeach, code),
   deleteBeach: (fileName: string) => ipcRenderer.invoke(CHANNELS.deleteBeach, fileName),
   pickBeachFolder: () => ipcRenderer.invoke(CHANNELS.pickBeachFolder),
+  importLocalMod: () => ipcRenderer.invoke(CHANNELS.importLocalMod),
   revealBeaches: () => ipcRenderer.invoke(CHANNELS.revealBeaches),
   appVersion: () => ipcRenderer.invoke(CHANNELS.appVersion),
   installUpdate: () => ipcRenderer.invoke(CHANNELS.installUpdate),
