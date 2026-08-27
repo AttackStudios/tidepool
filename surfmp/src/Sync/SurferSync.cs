@@ -115,6 +115,7 @@ internal static class SurferSync
         if (op == Op.WaveFrame) { WaveSync.Apply(r); return; }
         if (op == Op.Beach) { BeachSync.Receive(r, _session, UnityEngine.Time.time); return; }
         if (op == Op.Chat) { ChatSync.Receive(from, r); return; }
+        if (op == Op.Resync) { BeachSync.ResyncRequested(UnityEngine.Time.time); return; }
         if (op != Op.SurferState) return;
 
         var id = r.Byte();

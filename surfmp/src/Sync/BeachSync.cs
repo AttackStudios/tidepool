@@ -54,6 +54,104 @@ internal static class BeachSync
     private static float _resyncAt;
     private static Session _session;
 
+    /// <summary>
+    /// Notices the beach changing under us.
+    ///
+    /// The editor can reshape the ground or reset the water on one machine, and
+    /// nothing tells anyone else — so one player is suddenly surfing a different
+    /// seabed and the oceans have no hope of matching. Rather than hooking each
+    /// editor action, the ground itself is watched: any cause of divergence
+    /// shows up the same way, whether it is a brush, a reset, or something not
+    /// thought of yet.
+    ///
+    /// Sampled sparsely and slowly. This is a safety net, not a hot path.
+    /// </summary>
+    private const float CheckEvery = 1f;
+    private const int Samples = 8;
+    private const float Moved = 0.01f;
+
+    private static object _fluidSim;
+    private static MethodInfo _groundAt;
+    private static MethodInfo _groundCount;
+    private static float[] _ground;
+    private static float _nextCheck;
+
+    private static void WatchGround(float now, Session session)
+    {
+        if (now < _nextCheck) return;
+        _nextCheck = now + CheckEvery;
+
+        var current = SampleGround();
+        if (current == null) return;
+
+        if (_ground == null) { _ground = current; return; } // first look sets the baseline
+
+        var changed = false;
+        for (var i = 0; i < current.Length; i++)
+            if (Math.Abs(current[i] - _ground[i]) > Moved) { changed = true; break; }
+
+        _ground = current;
+        if (!changed) return;
+
+        Mod.Log.Msg("[beach] the ground changed under us");
+
+        if (session == null || session.Role == Role.Offline) return;
+
+        if (session.Role == Role.Host)
+        {
+            _resyncAt = now + 2f;
+        }
+        else
+        {
+            // A client cannot put everyone back in step; only the host can call
+            // a beach. So ask.
+            var buffer = new byte[Wire.MaxPacket];
+            var w = new PacketWriter(buffer, Op.Resync);
+            session.SendToHost(buffer, w.Length);
+        }
+    }
+
+    private static float[] SampleGround()
+    {
+        try
+        {
+            if (_groundAt == null)
+            {
+                _fluidSim = GameHook.Manager?.GetType()
+                    .GetProperty("FluidSim", BindingFlags.Public | BindingFlags.Instance)
+                    ?.GetValue(GameHook.Manager);
+                if (_fluidSim == null) return null;
+
+                var t = _fluidSim.GetType();
+                const BindingFlags Any = BindingFlags.Public | BindingFlags.Instance;
+                // nn(int) reads a column's ground height; no() is how many there are.
+                _groundAt = t.GetMethod("nn", Any, null, new[] { typeof(int) }, null);
+                _groundCount = t.GetMethod("no", Any, null, Type.EmptyTypes, null);
+                if (_groundAt == null || _groundCount == null) return null;
+            }
+
+            var count = _groundCount.Invoke(_fluidSim, null) is int n ? n : 0;
+            if (count <= 0) return null;
+
+            var taken = new float[Samples];
+            for (var i = 0; i < Samples; i++)
+            {
+                var v = _groundAt.Invoke(_fluidSim, new object[] { i * (count - 1) / (Samples - 1) });
+                taken[i] = v is float f ? f : 0f;
+            }
+            return taken;
+        }
+        catch (Exception) { return null; }
+    }
+
+    /// <summary>A client reported its beach changed; put the whole lineup back in step.</summary>
+    internal static void ResyncRequested(float now)
+    {
+        if (_session == null || _session.Role != Role.Host) return;
+        Mod.Log.Msg("[beach] a player's beach changed; resyncing everyone");
+        _resyncAt = now + 2f;
+    }
+
     internal static void Watch(Session session)
     {
         _session = session;
@@ -110,6 +208,8 @@ internal static class BeachSync
     internal static void Tick(float now)
     {
         if (!_looked) { _looked = true; Locate(); }
+
+        WatchGround(now, _session);
 
         // Someone joined: put the whole lineup back on one clock.
         if (_resyncAt > 0f && now >= _resyncAt)

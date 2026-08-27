@@ -77,3 +77,18 @@ parameters. **F7** switches it on for that client:
 
 A genuine second surfer catching genuine waves, rather than a puppet replaying
 canned positions. F7 again takes control back.
+
+## Editing the beach during a session
+
+Reshaping the ground or resetting the water in the editor changes it on one
+machine only, so that player ends up surfing a different seabed and the oceans
+cannot match.
+
+SurfMP watches the ground rather than any particular editor action, so a brush,
+a reset, or anything not thought of yet all show up the same way. When it
+notices a change the host calls a beach load and the whole lineup reloads
+together. A client that edits asks the host to do it, since only a host can call
+a beach.
+
+Expect a brief reload a couple of seconds after editing. That pause is everyone
+being put back into the same ocean.

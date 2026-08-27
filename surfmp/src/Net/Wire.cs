@@ -27,6 +27,8 @@ internal enum Op : byte
     Bye = 11,
     /// <summary>Everybody load this beach at the same moment. See BeachSync.</summary>
     Beach = 12,
+    /// <summary>My beach changed under me; host, please put everyone back in step.</summary>
+    Resync = 13,
 }
 
 internal static class Wire
@@ -37,12 +39,11 @@ internal static class Wire
     /// each other's sessions.
     /// </summary>
     /// <summary>
-    /// 2: pings carry a timestamp so latency can be measured, and Beach was
-    /// added. 3: surfers send a full rotation instead of a yaw angle. All change
-    /// what is on the wire, so older peers must be refused rather than left to
-    /// misread it.
+    /// 2: timestamped pings, and Beach. 3: surfers send a full rotation rather
+    /// than a yaw angle. 4: Resync. All change what is on the wire, so older
+    /// peers are refused rather than left to misread it.
     /// </summary>
-    internal const ushort Protocol = 3;
+    internal const ushort Protocol = 4;
 
     /// <summary>
     /// Well under a typical 1500-byte MTU once IP and UDP headers are taken off.
