@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using UnityEngine;
 
 namespace TidePool.SurfMP.Sync;
@@ -19,47 +20,68 @@ namespace TidePool.SurfMP.Sync;
 /// </summary>
 internal static class AutoPilot
 {
+    /// <summary>Surf.Character.SurfMode+Mode: Auto = 0, Expert = 1, Tutorial = 2.</summary>
+    private const int Auto = 0;
+    private const int Expert = 1;
+
     private static bool _on;
+    private static object _surfMode;
+    private static MethodInfo _setMode;
 
     internal static bool Engaged => _on;
 
     internal static void Toggle()
     {
-        var rider = LocalSurfer.Template;
-        if (rider == null) { Mod.Log.Warning("[auto] no rider yet"); return; }
+        if (_setMode == null && !Locate()) return;
 
         _on = !_on;
 
-        var changed = 0;
+        try
+        {
+            // The character picks a controller by mode; enabling the AutoSurf
+            // component alone changed nothing, because the mode still said
+            // Expert and that is what the game was listening to.
+            var mode = Enum.ToObject(_setMode.GetParameters()[0].ParameterType, _on ? Auto : Expert);
+            _setMode.Invoke(_surfMode, new[] { mode });
+
+            Mod.Log.Msg(_on
+                ? "[auto] surfing itself — F7 again to take back over"
+                : "[auto] back under your control");
+        }
+        catch (Exception e)
+        {
+            _on = !_on;
+            Mod.Log.Error($"[auto] switching mode: {e.GetType().Name}: {e.Message}");
+        }
+    }
+
+    private static bool Locate()
+    {
+        var rider = LocalSurfer.Template;
+        if (rider == null) { Mod.Log.Warning("[auto] no rider yet"); return false; }
+
         try
         {
             var all = rider.GetComponentsInChildren(
                 Il2CppInterop.Runtime.Il2CppType.Of<Component>(), true);
-            if (all == null) { Mod.Log.Error("[auto] no components on the rider"); return; }
+            if (all == null) return false;
 
             foreach (var component in all)
             {
                 if (component == null) continue;
-                if (ClassName(component.Pointer) != "AutoSurf") continue;
+                if (ClassName(component.Pointer) != "SurfMode") continue;
 
-                var behaviour = component.TryCast<Behaviour>();
-                if (behaviour == null) continue;
-                behaviour.enabled = _on;
-                changed++;
+                _surfMode = component;
+                // to(Mode) sets it; tn() reads it back.
+                _setMode = component.GetType().GetMethod("to",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (_setMode != null) return true;
             }
         }
-        catch (Exception e) { Mod.Log.Error($"[auto] {e.GetType().Name}: {e.Message}"); return; }
+        catch (Exception e) { Mod.Log.Error($"[auto] {e.GetType().Name}: {e.Message}"); }
 
-        if (changed == 0)
-        {
-            Mod.Log.Warning("[auto] no AutoSurf on this rider");
-            _on = false;
-            return;
-        }
-
-        Mod.Log.Msg(_on
-            ? "[auto] this client is surfing itself — press F7 again to take back over"
-            : "[auto] back under your control");
+        Mod.Log.Warning("[auto] no SurfMode on this rider");
+        return false;
     }
 
     /// <summary>GetType() on an interop wrapper reports the wrapper, not the class.</summary>

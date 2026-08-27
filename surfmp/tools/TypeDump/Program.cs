@@ -68,6 +68,14 @@ internal static class Program
                 Console.WriteLine($"    prop  {Pretty(p.PropertyType),-46} {p.Name}");
             }
 
+            // Enum members are static literals, so an instance-only sweep shows
+            // nothing but the backing field and hides every value.
+            if (type.IsEnum)
+            {
+                foreach (var f in type.GetFields(BindingFlags.Public | BindingFlags.Static))
+                    Console.WriteLine($"    value {f.Name} = {f.GetRawConstantValue()}");
+            }
+
             foreach (var f in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
             {
                 if (f.Name.StartsWith("<") || f.Name.StartsWith("NativeMethodInfoPtr")
