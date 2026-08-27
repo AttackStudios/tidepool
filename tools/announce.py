@@ -15,6 +15,7 @@ Env: DISCORD_WEBHOOK, DISCORD_WEBHOOK_BETA, BETA_ROLE_ID (optional), GH_TOKEN
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.request
@@ -42,6 +43,16 @@ def build_payload(r: dict) -> dict:
               if not a["name"].endswith((".yml", ".blockmap"))]
     downloads = "\n".join(
         f"[{a['name']}]({a['url']}) · {a['size'] // 1024 // 1024} MB" for a in assets)
+
+    # A release nobody needs woken for.
+    #
+    # Every stable release pinged @everyone, which is right for 1.0 and wrong for
+    # a patch that adds one button — the people in that server get a notification
+    # for something that, from their side, changes nothing they were waiting on.
+    # Marking the notes quiet posts the announcement without the mention.
+    quiet = "[quiet]" in body.lower()
+    if quiet:
+        body = re.sub(r"\[quiet\]\s*", "", body, flags=re.IGNORECASE).strip()
 
     launch = not prerelease and tag.lstrip("v").split("-")[0] == "1.0.0"
     role = os.environ.get("BETA_ROLE_ID", "").strip()
@@ -77,13 +88,13 @@ def build_payload(r: dict) -> dict:
         if role:
             mentions = {"parse": [], "roles": [role]}
     else:
-        content = "@everyone"
+        content = "" if quiet else "@everyone"
         title = r.get("name") or tag
         description = body or "No release notes."
         if downloads:
             description += "\n\n**Downloads**\n" + downloads
         color = 0x3FD8E8
-        mentions = {"parse": ["everyone"]}
+        mentions = {"parse": [] if quiet else ["everyone"]}
 
     return {
         # No username/avatar override: each webhook carries its own identity, so
