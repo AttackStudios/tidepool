@@ -76,3 +76,23 @@ Whether the renderer reads the contours late enough for an overwrite to take,
 and whether `oc` derives from them or from the grid underneath. If the physics
 reads the grid directly, the override has to go deeper — but the host-authority
 principle is unchanged, only the seam moves.
+
+## Drift during a session, and what is done about it
+
+Two clients starting from the same beach load hold together for a while and then
+part, with nobody touching anything. That is the twelve-second figure above
+playing out over minutes: Burst accumulates in thread-completion order, and a
+fluid amplifies any difference.
+
+Correcting on a timer would interrupt play constantly and usually for nothing.
+Instead the host publishes eight water heights every five seconds, clients
+compare them against their own, and a reload is asked for only once the two have
+genuinely diverged — 0.35m RMS, which sits well clear of the 3% of amplitude
+that two honest runs differ by anyway, and of the difference riders make by
+displacing water on their own client only.
+
+Two consecutive readings are required, so a passing wake never triggers one.
+
+The correction itself is the beach load everyone already shares, so a drift
+resync, a joiner arriving and an editor change all end the same way: everybody
+reloads together and every generator restarts on one clock.
