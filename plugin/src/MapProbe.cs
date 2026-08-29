@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Linq;
 using HarmonyLib;
 using MelonLoader;
@@ -89,12 +90,48 @@ internal static class MapStartPatch
 
             Label(clone.transform, name, log);
 
-            if (map.xl != null) map.xl.Add(clone.GetComponent<RectTransform>());
+            MarkerList(map)?.Add(clone.GetComponent<RectTransform>());
             added++;
         }
 
         log.Msg($"Custom levels on the map: {added} added, {root.childCount} markers total.");
     }
+
+    /// <summary>
+    /// The map's own list of markers, found by shape rather than by name.
+    ///
+    /// It was `map.xl` until a game update renamed it to `xq`, and the map
+    /// silently stopped showing custom breaks — MissingMethodException on a
+    /// property that no longer exists. These names are obfuscated, so they churn
+    /// with every patch, and anything compiled against one is broken by the next.
+    ///
+    /// There is exactly one List&lt;RectTransform&gt; on this type and it is the
+    /// marker list, so its type identifies it far more durably than its name.
+    /// </summary>
+    private static Il2CppSystem.Collections.Generic.List<RectTransform> MarkerList(Map map)
+    {
+        if (_markerList == null)
+        {
+            foreach (var p in typeof(Map).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (p.PropertyType != typeof(Il2CppSystem.Collections.Generic.List<RectTransform>)) continue;
+                _markerList = p;
+                break;
+            }
+            if (_markerList == null) return null;
+        }
+
+        try
+        {
+            return _markerList.GetValue(map) as Il2CppSystem.Collections.Generic.List<RectTransform>;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private static PropertyInfo _markerList;
 
     /// <summary>Our label object, named so it is never created twice.</summary>
     private const string LabelName = "TidePoolName";
