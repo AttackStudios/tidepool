@@ -2,8 +2,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { canLaunchDirectly, hasLoader, launchGame, placeLoader, steamRunUrl } from './launcher'
+import { canLaunchDirectly, hasLoader, launchGame, macBundle, macInjectionEnv, placeLoader, steamRunUrl } from './launcher'
 import { buildLaunchPlan } from './launch'
+import type { spawn as spawnType } from 'node:child_process'
 import { LOADER_STAGING } from './install'
 
 let root: string
@@ -195,5 +196,64 @@ describe('hasLoader', () => {
 
     rmSync(game, { recursive: true, force: true })
     rmSync(profile, { recursive: true, force: true })
+  })
+})
+
+describe('macOS launching', () => {
+  const makeBundle = (): string => {
+    const root = mkdtempSync(join(tmpdir(), 'tidepool-mac-'))
+    const app = join(root, 'SurfSandbox.app')
+    mkdirSync(join(app, 'Contents', 'Resources', 'Data'), { recursive: true })
+    mkdirSync(join(app, 'Contents', 'MacOS'), { recursive: true })
+    mkdirSync(join(app, 'Contents', 'Frameworks'), { recursive: true })
+    writeFileSync(join(app, 'Contents', 'Frameworks', 'GameAssembly.dylib'), '')
+    writeFileSync(join(app, 'Contents', 'MacOS', 'SurfSandbox'), '')
+    return root
+  }
+
+  it('can launch directly when there is a bundle', () => {
+    // It said Windows-only, which stopped being true when the Mac build shipped
+    // and left both direct-launch buttons greyed out.
+    const root = makeBundle()
+    expect(canLaunchDirectly('darwin', root)).toBe(true)
+    expect(canLaunchDirectly('darwin', null)).toBe(false)
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('finds the binary inside the bundle', () => {
+    const root = makeBundle()
+    const bundle = macBundle(root)
+    expect(bundle?.app).toBe('SurfSandbox.app')
+    expect(bundle?.binary.endsWith(join('Contents', 'MacOS', 'SurfSandbox'))).toBe(true)
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('injects MelonLoader when its bootstrap is there', () => {
+    // The whole reason to launch the game ourselves on macOS: Steam starts a
+    // fresh process that does not inherit DYLD_INSERT_LIBRARIES.
+    const root = makeBundle()
+    writeFileSync(join(root, 'MelonLoader.Bootstrap.dylib'), '')
+
+    const env = macInjectionEnv(root, 'modded')
+
+    expect(env.DYLD_INSERT_LIBRARIES).toContain('MelonLoader.Bootstrap.dylib')
+    expect(env.DYLD_LIBRARY_PATH).toBe(root)
+
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('injects nothing when MelonLoader is not installed', () => {
+    const root = makeBundle()
+    expect(macInjectionEnv(root, 'modded')).toEqual({})
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('does not inject for a vanilla launch', () => {
+    const root = makeBundle()
+    writeFileSync(join(root, 'MelonLoader.Bootstrap.dylib'), '')
+
+    expect(macInjectionEnv(root, 'vanilla')).toEqual({})
+
+    rmSync(root, { recursive: true, force: true })
   })
 })

@@ -325,7 +325,9 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
 
     return {
       steam: steamLaunchOptions(plan),
-      canLaunch: canLaunchDirectly(),
+      // Needs the game folder now: on macOS the answer depends on there being a
+      // .app to start, where on Windows it never varied.
+      canLaunch: canLaunchDirectly(process.platform, game?.root ?? null),
       profileDir,
       loaderPlaced,
     }

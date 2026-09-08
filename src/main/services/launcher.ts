@@ -12,7 +12,7 @@
  *   playtime and cloud saves, and works wherever Steam can run the game, but it
  *   applies whatever launch options are saved in Steam rather than ours.
  */
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { cpSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type { LaunchPlan } from './launch'
@@ -83,13 +83,155 @@ export function placeLoader(profileDir: string, gameRoot: string): number | null
   return entries.length
 }
 
-export function canLaunchDirectly(platform: NodeJS.Platform = process.platform): boolean {
-  return platform === 'win32'
+export function canLaunchDirectly(
+  platform: NodeJS.Platform = process.platform,
+  gameRoot: string | null = null,
+): boolean {
+  if (platform === 'win32') return true
+  // The Mac build arrived after release. TidePool starting the game itself is
+  // worth more here than on Windows: launching the binary directly is the only
+  // way to set DYLD_INSERT_LIBRARIES, which is how MelonLoader attaches on
+  // macOS. Going through Steam cannot do that without the user hand-editing
+  // Launch Options.
+  if (platform === 'darwin' && gameRoot) return macBundle(gameRoot) !== null
+  return false
+}
+
+/** The game's `.app` and the binary inside it, or null if this is not a Mac build. */
+export function macBundle(gameRoot: string): { app: string; binary: string } | null {
+  const folder = inspectGameFolder(gameRoot)
+  if (!folder?.executable?.endsWith('.app')) return null
+
+  const macOsDir = join(gameRoot, folder.executable, 'Contents', 'MacOS')
+  let entries: string[]
+  try {
+    entries = readdirSync(macOsDir)
+  } catch {
+    return null
+  }
+
+  // Read the binary out of the folder rather than assuming it matches the
+  // bundle name — Unity usually agrees, but nothing guarantees it.
+  const binary = entries.find((e) => !e.startsWith('.'))
+  if (!binary) return null
+
+  return { app: folder.executable, binary: join(macOsDir, binary) }
 }
 
 /** The URL that asks Steam to start the game. Built here so the renderer never supplies one. */
 export function steamRunUrl(appId: string = SURF_SANDBOX_APP_ID): string {
   return `steam://rungameid/${appId}`
+}
+
+/**
+ * The environment that attaches MelonLoader on macOS, or nothing for a vanilla
+ * run.
+ *
+ * Separated out so it can be tested without depending on the host's
+ * architecture — the launch path around it thins a binary, which only makes
+ * sense on Apple Silicon and only works on a real Mach-O.
+ */
+export function macInjectionEnv(gameRoot: string, mode: LaunchMode): Record<string, string> {
+  if (mode === 'vanilla') return {}
+
+  const bootstrap = join(gameRoot, 'MelonLoader.Bootstrap.dylib')
+  if (!existsSync(bootstrap)) return {}
+
+  return {
+    DYLD_INSERT_LIBRARIES: bootstrap,
+    // The managed side loads the bootstrap again by bare filename.
+    DYLD_LIBRARY_PATH: gameRoot,
+  }
+}
+
+/**
+ * An x86_64-only copy of the game binary, made once and reused.
+ *
+ * Apple Silicon runs a universal binary's arm64 slice, and an x64 library
+ * cannot inject into that. Thinning the binary is how the game runs x86_64
+ * without `arch` in the way — see launchMac for why arch cannot be used.
+ *
+ * Lives beside the original inside the bundle so Unity still resolves its Data
+ * folder relative to the executable.
+ */
+function thinBinary(original: string): string | null {
+  const thin = `${original}-x86_64`
+  if (existsSync(thin)) return thin
+
+  try {
+    execFileSync('/usr/bin/lipo', [original, '-thin', 'x86_64', '-output', thin])
+    // lipo drops the signature, and macOS will not run an unsigned binary that
+    // came from a signed bundle. Ad-hoc signing is enough for a local build.
+    execFileSync('/usr/bin/codesign', ['--force', '--sign', '-', thin])
+    return thin
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Start the macOS build, injecting MelonLoader when there is one.
+ *
+ * This is what `melonloader-launch.sh` does, done from inside TidePool so
+ * nobody has to paste an absolute path into Steam's Launch Options and get a
+ * generic error when they get it slightly wrong.
+ *
+ * Steam cannot do this for us: LaunchServices starts a fresh process that does
+ * not inherit DYLD_INSERT_LIBRARIES, which is why the shell wrapper exists at
+ * all. Spawning the inner binary ourselves inherits it the ordinary Unix way.
+ */
+function launchMac(
+  gameRoot: string,
+  mode: LaunchMode,
+  spawnImpl: typeof spawn,
+): LaunchOutcome {
+  const bundle = macBundle(gameRoot)
+  if (!bundle) return { started: false, mode, reason: 'No .app bundle in the game folder.' }
+
+  const injecting = Object.keys(macInjectionEnv(gameRoot, mode)).length > 0
+
+  const env = macInjectionEnv(gameRoot, mode)
+
+  // MelonLoader's bootstrap ships x86_64 only, so on Apple Silicon the game has
+  // to run its x86_64 slice or the two never meet.
+  //
+  // Not via `arch -x86_64`. That is a platform binary, and dyld purges every
+  // DYLD_* variable before handing control to one — so the injection is thrown
+  // away on the way through, silently, and the game starts unmodded. Measured:
+  // exec'ing directly keeps DYLD_INSERT_LIBRARIES, and going through arch
+  // reports it as "(gone)".
+  //
+  // A thin copy of the game binary runs x86_64 under Rosetta with nothing in
+  // between, so the variable survives.
+  let command = bundle.binary
+  if (injecting && process.arch === 'arm64') {
+    const thin = thinBinary(bundle.binary)
+    if (!thin) {
+      return {
+        started: false,
+        mode,
+        reason:
+          'This Mac is Apple Silicon and MelonLoader is x86_64 only, but an x86_64 copy of the ' +
+          'game could not be made, so mods cannot be loaded.',
+      }
+    }
+    command = thin
+  }
+  const args: string[] = []
+
+  try {
+    const child = spawnImpl(command, args, {
+      cwd: gameRoot,
+      detached: true,
+      stdio: 'ignore',
+      env: { ...process.env, ...env },
+    })
+    child.unref()
+  } catch (e) {
+    return { started: false, mode, reason: `Could not start the game: ${(e as Error).message}` }
+  }
+
+  return { started: true, mode }
 }
 
 export function launchGame(
@@ -100,15 +242,17 @@ export function launchGame(
   platform: NodeJS.Platform = process.platform,
   spawnImpl: typeof spawn = spawn,
 ): LaunchOutcome {
-  if (!canLaunchDirectly(platform)) {
+  if (!canLaunchDirectly(platform, gameRoot)) {
     return {
       started: false,
       mode,
       reason:
-        'Surf Sandbox is a Windows executable, so TidePool can only start it directly on Windows. ' +
-        'Use “Launch via Steam”, or copy the launch options and start it from Steam.',
+        'TidePool can only start this game directly on Windows, or from a macOS .app bundle. ' +
+        'Use “Launch via Steam” instead.',
     }
   }
+
+  if (platform === 'darwin') return launchMac(gameRoot, mode, spawnImpl)
 
   const folder = inspectGameFolder(gameRoot)
   if (!folder) return { started: false, mode, reason: `Not a Unity game folder: ${gameRoot}` }

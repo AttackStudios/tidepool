@@ -26,14 +26,26 @@ runs the game's arm64 slice by default, and an x64 library cannot inject into an
 arm64 process.
 
 The game, `UnityPlayer` and `GameAssembly` are all universal, so the way through
-is to run the whole thing under Rosetta. `melonloader-launch.sh` is patched to do
-that:
+is to run the x86_64 slice under Rosetta.
 
-```bash
-exec arch -x86_64 "$@"
+**Not with `arch -x86_64`.** That is a platform binary, and dyld purges every
+`DYLD_*` variable before handing control to one — the injection is thrown away
+in transit and the game starts unmodded with no error. Measured directly:
+
+```
+exec'd straight:        DYLD_INSERT_LIBRARIES survives
+through /usr/bin/arch:  DYLD_INSERT_LIBRARIES=(gone)
 ```
 
-Remove that line on an Intel Mac, or once MelonLoader ships arm64.
+Instead, thin the game binary and run that, so nothing sits in between:
+
+```bash
+lipo SurfSandbox -thin x86_64 -output SurfSandbox-x86_64
+codesign --force --sign - SurfSandbox-x86_64   # lipo drops the signature
+```
+
+TidePool does this itself on "Drop In", which is why that is the route to use
+rather than Steam Launch Options.
 
 ### Setting it up
 
@@ -62,9 +74,16 @@ Three things had to hold, and all three do on this machine:
 - **The app is adhoc-signed with no hardened runtime**, so
   `DYLD_INSERT_LIBRARIES` is honoured. A hardened runtime would have ended it.
 
-Injection is confirmed working: loading the bootstrap into an unprotected
-x86_64 process shows dyld installing its interposing hooks. What is not yet
-confirmed is MelonLoader bootstrapping IL2CPP inside the game itself.
+## Where it currently stops
+
+Injection works. Launching the thinned binary with `DYLD_INSERT_LIBRARIES` set
+gets MelonLoader's bootstrap running inside the game — it creates its own
+timestamped log file, which nothing else would do.
+
+It then writes nothing to that log, and Unity stalls about thirty lines into
+startup. So the bootstrap loads and its initialisation does not complete.
+MelonLoader's macOS support for IL2CPP is young, and that is the next thing to
+chase — not the injection, which is settled.
 
 Note that a system binary is the wrong thing to test against — SIP strips
 `DYLD_*` for those, so the injection silently does nothing and looks like a
