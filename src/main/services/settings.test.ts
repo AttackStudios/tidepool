@@ -1,8 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS, SettingsStore } from './settings'
+import type { Settings } from '../../shared/types'
 import { DEFAULT_COMMUNITY } from './thunderstore'
 
 let dir: string
@@ -49,5 +50,33 @@ describe('SettingsStore', () => {
   it('creates the containing directory when writing', () => {
     const nested = new SettingsStore(join(dir, 'a', 'b', 'settings.json'))
     expect(nested.write({ community: 'x' }).community).toBe('x')
+  })
+})
+
+describe('writing hostile values', () => {
+  it('refuses to persist a wrong type, rather than cleaning up on the next read', () => {
+    const store = new SettingsStore(file)
+    const written = store.write({
+      gamePath: 12345,
+      community: ['an array'],
+      seenWelcome: 'yes',
+    } as unknown as Partial<Settings>)
+
+    // The value handed straight back to the UI is already clean.
+    expect(written).toMatchObject({ gamePath: null, seenWelcome: false })
+    expect(typeof written.community).toBe('string')
+    // And so is the file, so nothing odd is left sitting on disk.
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({ gamePath: null })
+  })
+
+  it('ignores keys that are not settings', () => {
+    new SettingsStore(file).write({ nonsense: 'value' } as unknown as Partial<Settings>)
+    expect(Object.keys(JSON.parse(readFileSync(file, 'utf8'))).sort())
+      .toEqual(['beachPath', 'community', 'gamePath', 'lastProfileId', 'seenWelcome'])
+  })
+
+  it('leaves the prototype alone', () => {
+    new SettingsStore(file).write(JSON.parse('{"__proto__":{"polluted":true}}') as Partial<Settings>)
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined()
   })
 })

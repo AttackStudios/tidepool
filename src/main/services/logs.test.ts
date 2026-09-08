@@ -14,6 +14,11 @@ const writeLog = (root: string, body: string) => {
   writeFileSync(join(root, 'BepInEx', 'LogOutput.log'), body, 'utf8')
 }
 
+const writeMelonLog = (root: string, body: string) => {
+  mkdirSync(join(root, 'MelonLoader'), { recursive: true })
+  writeFileSync(join(root, 'MelonLoader', 'Latest.log'), body, 'utf8')
+}
+
 const mod = (fullName: string, over: Partial<InstalledMod> = {}): InstalledMod => ({
   fullName, version: '1.0.0', enabled: true, installedAt: 'now', files: [], ...over,
 })
@@ -38,12 +43,23 @@ describe('parseLine', () => {
 })
 
 describe('candidatePaths', () => {
-  it('prefers the profile, since Doorstop points there', () => {
+  it('looks for MelonLoader first, because that is the loader TidePool ships', () => {
     const [first] = candidatePaths('/p/default', '/games/surf')
-    expect(first).toBe(join('/p/default', 'BepInEx', 'LogOutput.log'))
+    expect(first).toBe(join('/games/surf', 'MelonLoader', 'Latest.log'))
   })
+
+  it('then the profile, since Doorstop points BepInEx there', () => {
+    expect(candidatePaths('/p/default', '/games/surf')[1])
+      .toBe(join('/p/default', 'BepInEx', 'LogOutput.log'))
+  })
+
   it('also checks the game folder, for a hand-installed BepInEx', () => {
-    expect(candidatePaths('/p/default', '/games/surf')).toHaveLength(2)
+    expect(candidatePaths('/p/default', '/games/surf')).toHaveLength(3)
+  })
+
+  it('still offers the profile when no game folder is known', () => {
+    expect(candidatePaths('/p/default', null))
+      .toEqual([join('/p/default', 'BepInEx', 'LogOutput.log')])
   })
 })
 
@@ -72,6 +88,43 @@ describe('readLog', () => {
     writeLog(gameDir, '[Info   : BepInEx] from the game folder\n')
     expect(readLog(dir, gameDir).path).toContain(gameDir)
     rmSync(gameDir, { recursive: true, force: true })
+  })
+
+  it('reads MelonLoader, which is the loader TidePool actually ships', () => {
+    const gameDir = mkdtempSync(join(tmpdir(), 'tidepool-game-'))
+    writeMelonLog(gameDir, '[13:42:01.220] [SurfMP] joined\n[13:42:02.100] [ERROR] no host\n')
+    const r = readLog(dir, gameDir)
+    expect(r.path).toContain(join('MelonLoader', 'Latest.log'))
+    expect(r.lines).toHaveLength(2)
+    expect(r.lines[0]).toMatchObject({ level: 'info', source: 'SurfMP' })
+    expect(r.lines[1]).toMatchObject({ level: 'error', source: null })
+    rmSync(gameDir, { recursive: true, force: true })
+  })
+
+  it('does not let an empty MelonLoader log hide a BepInEx one', () => {
+    // MelonLoader creates Latest.log the moment it loads, so a run that produced
+    // no output still leaves the file sitting there saying nothing.
+    const gameDir = mkdtempSync(join(tmpdir(), 'tidepool-game-'))
+    writeMelonLog(gameDir, '')
+    writeLog(dir, '[Error  : SurfMP] the answer is here\n')
+    const r = readLog(dir, gameDir)
+    expect(r.path).toContain('BepInEx')
+    expect(r.lines[0]).toMatchObject({ level: 'error', source: 'SurfMP' })
+    rmSync(gameDir, { recursive: true, force: true })
+  })
+
+  it('reads only the tail of a huge log rather than the whole file', () => {
+    // A mod stuck in an error loop writes the biggest logs, and past ~512 MB
+    // reading it whole fails on string length — blanking the Logs tab for the
+    // one person who needs it. Whole lines only, so nothing arrives half-cut.
+    const head = `${'old line\n'.repeat(40_000)}`
+    const tail = '[Error  : SurfMP] the most recent thing\n'
+    writeLog(dir, head + 'x'.repeat(MAX_LOG_BYTES) + `\n${tail}`)
+
+    const r = readLog(dir)
+    expect(r.truncated).toBe(true)
+    expect(r.lines.at(-1)).toMatchObject({ level: 'error', source: 'SurfMP' })
+    expect(r.lines.some((l) => l.raw === 'old line')).toBe(false)
   })
 })
 

@@ -17,22 +17,33 @@ export const DEFAULT_SETTINGS: Settings = {
   beachPath: null,
 }
 
+/**
+ * Coerce anything into a valid Settings.
+ *
+ * Shared by reading and writing on purpose. Reading was already strict, which is
+ * why a corrupt file never stopped the app — but writing spread the patch
+ * straight through, so a wrong type reached the disk and the value handed back
+ * to the UI, and only got cleaned up on the next read. Same rules both ways.
+ */
+function normalise(value: unknown): Settings {
+  if (typeof value !== 'object' || value === null) return { ...DEFAULT_SETTINGS }
+  const p = value as Partial<Settings>
+  return {
+    gamePath: typeof p.gamePath === 'string' ? p.gamePath : null,
+    community: typeof p.community === 'string' ? p.community : DEFAULT_SETTINGS.community,
+    lastProfileId: typeof p.lastProfileId === 'string' ? p.lastProfileId : null,
+    seenWelcome: p.seenWelcome === true,
+    beachPath: typeof p.beachPath === 'string' ? p.beachPath : null,
+  }
+}
+
 export class SettingsStore {
   constructor(private readonly file: string) {}
 
   read(): Settings {
     if (!existsSync(this.file)) return { ...DEFAULT_SETTINGS }
     try {
-      const parsed: unknown = JSON.parse(readFileSync(this.file, 'utf8'))
-      if (typeof parsed !== 'object' || parsed === null) return { ...DEFAULT_SETTINGS }
-      const p = parsed as Partial<Settings>
-      return {
-        gamePath: typeof p.gamePath === 'string' ? p.gamePath : null,
-        community: typeof p.community === 'string' ? p.community : DEFAULT_SETTINGS.community,
-        lastProfileId: typeof p.lastProfileId === 'string' ? p.lastProfileId : null,
-        seenWelcome: p.seenWelcome === true,
-        beachPath: typeof p.beachPath === 'string' ? p.beachPath : null,
-      }
+      return normalise(JSON.parse(readFileSync(this.file, 'utf8')))
     } catch {
       // Corrupt settings must never stop the app starting.
       return { ...DEFAULT_SETTINGS }
@@ -40,7 +51,7 @@ export class SettingsStore {
   }
 
   write(patch: Partial<Settings>): Settings {
-    const next = { ...this.read(), ...patch }
+    const next = normalise({ ...this.read(), ...patch })
     mkdirSync(dirname(this.file), { recursive: true })
     writeFileSync(this.file, JSON.stringify(next, null, 2), 'utf8')
     return next
