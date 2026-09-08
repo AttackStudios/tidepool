@@ -19,6 +19,7 @@ import type { LaunchPlan } from './launch'
 import { detectLoader, inspectGameFolder } from './gamefolder'
 import { LOADER_STAGING } from './install'
 import { SURF_SANDBOX_APP_ID } from './steam'
+import { dotnetProblem, findDotnetRuntime, satisfies } from './dotnet'
 
 /**
  * Is a mod loader available at all, by either route?
@@ -44,6 +45,14 @@ export interface LaunchOutcome {
   mode: LaunchMode
   /** Why it couldn't start, for showing the user. */
   reason?: string
+  /**
+   * The game started, but something will not work.
+   *
+   * Separate from `reason` because refusing to launch would be the wrong
+   * response: the game runs perfectly well, it just runs unmodded, and being
+   * told that is far better than the silence this replaces.
+   */
+  warning?: string
 }
 
 /**
@@ -137,11 +146,20 @@ export function macInjectionEnv(gameRoot: string, mode: LaunchMode): Record<stri
   const bootstrap = join(gameRoot, 'MelonLoader.Bootstrap.dylib')
   if (!existsSync(bootstrap)) return {}
 
-  return {
+  const env: Record<string, string> = {
     DYLD_INSERT_LIBRARIES: bootstrap,
     // The managed side loads the bootstrap again by bare filename.
     DYLD_LIBRARY_PATH: gameRoot,
   }
+
+  // MelonLoader is managed code and ships no runtime, so it has to host one
+  // that is already here. Pointing at it explicitly matters on Apple Silicon,
+  // where the runtime that must be used is the x64 one rather than whichever
+  // the system would resolve.
+  const runtime = findDotnetRuntime()
+  if (runtime && satisfies(runtime.versions)) env.DOTNET_ROOT = runtime.root
+
+  return env
 }
 
 /**
@@ -231,7 +249,10 @@ function launchMac(
     return { started: false, mode, reason: `Could not start the game: ${(e as Error).message}` }
   }
 
-  return { started: true, mode }
+  // Checked only when injecting: a vanilla launch neither needs a runtime nor
+  // deserves a warning about one.
+  const runtime = injecting ? dotnetProblem() : null
+  return runtime ? { started: true, mode, warning: runtime } : { started: true, mode }
 }
 
 export function launchGame(

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  EssentialsUnavailableError, fetchEssentials, findEssential, parseMod, toSummary,
+  EssentialsUnavailableError, downloadFor, fetchEssentials, findEssential, parseMod, toSummary,
 } from './essentials'
 
 const ok = (body: unknown) =>
@@ -112,5 +112,44 @@ describe('findEssential', () => {
     const fetchImpl = (async () => ok({ mods: [base] })) as unknown as typeof fetch
     expect((await findEssential('AttackStudioYT-SurfMP', { fetchImpl }))?.name).toBe('SurfMP')
     expect(await findEssential('nope', { fetchImpl })).toBeNull()
+  })
+})
+
+describe('picking the right download per platform', () => {
+  const entry = {
+    downloadUrl: 'https://example.com/MelonLoader.x64.zip',
+    downloadUrls: {
+      win32: 'https://example.com/MelonLoader.x64.zip',
+      darwin: 'https://example.com/MelonLoader.macOS.x64.zip',
+      linux: 'https://example.com/MelonLoader.Linux.x64.zip',
+    },
+  }
+
+  it('gives a Mac the macOS build, not the Windows one', () => {
+    // The bug this replaces: every platform got MelonLoader.x64.zip, so a Mac
+    // install had no bootstrap dylib, nothing injected, and the game ran
+    // unmodded with no error to explain why.
+    expect(downloadFor(entry, 'darwin')).toContain('macOS')
+    expect(downloadFor(entry, 'win32')).toBe(entry.downloadUrls.win32)
+    expect(downloadFor(entry, 'linux')).toContain('Linux')
+  })
+
+  it('falls back to the single URL for an entry that is one file everywhere', () => {
+    expect(downloadFor({ downloadUrl: 'https://example.com/mod.zip' }, 'darwin'))
+      .toBe('https://example.com/mod.zip')
+  })
+
+  it('falls back when this platform is not listed', () => {
+    expect(downloadFor(entry, 'freebsd')).toBe(entry.downloadUrl)
+  })
+
+  it('has nothing to offer when there is no download at all', () => {
+    expect(downloadFor({}, 'darwin')).toBeNull()
+    expect(downloadFor({ downloadUrls: 'not an object' }, 'darwin')).toBeNull()
+  })
+
+  it('ignores a non-string entry rather than trusting it', () => {
+    expect(downloadFor({ downloadUrls: { darwin: 42 }, downloadUrl: 'https://x/y.zip' }, 'darwin'))
+      .toBe('https://x/y.zip')
   })
 })

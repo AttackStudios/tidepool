@@ -11,6 +11,11 @@
       "status": "released",
       "version": "0.7.3",
       "downloadUrl": "https://github.com/LavaGang/MelonLoader/releases/download/v0.7.3/MelonLoader.x64.zip",
+      "downloadUrls": {
+        "win32": "https://github.com/LavaGang/MelonLoader/releases/download/v0.7.3/MelonLoader.x64.zip",
+        "darwin": "https://github.com/LavaGang/MelonLoader/releases/download/v0.7.3/MelonLoader.macOS.x64.zip",
+        "linux": "https://github.com/LavaGang/MelonLoader/releases/download/v0.7.3/MelonLoader.Linux.x64.zip"
+      },
       "icon": null,
       "homepage": "https://github.com/LavaGang/MelonLoader",
       "categories": [

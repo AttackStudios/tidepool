@@ -21,6 +21,7 @@ export interface EssentialMod {
   /** `planned` entries are shown but not installable. */
   status: 'planned' | 'released'
   version: string | null
+  /** The download for the platform TidePool is running on. */
   downloadUrl: string | null
   icon: string | null
   homepage: string | null
@@ -45,6 +46,29 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
 }
 
+/**
+ * Pick the download for this platform.
+ *
+ * A loader is native code, so one URL cannot serve every platform — and getting
+ * this wrong is silent. TidePool shipped `MelonLoader.x64.zip` to everyone,
+ * which on a Mac installs the Windows build: no bootstrap dylib, so nothing
+ * injects, so the game runs unmodded with no error to explain it.
+ *
+ * `downloadUrls` is optional, and `downloadUrl` remains the fallback, so an
+ * entry that genuinely is one file everywhere needs no change.
+ */
+export function downloadFor(
+  value: Record<string, unknown>,
+  platform: string = process.platform,
+): string | null {
+  const perPlatform = value.downloadUrls
+  if (typeof perPlatform === 'object' && perPlatform !== null) {
+    const match = (perPlatform as Record<string, unknown>)[platform]
+    if (typeof match === 'string') return match
+  }
+  return typeof value.downloadUrl === 'string' ? value.downloadUrl : null
+}
+
 /** Validate one entry. Anything malformed is dropped rather than trusted. */
 export function parseMod(value: unknown): EssentialMod | null {
   if (typeof value !== 'object' || value === null) return null
@@ -52,7 +76,7 @@ export function parseMod(value: unknown): EssentialMod | null {
   if (typeof m.id !== 'string' || typeof m.name !== 'string') return null
 
   const status = m.status === 'released' ? 'released' : 'planned'
-  const downloadUrl = typeof m.downloadUrl === 'string' ? m.downloadUrl : null
+  const downloadUrl = downloadFor(m)
 
   return {
     id: m.id,

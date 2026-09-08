@@ -76,15 +76,67 @@ Three things had to hold, and all three do on this machine:
 
 ## Where it currently stops
 
-Injection works. Launching the thinned binary with `DYLD_INSERT_LIBRARIES` set
-gets MelonLoader's bootstrap running inside the game — it creates its own
-timestamped log file, which nothing else would do.
+Injection works, and so does the game.
 
-It then writes nothing to that log, and Unity stalls about thirty lines into
-startup. So the bootstrap loads and its initialisation does not complete.
-MelonLoader's macOS support for IL2CPP is young, and that is the next thing to
-chase — not the injection, which is settled.
+**The game runs fine.** An earlier version of this document said Unity "stalls
+about thirty lines into startup". That was wrong, and it sent the investigation
+in the wrong direction for a while. The control proves it: launch the thinned
+x86_64 binary with *no* MelonLoader at all and it also stops at thirty lines of
+stdout — because Unity simply stops writing to stdout after the boot-config
+dump. Sampled at that point the game has a window, is burning 126% CPU, and its
+main thread is running the ordinary Unity loop into `GameAssembly.dylib`.
 
-Note that a system binary is the wrong thing to test against — SIP strips
-`DYLD_*` for those, so the injection silently does nothing and looks like a
-failure of the loader.
+What actually fails is MelonLoader's own initialisation:
+
+- `MelonLoader.Bootstrap.dylib` **is** loaded into the process — confirmed with
+  `lsof`, which also shows it holding both log files open at zero bytes.
+- It spawns an init thread which enters the bootstrap and **spins there
+  indefinitely**. Sampling for three seconds put all 2081 samples in the same
+  two frames, `Bootstrap+0x1a97c` calling `Bootstrap+0x663c2`, with nothing
+  below them.
+- No `libhostfxr` or `libcoreclr` is ever loaded, so it never reaches the point
+  of starting the .NET runtime.
+
+So the game plays normally while MelonLoader's init thread is wedged beside it,
+and the log stays empty because nothing is ever flushed to it.
+
+### The .NET runtime is a real prerequisite, and was missing
+
+Separate from the hang, and worth knowing because it would bite the moment the
+hang is fixed: **MelonLoader ships no .NET runtime**, on any platform. Neither
+`MelonLoader.x64.zip` nor `MelonLoader.macOS.x64.zip` contains `libhostfxr`,
+`libcoreclr` or a `dotnet/` folder. `MelonLoader.runtimeconfig.json` asks for
+`Microsoft.NETCore.App` 6.0 with `rollForward: LatestMinor`, which stays inside
+major version 6.
+
+This machine had no .NET installed at all. On Windows people usually have it by
+accident; on macOS they usually do not.
+
+The runtime must be **x64**, not arm64. The game runs its x86_64 slice under
+Rosetta so MelonLoader's x86_64 bootstrap can inject, and an arm64 runtime
+cannot be loaded into an x86_64 process — but arm64 is what the ordinary
+installer gives you on Apple Silicon. Install it beside, not over:
+
+```bash
+curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- \
+  --channel 6.0 --runtime dotnet --architecture x64 --install-dir ~/.dotnet-x64
+```
+
+TidePool finds that automatically and passes `DOTNET_ROOT` when it launches, and
+says so plainly when no suitable runtime exists rather than letting the game
+start unmodded in silence.
+
+### What is left
+
+The spinning init thread is upstream, in MelonLoader's macOS IL2CPP bootstrap.
+0.7.3 (May 2026) is the newest release, so there is no newer build to try. Two
+things remain worth doing:
+
+1. Report it upstream with the evidence above — the offsets and the `lsof`
+   output make it an unusually precise bug report.
+2. Try `MelonLoader.Installer.MacOS.dmg`, the official installer, in case it
+   configures something the archive does not.
+
+Note that a system binary is the wrong thing to test injection against — SIP
+strips `DYLD_*` for those, so it silently does nothing and looks like a failure
+of the loader.

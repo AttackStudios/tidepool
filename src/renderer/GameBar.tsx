@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { GameInstall, LaunchInfo, Profile, Result } from '../shared/types'
 
-interface LaunchOutcome { started: boolean; mode: string; reason?: string }
+interface LaunchOutcome { started: boolean; mode: string; reason?: string; warning?: string }
 
 export function GameBar({ profile }: { profile: Profile | null }) {
   const [game, setGame] = useState<GameInstall | null | undefined>(undefined)
@@ -59,6 +59,10 @@ export function GameBar({ profile }: { profile: Profile | null }) {
     const res = await fn()
     if (!res.ok) setNote(res.message)
     else if (!res.data.started) setNote(res.data.reason ?? 'Could not start the game.')
+    // The game started but something will not work — most often a missing .NET
+    // runtime, which otherwise fails in complete silence: MelonLoader loads,
+    // writes nothing, and the game just runs unmodded.
+    else if (res.data.warning) setNote(res.data.warning)
   }
 
   const direct = Boolean(game && profile && launch?.canLaunch)
