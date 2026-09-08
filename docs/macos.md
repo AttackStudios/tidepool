@@ -126,16 +126,61 @@ TidePool finds that automatically and passes `DOTNET_ROOT` when it launches, and
 says so plainly when no suitable runtime exists rather than letting the game
 start unmodded in silence.
 
+### The actual root cause, proven
+
+MelonLoader hooks `dlsym` so it can spot the game resolving `il2cpp_init` and
+hand back its own detour. On this machine **that hook never fires**, and it is
+the whole of the problem.
+
+Turning on `debug_mode = true` in `UserData/Loader.cfg` is what finally made it
+visible — the `--melonloader.debug` launch argument does nothing, and with debug
+off the log is created and left at zero bytes. The entire log is:
+
+```
+[BS DEBUG] Attaching Symbol Redirect...
+[BS DEBUG] Plt hooked dlsym successfully
+[BS DEBUG] Symbol Redirect Attached!
+```
+
+Then it waits forever. The game, meanwhile, does exactly what MelonLoader is
+waiting for. A probe dylib injected alongside it, interposing `dlsym` and
+`dlopen` through `__DATA,__interpose`, caught all of it:
+
+```
+dlopen: .../Contents/Frameworks/GameAssembly.dylib
+dlsym: il2cpp_init
+dlsym: il2cpp_runtime_invoke
+dlsym: il2cpp_method_get_name
+... 234 il2cpp_* lookups in total
+```
+
+Those three are precisely the symbols `Il2CppLib` wants. Same process, same
+symbols, two mechanisms — **dyld interposing catches them, PLT hooking does
+not.** PLT hooking does not work in a Rosetta-translated process.
+
+The fix belongs upstream and looks small: use interposing for `dlsym` on macOS,
+exactly as `OSXEntry` already does for `setrlimit`. That mechanism is confirmed
+working here — an interpose on `setrlimit` fires in this process.
+
+Calling MelonLoader's own `Il2CppHandler.Initialize` from a shim was considered
+and rejected: it is a managed NativeAOT method, not an exported entry point, and
+invoking it from a foreign native thread is unsupported and more likely to
+corrupt than to work.
+
 ### What is left
 
-The spinning init thread is upstream, in MelonLoader's macOS IL2CPP bootstrap.
-0.7.3 (May 2026) is the newest release, so there is no newer build to try. Two
-things remain worth doing:
+The blocker is upstream. 0.7.3 (May 2026) is the newest release, so there is no
+newer build to try. The bug report with the evidence above is written up, and
+the probe that demonstrates the difference is reproducible on demand.
 
-1. Report it upstream with the evidence above — the offsets and the `lsof`
-   output make it an unusually precise bug report.
-2. Try `MelonLoader.Installer.MacOS.dmg`, the official installer, in case it
-   configures something the archive does not.
+`MelonLoader.Installer.MacOS.dmg` is not an alternative: it is only an Avalonia
+GUI that downloads the same `MelonLoader.macOS.x64.zip`, with no arm64 bootstrap
+of its own.
+
+Whisky is not an alternative either — the repository is archived, Homebrew
+disabled the cask in April 2026, and `data.getwhisky.app` now 404s, so it cannot
+fetch the Wine runtime it needs. Running the Windows build under CrossOver
+remains the only route that sidesteps this entirely.
 
 Note that a system binary is the wrong thing to test injection against — SIP
 strips `DYLD_*` for those, so it silently does nothing and looks like a failure
