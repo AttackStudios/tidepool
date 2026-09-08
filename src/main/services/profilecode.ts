@@ -19,6 +19,19 @@ export const CODE_PREFIX = 'TP1-'
 /** A single code should never install more than a plausible profile's worth. */
 export const MAX_MODS = 500
 
+/**
+ * How far a code may expand when decompressed.
+ *
+ * A profile code carries only names and version numbers, so even a full 500-mod
+ * profile is tens of kilobytes. Without a ceiling, gzip lets a small code unpack
+ * to hundreds of megabytes inside the main process — and codes are meant to be
+ * pasted from strangers, which is the whole point of them.
+ */
+export const MAX_CODE_DECODED_BYTES = 1024 * 1024
+
+/** Longer than any real profile code; refuse before spending memory on it. */
+export const MAX_CODE_CHARS = 512 * 1024
+
 export interface DecodedProfile {
   name: string
   community: string | null
@@ -52,11 +65,20 @@ export function decodeProfile(code: string): DecodedProfile {
     throw new InvalidProfileCodeError(`codes start with "${CODE_PREFIX}"`)
   }
 
+  if (trimmed.length > MAX_CODE_CHARS) {
+    throw new InvalidProfileCodeError('it is far too long to be a profile')
+  }
+
   let payload: unknown
   try {
-    const raw = gunzipSync(Buffer.from(trimmed.slice(CODE_PREFIX.length), 'base64url'))
+    const raw = gunzipSync(Buffer.from(trimmed.slice(CODE_PREFIX.length), 'base64url'), {
+      maxOutputLength: MAX_CODE_DECODED_BYTES,
+    })
     payload = JSON.parse(raw.toString('utf8'))
-  } catch {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ERR_BUFFER_TOO_LARGE') {
+      throw new InvalidProfileCodeError('it unpacks to far more data than a profile ever contains')
+    }
     throw new InvalidProfileCodeError('it is damaged or was copied incompletely')
   }
 

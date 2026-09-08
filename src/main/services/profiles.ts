@@ -20,12 +20,29 @@ import type { InstalledMod, Profile } from '../../shared/types'
 
 const PROFILE_FILE = 'profile.json'
 
+/**
+ * Names Windows reserves for devices rather than files.
+ *
+ * They are refused with or without an extension, so a profile called "con"
+ * creates a folder happily on macOS and then cannot be created at all on the
+ * platform most people run the game on.
+ */
+const RESERVED_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i
+
+/** A file system component has a limit, and reaching it should not be a crash. */
+const MAX_SLUG = 64
+
 export function slugify(name: string): string {
   const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  return slug || 'profile'
+    // Truncated rather than refused: a long name is a person being expressive,
+    // not an attack, and it surfaced as a raw ENAMETOOLONG from mkdir.
+    .slice(0, MAX_SLUG)
+    .replace(/-+$/g, '')
+  if (!slug) return 'profile'
+  return RESERVED_NAMES.test(slug) ? `${slug}-profile` : slug
 }
 
 export class ProfileStore {

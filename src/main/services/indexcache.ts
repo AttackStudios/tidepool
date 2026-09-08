@@ -14,6 +14,9 @@ import { join } from 'node:path'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import type { Package } from '../../shared/types'
 
+/** Ceiling on a decompressed index, so a corrupt cache cannot exhaust memory. */
+const MAX_INDEX_BYTES = 256 * 1024 * 1024
+
 export interface CachedIndex {
   packages: Package[]
   fetchedAt: number
@@ -32,7 +35,12 @@ export class IndexCache {
     const file = this.file(community)
     if (!existsSync(file)) return null
     try {
-      const parsed: unknown = JSON.parse(gunzipSync(readFileSync(file)).toString('utf8'))
+      // Generous, because a large community's index genuinely is tens of
+      // megabytes — but bounded, because an unbounded gunzip on a corrupt file
+      // ends as an out-of-memory abort, which no catch below can rescue.
+      const parsed: unknown = JSON.parse(
+        gunzipSync(readFileSync(file), { maxOutputLength: MAX_INDEX_BYTES }).toString('utf8'),
+      )
       if (typeof parsed !== 'object' || parsed === null) return null
       const c = parsed as Partial<CachedIndex>
       if (!Array.isArray(c.packages) || typeof c.fetchedAt !== 'number') return null

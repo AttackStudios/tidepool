@@ -466,14 +466,22 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
         )
       }
 
+      // importLocalPack takes a folder as readily as a zip, because half the
+      // people who receive one will have already extracted it. macOS can offer
+      // both in one dialog; Windows and Linux cannot, and asking for both there
+      // silently turns it into a folder-only picker — which would break the
+      // common case of being sent a zip. So the extra option is macOS-only.
+      const properties: ('openFile' | 'openDirectory')[] =
+        process.platform === 'darwin' ? ['openFile', 'openDirectory'] : ['openFile']
+
       const picked = await (win
         ? dialog.showOpenDialog(win, {
             title: 'Choose a mod someone sent you',
-            properties: ['openFile'],
+            properties,
             filters: [{ name: 'Mod pack', extensions: ['zip'] }],
             buttonLabel: 'Install',
           })
-        : dialog.showOpenDialog({ properties: ['openFile'] }))
+        : dialog.showOpenDialog({ properties }))
 
       const chosen = picked.filePaths[0]
       if (picked.canceled || !chosen) return { installed: 0, files: [] }

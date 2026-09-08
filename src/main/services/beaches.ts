@@ -22,6 +22,21 @@ export const CODE_PREFIX = 'TPB1-'
 /** Beyond this a code is unwieldy to paste; offer a file instead. */
 export const MAX_CODE_SOURCE_BYTES = 2 * 1024 * 1024
 
+/**
+ * How far a code is allowed to expand when decompressed.
+ *
+ * Gzip is why beach codes are short enough to paste, and it is also why a
+ * hostile one is dangerous: 265 KB of highly repetitive data unpacks to 200 MB,
+ * which was then written straight into the game's Levels folder. Codes arrive
+ * from strangers over Discord, so the ceiling has to be enforced during
+ * decompression rather than checked afterwards — by then the memory is already
+ * spent. Twice the encode limit leaves room for the JSON wrapper.
+ */
+export const MAX_CODE_DECODED_BYTES = MAX_CODE_SOURCE_BYTES * 2
+
+/** A code far longer than this cannot be a real beach; reject before inflating. */
+export const MAX_CODE_CHARS = 4 * 1024 * 1024
+
 export interface Beach {
   fileName: string
   path: string
@@ -224,12 +239,23 @@ export function decodeBeach(code: string): { name: string; fileName: string; con
   if (!trimmed.startsWith(CODE_PREFIX)) {
     throw new InvalidBeachCodeError(`beach codes start with "${CODE_PREFIX}"`)
   }
+  if (trimmed.length > MAX_CODE_CHARS) {
+    throw new InvalidBeachCodeError('it is far too long to be a beach')
+  }
   let payload: unknown
   try {
     payload = JSON.parse(
-      gunzipSync(Buffer.from(trimmed.slice(CODE_PREFIX.length), 'base64url')).toString('utf8'),
+      gunzipSync(Buffer.from(trimmed.slice(CODE_PREFIX.length), 'base64url'), {
+        maxOutputLength: MAX_CODE_DECODED_BYTES,
+      }).toString('utf8'),
     )
-  } catch {
+  } catch (error) {
+    // Told apart from ordinary damage on purpose: a code that unpacks to more
+    // than any beach could be is someone being unpleasant, and saying so is
+    // more use than "damaged" when the code pasted perfectly well.
+    if ((error as NodeJS.ErrnoException).code === 'ERR_BUFFER_TOO_LARGE') {
+      throw new InvalidBeachCodeError('it unpacks to far more data than a beach ever contains')
+    }
     throw new InvalidBeachCodeError('it is damaged or was copied incompletely')
   }
   if (typeof payload !== 'object' || payload === null) {
@@ -256,8 +282,16 @@ export function safeFileName(name: string): string {
   const base = basename(name.replace(/\\/g, '/')).replace(/[<>:"/|?*\x00-\x1f]+/g, '_')
   const trimmed = base.replace(/^\.+/, '').slice(0, 100)
   const withExt = /\.lvl$/i.test(trimmed) ? trimmed : `${trimmed}${BEACH_EXT}`
-  return withExt === BEACH_EXT ? `imported-beach${BEACH_EXT}` : withExt
+  if (withExt === BEACH_EXT) return `imported-beach${BEACH_EXT}`
+  // Windows reserves a handful of names for devices, and reserves them whatever
+  // the extension — writing "CON.lvl" there opens the console, not a file. The
+  // game runs mostly on Windows, so a beach named CON must not arrive unusable.
+  const stem = withExt.slice(0, -BEACH_EXT.length)
+  return RESERVED_NAMES.test(stem) ? `${stem}-beach${BEACH_EXT}` : withExt
 }
+
+/** Names Windows treats as devices, refused with or without an extension. */
+const RESERVED_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i
 
 /** Write an imported beach, never overwriting an existing save. */
 export function importBeach(

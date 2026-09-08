@@ -183,24 +183,59 @@ export function importLocalPack(source: string, gameRoot: string): string[] {
     written.push(target)
   }
 
+  if (!existsSync(source)) {
+    throw new UnreadablePackError('That file is no longer there. Pick the pack again.')
+  }
+
   if (statSync(source).isDirectory()) {
     const walk = (dir: string, prefix: string): void => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
         const child = join(dir, entry.name)
         const rel = prefix ? `${prefix}/${entry.name}` : entry.name
         if (entry.isDirectory()) walk(child, rel)
-        else place(rel, readFileSync(child))
+        // Symlinks are skipped rather than followed. A macOS folder is full of
+        // them — every `.framework` has one — and reading one as a file threw a
+        // raw EISDIR that killed the whole import. Following them would also let
+        // a pack copy files from outside the folder the user actually chose.
+        else if (entry.isFile()) place(rel, readFileSync(child))
       }
     }
     walk(source, '')
     return written
   }
 
-  for (const entry of new AdmZip(source).getEntries()) {
+  for (const entry of openPack(source).getEntries()) {
     if (entry.isDirectory) continue
     place(entry.entryName, entry.getData())
   }
   return written
+}
+
+/**
+ * A pack that could not be opened at all.
+ *
+ * Distinct from a pack with nothing useful in it, because the two need
+ * different advice — and because the alternative was showing someone
+ * "ADM-ZIP: Invalid or unsupported zip format. No END header found", which
+ * tells a person receiving their first mod precisely nothing.
+ */
+export class UnreadablePackError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnreadablePackError'
+  }
+}
+
+/** Open a zip, turning the library's own wording into something readable. */
+function openPack(zipPath: string): AdmZip {
+  try {
+    return new AdmZip(zipPath)
+  } catch {
+    throw new UnreadablePackError(
+      'That file is not a readable zip. If it arrived through Discord or a ' +
+        'browser it may have downloaded incompletely — try downloading it again.',
+    )
+  }
 }
 
 export function installLoaderPack(zipPath: string, gameRoot: string): string[] {
