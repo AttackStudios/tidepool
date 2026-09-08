@@ -2,9 +2,8 @@
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 import { findGameInstall } from './services/steam'
-import { inspectGameFolder } from './services/gamefolder'
-import { canLaunchDirectly, launchGame, placeLoader, steamRunUrl } from './services/launcher'
-import { detectLoader } from './services/gamefolder'
+import { canLaunchDirectly, hasLoader, launchGame, placeLoader, steamRunUrl } from './services/launcher'
+import { detectLoader, inspectGameFolder } from './services/gamefolder'
 import { DEFAULT_LOADER } from '../shared/loaders'
 import { findUpdates } from './services/updates'
 import { decodeProfile, encodeProfile, refsFor } from './services/profilecode'
@@ -243,10 +242,15 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
       // route was fixed to avoid.
       const game = resolveGame()
       if (!game) throw new Error('No game folder set. Use "Locate game" to pick it.')
-      if (placeLoader(profiles.dir(profileId), game.root) === null) {
+      // MelonLoader installs into the game folder rather than into a profile, so
+      // there is nothing to place and nothing to refuse. The direct launch path
+      // already knew that; this one did not, and told anyone with a working
+      // MelonLoader to go and install BepInEx — which TidePool no longer ships,
+      // because it does not run on this game at all.
+      if (!hasLoader(game.root, profiles.dir(profileId))) {
         throw new Error(
-          'This profile has no mod loader installed, so Steam would start the game unmodded. ' +
-            'Install BepInEx from Browse, then try again.',
+          'No mod loader found, so Steam would start the game unmodded. TidePool looks for ' +
+            'MelonLoader in the game folder — install it from Essentials, then try again.',
         )
       }
       await shell.openExternal(steamRunUrl())

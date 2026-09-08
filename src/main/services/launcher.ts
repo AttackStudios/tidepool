@@ -20,6 +20,23 @@ import { detectLoader, inspectGameFolder } from './gamefolder'
 import { LOADER_STAGING } from './install'
 import { SURF_SANDBOX_APP_ID } from './steam'
 
+/**
+ * Is a mod loader available at all, by either route?
+ *
+ * There are two, and conflating them is a mistake this has already made twice:
+ * MelonLoader installs into the game folder, while BepInEx was staged inside a
+ * profile and copied across at launch. Checking only the profile told anyone
+ * with a perfectly good MelonLoader that they had no loader — and pointed them
+ * at BepInEx, which TidePool no longer ships because it does not run on this
+ * game.
+ *
+ * Both launch paths ask this, so they cannot drift apart again.
+ */
+export function hasLoader(gameRoot: string, profileDir: string): boolean {
+  if (detectLoader(gameRoot) !== null) return true
+  return placeLoader(profileDir, gameRoot) !== null
+}
+
 export type LaunchMode = 'modded' | 'vanilla' | 'steam'
 
 export interface LaunchOutcome {

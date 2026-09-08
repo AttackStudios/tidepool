@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { canLaunchDirectly, launchGame, placeLoader, steamRunUrl } from './launcher'
+import { canLaunchDirectly, hasLoader, launchGame, placeLoader, steamRunUrl } from './launcher'
 import { buildLaunchPlan } from './launch'
 import { LOADER_STAGING } from './install'
 
@@ -169,5 +169,31 @@ describe('launching with MelonLoader', () => {
     expect(outcome.started).toBe(false)
     expect(outcome.reason).toMatch(/no mod loader/i)
     rmSync(bare, { recursive: true, force: true })
+  })
+})
+
+describe('hasLoader', () => {
+  it('accepts MelonLoader installed in the game folder', () => {
+    // The case that was broken: MelonLoader lives in the game, not a profile,
+    // so checking only the profile told people with a working loader to go and
+    // install BepInEx — which TidePool no longer ships.
+    const game = mkdtempSync(join(tmpdir(), 'tidepool-game-'))
+    const profile = mkdtempSync(join(tmpdir(), 'tidepool-prof-'))
+    mkdirSync(join(game, 'MelonLoader'), { recursive: true })
+
+    expect(hasLoader(game, profile)).toBe(true)
+
+    rmSync(game, { recursive: true, force: true })
+    rmSync(profile, { recursive: true, force: true })
+  })
+
+  it('refuses when neither the game nor the profile has one', () => {
+    const game = mkdtempSync(join(tmpdir(), 'tidepool-game-'))
+    const profile = mkdtempSync(join(tmpdir(), 'tidepool-prof-'))
+
+    expect(hasLoader(game, profile)).toBe(false)
+
+    rmSync(game, { recursive: true, force: true })
+    rmSync(profile, { recursive: true, force: true })
   })
 })
