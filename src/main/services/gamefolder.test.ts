@@ -107,3 +107,35 @@ describe('detectLoader', () => {
     rmSync(d, { recursive: true, force: true })
   })
 })
+
+describe('macOS builds', () => {
+  it('recognises a .app bundle', () => {
+    // Mac builds share none of the Windows shape: no <Name>_Data at the root, no
+    // .exe, and the native library is a .dylib inside Frameworks.
+    const root = mkdtempSync(join(tmpdir(), 'tidepool-mac-'))
+    const app = join(root, 'SurfSandbox.app')
+    mkdirSync(join(app, 'Contents', 'Resources', 'Data'), { recursive: true })
+    mkdirSync(join(app, 'Contents', 'Frameworks'), { recursive: true })
+    writeFileSync(join(app, 'Contents', 'Frameworks', 'GameAssembly.dylib'), '')
+
+    const game = inspectGameFolder(root)
+
+    expect(game).not.toBeNull()
+    expect(game?.executable).toBe('SurfSandbox.app')
+    expect(game?.dataDir).toBe(join('SurfSandbox.app', 'Contents', 'Resources', 'Data'))
+    // Getting this wrong would send someone hunting for a Mono loader that
+    // cannot exist for this build.
+    expect(game?.backend).toBe('il2cpp')
+
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('ignores a folder with a bundle but no Unity data inside it', () => {
+    const root = mkdtempSync(join(tmpdir(), 'tidepool-mac-'))
+    mkdirSync(join(root, 'Something.app', 'Contents'), { recursive: true })
+
+    expect(inspectGameFolder(root)).toBeNull()
+
+    rmSync(root, { recursive: true, force: true })
+  })
+})

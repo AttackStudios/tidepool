@@ -90,10 +90,21 @@ function levelsDirIn(gameRoot: string | null): string | null {
     return null
   }
   const dataDir = entries.find((e) => e.endsWith('_Data'))
-  if (!dataDir) return null
+  if (dataDir) {
+    const levels = join(gameRoot, dataDir, 'StreamingAssets', 'Levels')
+    return existsSync(levels) ? levels : null
+  }
 
-  const levels = join(gameRoot, dataDir, 'StreamingAssets', 'Levels')
-  return existsSync(levels) ? levels : null
+  // macOS keeps the same tree inside the .app bundle, under a folder called
+  // plain `Data`. Beaches are only data files, so they work there whether or not
+  // a mod loader ever does.
+  const bundle = entries.find((e) => e.endsWith('.app'))
+  if (bundle) {
+    const levels = join(gameRoot, bundle, 'Contents', 'Resources', 'Data', 'StreamingAssets', 'Levels')
+    return existsSync(levels) ? levels : null
+  }
+
+  return null
 }
 
 /**

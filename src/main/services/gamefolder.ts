@@ -1,9 +1,13 @@
 /**
  * Identifying a Unity game folder without knowing the game's executable name.
  *
- * Surf Sandbox is unreleased, so its folder and executable names are unknown.
  * Rather than hardcode a guess, this derives them from Unity's own convention:
- * a build always contains `<Name>_Data` beside `<Name>.exe`.
+ * on Windows a build contains `<Name>_Data` beside `<Name>.exe`.
+ *
+ * macOS builds are shaped completely differently — everything lives inside a
+ * `.app` bundle, the data folder is called plain `Data` rather than
+ * `<Name>_Data`, and the native library is a .dylib. Surf Sandbox got a Mac
+ * build after release, so both layouts have to be recognised.
  */
 import { existsSync, readdirSync } from 'node:fs'
 import { LOADERS, type LoaderKind } from '../../shared/loaders'
@@ -19,6 +23,7 @@ export interface GameFolder {
 }
 
 const DATA_SUFFIX = '_Data'
+const APP_SUFFIX = '.app'
 
 /** Inspect a folder and report whether it looks like a Unity game build. */
 export function inspectGameFolder(root: string): GameFolder | null {
@@ -32,13 +37,26 @@ export function inspectGameFolder(root: string): GameFolder | null {
   }
 
   const dataDir = entries.find((e) => e.endsWith(DATA_SUFFIX)) ?? null
-  if (!dataDir) return null
 
-  const base = dataDir.slice(0, -DATA_SUFFIX.length)
-  const exe = `${base}.exe`
-  const executable = entries.includes(exe) ? exe : null
+  if (dataDir) {
+    const base = dataDir.slice(0, -DATA_SUFFIX.length)
+    const exe = `${base}.exe`
+    const executable = entries.includes(exe) ? exe : null
+    return { root, executable, dataDir, backend: detectBackend(root, dataDir) }
+  }
 
-  return { root, executable, dataDir, backend: detectBackend(root, dataDir) }
+  // A macOS build: one .app bundle, with everything inside it.
+  const bundle = entries.find((e) => e.endsWith(APP_SUFFIX))
+  if (bundle) {
+    const inside = join(bundle, 'Contents', 'Resources', 'Data')
+    if (existsSync(join(root, inside))) {
+      const name = bundle.slice(0, -APP_SUFFIX.length)
+      // The bundle is what gets launched, not the binary buried inside it.
+      return { root, executable: bundle, dataDir: inside, backend: detectBackend(root, inside) }
+    }
+  }
+
+  return null
 }
 
 /**
@@ -47,6 +65,9 @@ export function inspectGameFolder(root: string): GameFolder | null {
  */
 export function detectBackend(root: string, dataDir: string): 'mono' | 'il2cpp' | null {
   if (existsSync(join(root, 'GameAssembly.dll'))) return 'il2cpp'
+  // On macOS the native library sits in the bundle's Frameworks folder, two
+  // levels above the Data folder, and carries a .dylib extension.
+  if (existsSync(join(root, dataDir, '..', '..', 'Frameworks', 'GameAssembly.dylib'))) return 'il2cpp'
   if (existsSync(join(root, dataDir, 'Managed', 'Assembly-CSharp.dll'))) return 'mono'
   return null
 }
