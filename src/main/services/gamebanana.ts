@@ -8,6 +8,7 @@
  * people's games, so TidePool lists these and hands off to the browser.
  */
 import type { PackageSummary } from '../../shared/types'
+import { withTimeout } from './http'
 
 const API = 'https://gamebanana.com/apiv11'
 const UA = 'TidePool (+https://github.com/AttackStudios/tidepool)'
@@ -31,7 +32,7 @@ export class GameNotOnGameBananaError extends Error {
 
 async function get(url: string, options: GbOptions): Promise<unknown> {
   const doFetch = options.fetchImpl ?? fetch
-  const res = await doFetch(url, { headers: { 'User-Agent': UA }, signal: options.signal })
+  const res = await doFetch(url, { headers: { 'User-Agent': UA }, signal: withTimeout(options.signal) })
   if (!res.ok) throw new Error(`GameBanana returned ${res.status}`)
   return res.json()
 }

@@ -7,6 +7,7 @@
  * no new app build and nothing for users to update.
  */
 import type { PackageSummary } from '../../shared/types'
+import { isTimeout, withTimeout } from './http'
 
 export const MANIFEST_URL =
   'https://raw.githubusercontent.com/AttackStudios/tidepool/main/essentials/index.json'
@@ -102,9 +103,13 @@ export async function fetchEssentials(
   const doFetch = options.fetchImpl ?? fetch
   let res: Response
   try {
-    res = await doFetch(options.url ?? MANIFEST_URL, { signal: options.signal })
-  } catch {
-    throw new EssentialsUnavailableError('the list could not be reached')
+    res = await doFetch(options.url ?? MANIFEST_URL, { signal: withTimeout(options.signal) })
+  } catch (error) {
+    // Worth telling apart: "refused" means try later, "took too long" usually
+    // means the connection itself is the problem — a captive portal, most often.
+    throw new EssentialsUnavailableError(
+      isTimeout(error) ? 'the list took too long to answer' : 'the list could not be reached',
+    )
   }
   if (!res.ok) throw new EssentialsUnavailableError(`the server returned ${res.status}`)
 

@@ -7,6 +7,7 @@
  * an existing community (try "lethal-company") long before ours exists.
  */
 import type { Package } from '../../shared/types'
+import { isTimeout, withTimeout } from './http'
 
 export const DEFAULT_COMMUNITY = 'surf-sandbox'
 
@@ -37,8 +38,13 @@ export class CommunityNotFoundError extends Error {
 
 /** Thrown when Thunderstore itself is unreachable, as opposed to the community missing. */
 export class ThunderstoreUnavailableError extends Error {
-  constructor(public status: number) {
-    super(`Thunderstore is unavailable right now (HTTP ${status}). Try again shortly.`)
+  /** `reason` covers the failures that never produce a status code at all. */
+  constructor(public status: number, reason?: string) {
+    super(
+      reason
+        ? `Thunderstore is unavailable right now — ${reason}. Try again shortly.`
+        : `Thunderstore is unavailable right now (HTTP ${status}). Try again shortly.`,
+    )
     this.name = 'ThunderstoreUnavailableError'
   }
 }
@@ -55,13 +61,23 @@ export async function fetchPackages(options: FetchOptions = {}): Promise<Package
   const community = options.community ?? DEFAULT_COMMUNITY
   const doFetch = options.fetchImpl ?? fetch
 
-  const res = await doFetch(packageIndexUrl(community), { signal: options.signal })
+  let res: Response
+  try {
+    res = await doFetch(packageIndexUrl(community), { signal: withTimeout(options.signal) })
+  } catch (error) {
+    // Without this the raw "fetch failed" — or a timeout's "operation was
+    // aborted" — reached the user as the whole explanation.
+    throw new ThunderstoreUnavailableError(
+      0,
+      isTimeout(error) ? 'it took too long to answer' : 'it could not be reached',
+    )
+  }
 
   if (res.status === 404) throw new CommunityNotFoundError(community)
 
   if (res.status === 503) {
     if (community === PROBE_COMMUNITY) throw new ThunderstoreUnavailableError(res.status)
-    const probe = await doFetch(packageIndexUrl(PROBE_COMMUNITY), { signal: options.signal })
+    const probe = await doFetch(packageIndexUrl(PROBE_COMMUNITY), { signal: withTimeout(options.signal) })
     // Probe fine, target 503 -> the community genuinely isn't there.
     if (probe.ok) throw new CommunityNotFoundError(community)
     throw new ThunderstoreUnavailableError(res.status)

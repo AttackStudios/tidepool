@@ -158,7 +158,11 @@ describe('Catalog', () => {
   it('still throws when the network is down and nothing is cached', async () => {
     const { dir, cache } = tempCache()
     failingFetch()
-    await expect(new Catalog(() => 0, cache).browse({}, 'x')).rejects.toThrow(/offline/)
+    // The raw failure ("offline", or fetch's own "fetch failed") is replaced by
+    // something a person can act on — there is no cache to fall back to here, so
+    // this message is the entire explanation they get.
+    await expect(new Catalog(() => 0, cache).browse({}, 'x'))
+      .rejects.toThrow(/could not be reached/)
     rmSync(dir, { recursive: true, force: true })
   })
 
