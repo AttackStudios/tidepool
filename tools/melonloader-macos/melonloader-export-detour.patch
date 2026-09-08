@@ -1,0 +1,57 @@
+diff --git a/MelonLoader.Bootstrap/ModuleSymbolRedirect.cs b/MelonLoader.Bootstrap/ModuleSymbolRedirect.cs
+index 1ba01c0..40e24c9 100644
+--- a/MelonLoader.Bootstrap/ModuleSymbolRedirect.cs
++++ b/MelonLoader.Bootstrap/ModuleSymbolRedirect.cs
+@@ -1,6 +1,7 @@
+ ﻿using MelonLoader.Bootstrap.RuntimeHandlers.Il2Cpp;
+ using MelonLoader.Bootstrap.RuntimeHandlers.Mono;
+ using MelonLoader.Bootstrap.Utils;
++using System.Runtime.CompilerServices;
+ using System.Runtime.InteropServices;
+ 
+ namespace MelonLoader.Bootstrap
+@@ -24,7 +25,18 @@ namespace MelonLoader.Bootstrap
+ 
+             IntPtr detourPtr = Marshal.GetFunctionPointerForDelegate(DetourDelegate);
+ 
+-#if LINUX || OSX
++#if OSX
++            // Interpose rather than PLT hook. plthook_replace succeeds on
++            // UnityPlayer.dylib and the hook then never fires in a
++            // Rosetta-translated process, while a dyld interpose on the same
++            // symbol catches every lookup. OSXEntry already interposes
++            // setrlimit, so this uses a mechanism known to work here.
++            // Nothing to install here: the interpose lives in a small separate
++            // library, because interposing dlsym from inside this dylib does not
++            // fire while interposing it from another one does. All it needs from
++            // us is SymbolDetourExport below.
++            _ = detourPtr;
++#elif LINUX
+             PltHook.InstallHooks
+             ([
+                 ("dlsym", detourPtr)
+@@ -84,6 +96,15 @@ namespace MelonLoader.Bootstrap
+             return redirect.detourPtr;
+         }
+ 
++#if OSX
++        // Called by the shim's dlsym interpose. Exported so it can be found with
++        // dlsym(RTLD_DEFAULT, "MelonSymbolDetour").
++        [UnmanagedCallersOnly(EntryPoint = "MelonSymbolDetour", CallConvs = [typeof(CallConvCdecl)])]
++        internal static nint SymbolDetourExport(nint handle, nint symbol)
++            => SymbolDetour(handle, symbol);
++
++#endif
++
+ #if WINDOWS
+         [DllImport("kernel32")]
+         private static extern nint GetProcAddress(nint handle, nint symbol);
+diff --git a/MelonLoader.Bootstrap/osxexports.def b/MelonLoader.Bootstrap/osxexports.def
+index 8eaf59d..11432c6 100644
+--- a/MelonLoader.Bootstrap/osxexports.def
++++ b/MelonLoader.Bootstrap/osxexports.def
+@@ -10,3 +10,4 @@ _MonoGetDomainPtr
+ _MonoGetRuntimeHandle
+ _IsConsoleOpen
+ _GetLoaderConfig
++_MelonSymbolDetour
