@@ -24,14 +24,14 @@
       "dependencies": []
     },
     {
-      "id": "AttackStudioYT-TidePoolMod",
-      "name": "TidePool In-Game Mod",
+      "id": "AttackStudioYT-ExternalBeachSupport",
+      "name": "External Beach Support",
       "owner": "AttackStudioYT",
-      "summary": "Puts custom breaks on the map, so you can actually pick them.",
-      "description": "Surf Sandbox's break select is a map of Oahu whose sixteen markers are built into the scene, not read from the levels folder. So a custom break sits on disk where the game never looks for it - installed, valid, and unreachable.\n\nThis adds a marker for every custom break you have, named, in a column down the left of the map. Install it and Break Pack becomes playable.\n\nNeeds MelonLoader, which is in Essentials. Install that first; its first launch takes a minute while it generates files.",
+      "summary": "Puts every beach outside the shipped sixteen on the map.",
+      "description": "Surf Sandbox's break select is a map of Oahu whose sixteen markers are built into the scene, not read from the levels folder. So a beach the game did not ship sits on disk where it never looks: installed, valid, and unreachable.\n\nThat includes your own saved beaches. The game writes them into the same folder and then never offers them again.\n\nThis adds a marker for every one of them, named, in columns beside the island. Install it and Break Pack becomes playable, and your own saves come back.\n\nNeeds MelonLoader, which is in Essentials. Install that first; its first launch takes a minute while it generates files.",
       "status": "released",
-      "version": "1.0.1",
-      "downloadUrl": "https://github.com/AttackStudios/tidepool/releases/download/tidepool-mod-1.0.1/tidepool-mod.zip",
+      "version": "1.1.0",
+      "downloadUrl": "https://github.com/AttackStudios/tidepool/releases/download/external-beach-support-1.1.0/ExternalBeachSupport.zip",
       "icon": null,
       "homepage": "https://github.com/AttackStudios/tidepool/tree/main/plugin",
       "categories": [
