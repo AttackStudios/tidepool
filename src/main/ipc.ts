@@ -1,10 +1,10 @@
 /** IPC surface exposed to the renderer. Keep this the only channel list. */
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { findGameInstall } from './services/steam'
 import { canLaunchDirectly, hasLoader, launchGame, placeLoader, steamRunUrl } from './services/launcher'
 import { detectLoader, inspectGameFolder } from './services/gamefolder'
-import { DEFAULT_LOADER } from '../shared/loaders'
+import { DEFAULT_LOADER, LOADERS } from '../shared/loaders'
 import { findUpdates } from './services/updates'
 import { decodeProfile, encodeProfile, refsFor } from './services/profilecode'
 import { analyseRemoval } from './services/dependents'
@@ -16,6 +16,7 @@ import {
 import { UPDATE_CHANNEL, quitAndInstall } from './services/updates-app'
 import type { LaunchMode } from './services/launcher'
 import { SettingsStore } from './services/settings'
+import { GameInstallStore, gameInstallsFile } from './services/gameinstalls'
 import { CommunityNotFoundError, ThunderstoreUnavailableError } from './services/thunderstore'
 import { ProfileStore } from './services/profiles'
 import { buildLaunchPlan, steamLaunchOptions } from './services/launch'
@@ -80,6 +81,8 @@ export const CHANNELS = {
   importLocalMod: 'mods:import-local',
   exportProfile: 'profiles:export',
   importProfile: 'profiles:import',
+  gameInstalls: 'essentials:game-installs',
+  uninstallEssential: 'essentials:uninstall',
 } as const
 
 /** Map thrown errors onto the discriminated union the UI switches on. */
@@ -108,6 +111,9 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
   const catalog = new Catalog(() => Date.now(), new IndexCache(join(cacheDir, 'index')))
   const installer = new Installer(catalog, profiles, cacheDir)
   const settings = new SettingsStore(settingsFile)
+  // Settings already live at the root of the app data folder, so this needs no
+  // extra argument threaded through from main.
+  const gameInstalls = new GameInstallStore(gameInstallsFile(dirname(settingsFile)))
 
   /** Manual override wins, because it exists precisely for when detection is wrong. */
   const resolveGame = (): GameInstall | null => {
@@ -501,6 +507,38 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
 
   ipcMain.handle(CHANNELS.essentialDetail, (_e, id: string) => attempt(() => findEssential(id)))
 
+  /** What is installed into the game folder, so the UI can stop offering it again. */
+  ipcMain.handle(CHANNELS.gameInstalls, () =>
+    attempt(async () => {
+      const root = resolveGame()?.root ?? null
+      const entries = gameInstalls
+        .list(root)
+        .map((e) => ({ id: e.id, version: e.version as string | null, removable: true }))
+      if (!root) return entries
+
+      // A loader installed by hand, or before TidePool kept records, is still
+      // installed — so say so rather than offering it again. Not removable
+      // though: without a record of what was written there is no honest way to
+      // take it away without also taking the user's own mods.
+      const detected = detectLoader(root)
+      const id = detected ? LOADERS[detected].essentialId : null
+      if (id && !entries.some((e) => e.id === id)) {
+        entries.push({ id, version: null, removable: false })
+      }
+      return entries
+    }),
+  )
+
+  ipcMain.handle(CHANNELS.uninstallEssential, (_e, id: string) =>
+    attempt(async () => {
+      const game = resolveGame()
+      if (!game) throw new Error('No game folder set, so there is nothing to remove from.')
+      const entry = gameInstalls.find(game.root, id)
+      if (!entry) throw new Error(`${id} is not recorded as installed in the game folder.`)
+      return { id, removed: gameInstalls.remove(game.root, id).length }
+    }),
+  )
+
   ipcMain.handle(CHANNELS.installEssential, (event, profileId: string, id: string) =>
     attempt(async () => {
       const mod = await findEssential(id)
@@ -531,6 +569,11 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
           fetch,
         )
         const written = installLoaderPack(zip, game.root)
+        // Recorded because nothing else will remember. These files go into the
+        // game folder rather than a profile, so without this the UI has no way
+        // to know the mod is there — which is why Install stayed clickable and
+        // installing twice was possible.
+        gameInstalls.record(game.root, { id: mod.id, version: mod.version, files: written })
         event.sender.send(CHANNELS.installProgress, {
           phase: 'done', current: mod.id, completed: 1, total: 1,
         })
@@ -565,6 +608,13 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
           fetch,
         )
         const written = installBeachPack(zip, dir)
+        // Keyed on the game root even though beaches land in the Levels folder:
+        // the Levels folder belongs to that install, and this is what the UI
+        // asks about.
+        const root = resolveGame()?.root
+        if (root) {
+          gameInstalls.record(root, { id: mod.id, version: mod.version, files: written })
+        }
         event.sender.send(CHANNELS.installProgress, {
           phase: 'done', current: mod.id, completed: 1, total: 1,
         })

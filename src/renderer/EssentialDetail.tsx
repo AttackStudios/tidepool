@@ -1,6 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { InstallProgress, PackageSummary, Profile, Result } from '../shared/types'
 import { toast, toastError } from './toast'
+
+/** A mod living in the game folder rather than in a profile. */
+interface GameInstallEntry {
+  id: string
+  /** Null for something found on disk that TidePool did not install itself. */
+  version: string | null
+  /** False when we have no record of which files are ours to delete. */
+  removable: boolean
+}
 
 interface EssentialMod {
   id: string
@@ -26,6 +35,21 @@ export function EssentialDetail({
   const [mod, setMod] = useState<EssentialMod | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<InstallProgress | null>(null)
+  const [inGame, setInGame] = useState<GameInstallEntry | null>(null)
+
+  /**
+   * Loaders, MelonLoader mods and beach packs install into the game folder, not
+   * into the profile, so `profile.mods` never mentions them. Without asking
+   * separately the button said "Install" forever and a second press installed
+   * over the top.
+   */
+  const refreshGameInstalls = useCallback(() => {
+    void window.tidepool.gameInstalls().then((r: Result<GameInstallEntry[]>) => {
+      setInGame(r.ok ? r.data.find((e) => e.id === summary.fullName) ?? null : null)
+    })
+  }, [summary.fullName])
+
+  useEffect(refreshGameInstalls, [refreshGameInstalls])
 
   useEffect(() => {
     let cancelled = false
@@ -39,7 +63,7 @@ export function EssentialDetail({
 
   useEffect(() => window.tidepool.onInstallProgress(setProgress), [])
 
-  const installed = profile?.mods.find((m) => m.fullName === summary.fullName) ?? null
+  const inProfile = profile?.mods.find((m) => m.fullName === summary.fullName) ?? null
 
   const install = async () => {
     if (!profile) return
@@ -49,6 +73,18 @@ export function EssentialDetail({
     setProgress(null)
     if (!res.ok) toastError(res.message)
     else toast(`Installed ${summary.name}`)
+    refreshGameInstalls()
+    onChanged()
+  }
+
+  const uninstall = async () => {
+    setBusy(true)
+    const res: Result<{ removed: number }> =
+      await window.tidepool.uninstallEssential(summary.fullName)
+    setBusy(false)
+    if (!res.ok) toastError(res.message)
+    else toast(`Removed ${summary.name}`)
+    refreshGameInstalls()
     onChanged()
   }
 
@@ -93,8 +129,17 @@ export function EssentialDetail({
       )}
 
       <div className="detail__actions">
-        {installed ? (
-          <span className="tag tag--ok">installed {installed.version}</span>
+        {inGame?.removable ? (
+          // Removable because it is ours: we recorded exactly what was written.
+          <button className="button--danger" onClick={() => void uninstall()} disabled={busy}>
+            {busy ? 'Removing…' : `Uninstall${inGame.version ? ` ${inGame.version}` : ''}`}
+          </button>
+        ) : inGame ? (
+          // Present, but not put there by us — so say so without offering to
+          // remove files we cannot tell apart from the user's own.
+          <span className="tag tag--ok">already in your game folder</span>
+        ) : inProfile ? (
+          <span className="tag tag--ok">installed {inProfile.version}</span>
         ) : (
           <button
             onClick={() => void install()}

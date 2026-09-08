@@ -63,6 +63,9 @@ const api = {
   supportBundle: (profileId: string) => ipcRenderer.invoke(CHANNELS.supportBundle, profileId),
   openLogFolder: (profileId: string) => ipcRenderer.invoke(CHANNELS.openLogFolder, profileId),
   essentialDetail: (id: string) => ipcRenderer.invoke(CHANNELS.essentialDetail, id),
+  /** Mods installed into the game folder rather than a profile. */
+  gameInstalls: () => ipcRenderer.invoke(CHANNELS.gameInstalls),
+  uninstallEssential: (id: string) => ipcRenderer.invoke(CHANNELS.uninstallEssential, id),
   installEssential: (profileId: string, id: string) =>
     ipcRenderer.invoke(CHANNELS.installEssential, profileId, id),
   analyseRemoval: (profileId: string, fullName: string, community?: string) =>

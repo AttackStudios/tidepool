@@ -21,6 +21,14 @@ export interface LoaderSpec {
   marker: string
   /** Where a mod's assemblies belong, relative to a profile. */
   modsDir: string
+  /**
+   * The Essentials entry that installs this, if there is one.
+   *
+   * Lets a loader already sitting in the game folder — installed by hand, or
+   * before TidePool kept records — be recognised as installed rather than
+   * offered again.
+   */
+  essentialId: string | null
 }
 
 export const LOADERS: Record<LoaderKind, LoaderSpec> = {
@@ -30,6 +38,8 @@ export const LOADERS: Record<LoaderKind, LoaderSpec> = {
     proxyDll: 'winhttp.dll',
     marker: 'BepInEx',
     modsDir: 'BepInEx/plugins',
+    // Not in Essentials: TidePool no longer ships BepInEx for this game.
+    essentialId: null,
   },
   melonloader: {
     kind: 'melonloader',
@@ -39,6 +49,7 @@ export const LOADERS: Record<LoaderKind, LoaderSpec> = {
     proxyDll: 'version.dll',
     marker: 'MelonLoader',
     modsDir: 'Mods',
+    essentialId: 'LavaGang-MelonLoader',
   },
 }
 
