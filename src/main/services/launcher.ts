@@ -12,7 +12,7 @@
  *   playtime and cloud saves, and works wherever Steam can run the game, but it
  *   applies whatever launch options are saved in Steam rather than ours.
  */
-import { execFileSync, spawn } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { cpSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type { LaunchPlan } from './launch'
@@ -20,6 +20,7 @@ import { detectLoader, inspectGameFolder } from './gamefolder'
 import { LOADER_STAGING } from './install'
 import { SURF_SANDBOX_APP_ID } from './steam'
 import { dotnetProblem, findDotnetRuntime, satisfies } from './dotnet'
+import { SHIM_NAME, prepareMacGame } from './macmods'
 
 /**
  * Is a mod loader available at all, by either route?
@@ -146,10 +147,22 @@ export function macInjectionEnv(gameRoot: string, mode: LaunchMode): Record<stri
   const bootstrap = join(gameRoot, 'MelonLoader.Bootstrap.dylib')
   if (!existsSync(bootstrap)) return {}
 
+  // The shim goes first, and it is what makes any of this work: MelonLoader's
+  // PLT hook on dlsym never fires in a translated process, so the game resolves
+  // il2cpp_init without the loader ever seeing it. The shim interposes dlsym
+  // instead and hands those lookups to MelonLoader's own detour.
+  const bundle = macBundle(gameRoot)
+  const shim = bundle ? join(gameRoot, bundle.app, 'Contents', 'MacOS', SHIM_NAME) : null
+  const inserted = shim && existsSync(shim) ? `${shim}:${bootstrap}` : bootstrap
+
   const env: Record<string, string> = {
-    DYLD_INSERT_LIBRARIES: bootstrap,
+    DYLD_INSERT_LIBRARIES: inserted,
     // The managed side loads the bootstrap again by bare filename.
     DYLD_LIBRARY_PATH: gameRoot,
+    // Cpp2IL runs as a child process and inherits the injection, so the
+    // bootstrap tries to load itself there by bare name too. Without this the
+    // first launch fails partway through generating interop assemblies.
+    DYLD_FALLBACK_LIBRARY_PATH: `${gameRoot}:/usr/local/lib:/usr/lib`,
   }
 
   // MelonLoader is managed code and ships no runtime, so it has to host one
@@ -172,21 +185,6 @@ export function macInjectionEnv(gameRoot: string, mode: LaunchMode): Record<stri
  * Lives beside the original inside the bundle so Unity still resolves its Data
  * folder relative to the executable.
  */
-function thinBinary(original: string): string | null {
-  const thin = `${original}-x86_64`
-  if (existsSync(thin)) return thin
-
-  try {
-    execFileSync('/usr/bin/lipo', [original, '-thin', 'x86_64', '-output', thin])
-    // lipo drops the signature, and macOS will not run an unsigned binary that
-    // came from a signed bundle. Ad-hoc signing is enough for a local build.
-    execFileSync('/usr/bin/codesign', ['--force', '--sign', '-', thin])
-    return thin
-  } catch {
-    return null
-  }
-}
-
 /**
  * Start the macOS build, injecting MelonLoader when there is one.
  *
@@ -206,9 +204,7 @@ function launchMac(
   const bundle = macBundle(gameRoot)
   if (!bundle) return { started: false, mode, reason: 'No .app bundle in the game folder.' }
 
-  const injecting = Object.keys(macInjectionEnv(gameRoot, mode)).length > 0
-
-  const env = macInjectionEnv(gameRoot, mode)
+  const injecting = mode !== 'vanilla' && existsSync(join(gameRoot, 'MelonLoader.Bootstrap.dylib'))
 
   // MelonLoader's bootstrap ships x86_64 only, so on Apple Silicon the game has
   // to run its x86_64 slice or the two never meet.
@@ -219,22 +215,26 @@ function launchMac(
   // exec'ing directly keeps DYLD_INSERT_LIBRARIES, and going through arch
   // reports it as "(gone)".
   //
-  // A thin copy of the game binary runs x86_64 under Rosetta with nothing in
-  // between, so the variable survives.
-  let command = bundle.binary
-  if (injecting && process.arch === 'arm64') {
-    const thin = thinBinary(bundle.binary)
-    if (!thin) {
+  // The game is converted in place instead. A thinned *copy* under another name
+  // does not work: MelonLoader loses the last three characters of the executable
+  // name on the way to Cpp2IL, so "Game-x86_64" arrives as "Game-x86" and the
+  // interop assemblies are never generated.
+  if (injecting) {
+    try {
+      prepareMacGame(join(gameRoot, bundle.app), bundle.binary)
+    } catch (e) {
       return {
         started: false,
         mode,
         reason:
-          'This Mac is Apple Silicon and MelonLoader is x86_64 only, but an x86_64 copy of the ' +
-          'game could not be made, so mods cannot be loaded.',
+          'Could not convert Surf Sandbox to Intel-only, which MelonLoader needs on macOS: ' +
+          `${(e as Error).message}`,
       }
     }
-    command = thin
   }
+  // After preparation, so it can see the shim that preparation writes.
+  const env = macInjectionEnv(gameRoot, mode)
+  const command = bundle.binary
   const args: string[] = []
 
   try {
