@@ -4,7 +4,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  ORIGINALS_DIR, SHIM_NAME, describePreparation, isMacGamePrepared, prepareMacGame,
+  ORIGINALS_DIR, SHIM_NAME, canRevertMacGame, describePreparation, isMacGamePrepared,
+  prepareMacGame, revertMacGame,
 } from './macmods'
 
 /**
@@ -131,5 +132,57 @@ onMac('preparing a macOS install', () => {
     expect(text).toMatch(/waves/i)
     expect(text).toMatch(/undone/i)
     expect(text).toContain(ORIGINALS_DIR)
+  })
+})
+
+onMac('reverting a prepared install', () => {
+  it('puts the universal builds back and removes the shim', () => {
+    const { app, binary } = bundle()
+    const before = readFileSync(binary)
+    prepareMacGame(app, binary)
+    expect(archs(binary)).toBe('x86_64')
+
+    const result = revertMacGame(app, binary)
+
+    expect(archs(binary)).toContain('arm64')
+    expect(archs(join(app, 'Contents/Frameworks/GameAssembly.dylib'))).toContain('arm64')
+    expect(readFileSync(binary)).toEqual(before)
+    expect(result.restored).toHaveLength(3)
+    expect(result.shimRemoved).toBe(true)
+    expect(existsSync(join(app, 'Contents', 'MacOS', SHIM_NAME))).toBe(false)
+  })
+
+  it('leaves the originals in place, so a failed revert can be retried', () => {
+    const { app, binary } = bundle()
+    prepareMacGame(app, binary)
+    revertMacGame(app, binary)
+
+    expect(canRevertMacGame(app)).toBe(true)
+    // And running it twice is harmless.
+    expect(revertMacGame(app, binary).restored).toHaveLength(3)
+  })
+
+  it('reports the game as needing preparation again afterwards', () => {
+    const { app, binary } = bundle()
+    prepareMacGame(app, binary)
+    revertMacGame(app, binary)
+    expect(isMacGamePrepared(app, binary)).toBe(false)
+  })
+
+  it('knows when there is nothing to revert to', () => {
+    const { app } = bundle()
+    expect(canRevertMacGame(app)).toBe(false)
+  })
+
+  it('does nothing rather than failing when the originals are gone', () => {
+    const { app, binary } = bundle()
+    prepareMacGame(app, binary)
+    rmSync(join(dir, ORIGINALS_DIR), { recursive: true, force: true })
+
+    const result = revertMacGame(app, binary)
+    expect(result.restored).toEqual([])
+    // The shim still goes, because that part needs no original.
+    expect(result.shimRemoved).toBe(true)
+    expect(archs(binary)).toBe('x86_64')
   })
 })

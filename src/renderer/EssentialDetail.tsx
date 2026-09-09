@@ -142,6 +142,7 @@ export function EssentialDetail({
           <span className="tag tag--ok">installed {inProfile.version}</span>
         ) : (
           <button
+            className="button--primary"
             onClick={() => void install()}
             disabled={planned || busy || !profile}
             title={planned ? 'Not released yet' : undefined}

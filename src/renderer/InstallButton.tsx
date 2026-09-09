@@ -60,6 +60,7 @@ export function InstallButton({
           />
         ) : (
           <button
+            className="button--primary"
             disabled={busy || !versionRef}
             onClick={() =>
               void run(

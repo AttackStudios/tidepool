@@ -65,6 +65,9 @@ const api = {
   essentialDetail: (id: string) => ipcRenderer.invoke(CHANNELS.essentialDetail, id),
   /** Mods installed into the game folder rather than a profile. */
   gameInstalls: () => ipcRenderer.invoke(CHANNELS.gameInstalls),
+  /** Whether mods will load here, and what had to change to get there. */
+  modSupport: () => ipcRenderer.invoke(CHANNELS.modSupport),
+  revertMacGame: () => ipcRenderer.invoke(CHANNELS.revertMacGame),
   uninstallEssential: (id: string) => ipcRenderer.invoke(CHANNELS.uninstallEssential, id),
   installEssential: (profileId: string, id: string) =>
     ipcRenderer.invoke(CHANNELS.installEssential, profileId, id),

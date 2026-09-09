@@ -158,11 +158,20 @@ input, select, button, textarea { font: inherit; font-family: inherit; }
   outline-offset: var(--px);
 }
 
+/*
+ * Buttons are quiet by default, loud only when marked.
+ *
+ * The accent fill used to be the default, so every control on screen shouted
+ * equally and there was no way to tell the one action you probably want from
+ * the eight beside it. Now the ordinary case is secondary, `--primary` marks
+ * the single main action in a region, and `--danger` marks the ones that take
+ * something away.
+ */
 button {
   font-family: var(--display);
-  background: var(--accent);
-  color: var(--accent-ink);
-  border: var(--px) solid var(--accent-deep);
+  background: var(--mid);
+  color: var(--ink-2);
+  border: var(--px) solid var(--line);
   border-radius: 0;
   padding: 6px 12px;
   font-weight: 700;
@@ -178,17 +187,30 @@ button {
  * single-class override like `.card:hover` at (0,2,0) — which is how mod cards
  * ended up painting themselves near-white on hover and hiding their own text.
  */
-:where(button:hover:not(:disabled)) { background: var(--foam); }
+:where(button:hover:not(:disabled)) { background: var(--shelf); color: var(--ink); }
 :where(button:active:not(:disabled)) { transform: translate(2px, 2px); box-shadow: none; }
 button:disabled {
   background: var(--mid); color: var(--ink-3);
   border-color: var(--line-dim); box-shadow: none; cursor: not-allowed;
 }
 
+/* The one action a region is for. At most one per group, or it means nothing. */
+.button--primary {
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent-deep);
+}
+.button--primary:hover:not(:disabled) { background: var(--foam); color: var(--accent-ink); }
+
+/* Kept so existing markup still reads as secondary, which is now the default. */
 .button--ghost {
   background: var(--mid); color: var(--ink-2); border-color: var(--line);
 }
 .button--ghost:hover:not(:disabled) { background: var(--shelf); color: var(--ink); }
+
+/* Tertiary: present, but never competing for attention. */
+.button--quiet {
+  background: transparent; color: var(--ink-3); border-color: transparent; box-shadow: none;
+}
+.button--quiet:hover:not(:disabled) { background: var(--mid); color: var(--ink-2); }
 
 .button--danger {
   background: var(--deep); color: var(--error); border-color: var(--error);
@@ -614,3 +636,28 @@ button:disabled {
 }
 .linklike:hover:not(:disabled) { color: var(--foam); }
 .linklike:focus-visible { outline: var(--px) solid var(--accent); outline-offset: 2px; }
+
+/* ---- Settings ----------------------------------------------------------- */
+/* Prose-shaped rather than dense: these are decisions, not a list to scan. */
+.panel { padding: 16px 20px; }
+.panel__title { font-family: var(--display); font-size: var(--f-h2); margin: 0 0 4px; }
+
+.setting {
+  border: var(--px) solid var(--line-dim);
+  background: var(--mid);
+  padding: 14px 16px;
+  margin-top: 14px;
+  max-width: 70ch;
+}
+.setting__name { font-family: var(--display); font-size: var(--f-body); margin: 0 0 6px; }
+.setting__note { color: var(--ink-2); margin: 0 0 10px; line-height: 1.5; }
+.setting__note--warn { color: var(--warn); }
+.setting__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Indented and ruled, so a confirmation reads as a consequence of the button
+   above it rather than as another unrelated control. */
+.setting__confirm {
+  border-left: 3px solid var(--error);
+  padding-left: 12px;
+  margin-top: 4px;
+}
+.setting__confirm p { color: var(--ink-2); margin: 0 0 10px; line-height: 1.5; }

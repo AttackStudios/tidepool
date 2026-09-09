@@ -160,11 +160,11 @@ export function ModBrowser({
         </label>
       </div>
 
-      {state.status === 'loading' && <p className="muted pad">Paddling out…</p>}
+      {state.status === 'loading' && <p className="muted pad">Loading…</p>}
 
       {state.status === 'no-community' && (
         <div className="empty">
-          <h2 className="empty__title">Flat today</h2>
+          <h2 className="empty__title">Nothing to show</h2>
           <p className="muted">{state.message}</p>
           {window.tidepool.isDev ? (
             <p className="muted">

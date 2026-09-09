@@ -2,7 +2,9 @@
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import { dirname, join } from 'node:path'
 import { findGameInstall } from './services/steam'
-import { canLaunchDirectly, hasLoader, launchGame, placeLoader, steamRunUrl } from './services/launcher'
+import {
+  canLaunchDirectly, hasLoader, launchGame, macBundle, placeLoader, steamRunUrl,
+} from './services/launcher'
 import { detectLoader, inspectGameFolder } from './services/gamefolder'
 import { DEFAULT_LOADER, LOADERS } from '../shared/loaders'
 import { findUpdates } from './services/updates'
@@ -17,6 +19,10 @@ import { UPDATE_CHANNEL, quitAndInstall } from './services/updates-app'
 import type { LaunchMode } from './services/launcher'
 import { SettingsStore } from './services/settings'
 import { GameInstallStore, gameInstallsFile } from './services/gameinstalls'
+import {
+  canRevertMacGame, describePreparation, isMacGamePrepared, revertMacGame,
+} from './services/macmods'
+import { dotnetProblem } from './services/dotnet'
 import { CommunityNotFoundError, ThunderstoreUnavailableError } from './services/thunderstore'
 import { ProfileStore } from './services/profiles'
 import { buildLaunchPlan, steamLaunchOptions } from './services/launch'
@@ -82,6 +88,8 @@ export const CHANNELS = {
   exportProfile: 'profiles:export',
   importProfile: 'profiles:import',
   gameInstalls: 'essentials:game-installs',
+  modSupport: 'game:mod-support',
+  revertMacGame: 'game:mac-revert',
   uninstallEssential: 'essentials:uninstall',
 } as const
 
@@ -506,6 +514,60 @@ export function registerIpc(profileRoot: string, cacheDir: string, settingsFile:
   // ---- essentials -------------------------------------------------------
 
   ipcMain.handle(CHANNELS.essentialDetail, (_e, id: string) => attempt(() => findEssential(id)))
+
+  /**
+   * Whether mods will actually load, and what TidePool had to change to get
+   * there. Both platforms answer, because "will this work" is the same question
+   * either way even though the obstacles differ.
+   */
+  ipcMain.handle(CHANNELS.modSupport, () =>
+    attempt(async () => {
+      const game = resolveGame()
+      const loader = game ? detectLoader(game.root) : null
+      const base = {
+        platform: process.platform,
+        loader,
+        // MelonLoader ships no runtime and needs .NET 6 — but on Windows it
+        // installs one itself, so warning there would be a false alarm.
+        dotnet:
+          loader === 'melonloader' && process.platform !== 'win32' ? dotnetProblem() : null,
+        prepared: false,
+        canRevert: false,
+        needsPreparing: null as string | null,
+      }
+
+      if (process.platform !== 'darwin' || !game) return base
+
+      const bundle = macBundle(game.root)
+      if (!bundle) return base
+
+      const bundlePath = join(game.root, bundle.app)
+      return {
+        ...base,
+        prepared: isMacGamePrepared(bundlePath, bundle.binary),
+        canRevert: canRevertMacGame(bundlePath),
+        needsPreparing: describePreparation(bundlePath, bundle.binary),
+      }
+    }),
+  )
+
+  ipcMain.handle(CHANNELS.revertMacGame, () =>
+    attempt(async () => {
+      const game = resolveGame()
+      if (!game) throw new Error('No game folder set.')
+      const bundle = macBundle(game.root)
+      if (!bundle) throw new Error('This is not a macOS game folder.')
+
+      const bundlePath = join(game.root, bundle.app)
+      if (!canRevertMacGame(bundlePath)) {
+        throw new Error(
+          'The original game files are no longer there, so there is nothing to put back. ' +
+            'Verifying the game files in Steam will restore them.',
+        )
+      }
+      return revertMacGame(bundlePath, bundle.binary)
+    }),
+  )
 
   /** What is installed into the game folder, so the UI can stop offering it again. */
   ipcMain.handle(CHANNELS.gameInstalls, () =>

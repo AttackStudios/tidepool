@@ -23,7 +23,9 @@
  * say so before it happens.
  */
 import { execFileSync } from 'node:child_process'
-import { chmodSync, copyFileSync, existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync, copyFileSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync,
+} from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { MAC_SHIM_BASE64 } from '../resources/macshim'
 
@@ -156,4 +158,57 @@ export function describePreparation(bundlePath: string, binaryPath: string): str
     `The untouched originals are kept in a "${ORIGINALS_DIR}" folder beside the game, ` +
     'so this can be undone.'
   )
+}
+
+/** What a revert would put back, so the UI can offer it honestly. */
+export interface MacRevert {
+  /** Files restored to their original universal builds. */
+  restored: string[]
+  /** True when the injected shim was removed. */
+  shimRemoved: boolean
+}
+
+/**
+ * Put the game back exactly as Steam shipped it.
+ *
+ * The originals are copied back rather than moved, so a revert that fails
+ * partway leaves them intact and can simply be run again. Anything already
+ * matching is left alone, which makes this safe to call at any time.
+ */
+export function revertMacGame(bundlePath: string, binaryPath: string): MacRevert {
+  const frameworks = join(bundlePath, 'Contents', 'Frameworks')
+  const originals = join(dirname(bundlePath), ORIGINALS_DIR)
+  const restored: string[] = []
+
+  const pairs: [string, string][] = [
+    [binaryPath, 'the game executable'],
+    [join(frameworks, 'GameAssembly.dylib'), 'GameAssembly.dylib'],
+    [join(frameworks, 'UnityPlayer.dylib'), 'UnityPlayer.dylib'],
+  ]
+
+  // The shim goes first: codesign refuses a bundle containing an unsigned
+  // Mach-O, and restoring re-signs.
+  const shim = join(bundlePath, 'Contents', 'MacOS', SHIM_NAME)
+  const shimRemoved = existsSync(shim)
+  if (shimRemoved) rmSync(shim, { force: true })
+
+  for (const [path, label] of pairs) {
+    const kept = join(originals, basename(path))
+    if (!existsSync(kept)) continue
+    copyFileSync(kept, path)
+    restored.push(label)
+  }
+
+  // Deliberately not re-signed. The originals still carry the signatures they
+  // shipped with, and copying preserves them — ad-hoc signing would replace a
+  // real signature with a worse one and leave the bundle subtly different from
+  // how Steam delivered it.
+
+  return { restored, shimRemoved }
+}
+
+/** Can the game be put back? Only if the originals are still there. */
+export function canRevertMacGame(bundlePath: string): boolean {
+  const originals = join(dirname(bundlePath), ORIGINALS_DIR)
+  return existsSync(join(originals, 'GameAssembly.dylib'))
 }

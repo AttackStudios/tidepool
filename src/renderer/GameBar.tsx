@@ -70,7 +70,7 @@ export function GameBar({ profile }: { profile: Profile | null }) {
   return (
     <div className="gamebar">
       <div className="gamebar__info">
-        {game === undefined && <span className="muted">Scanning the coast…</span>}
+        {game === undefined && <span className="muted">Looking for the game…</span>}
 
         {game === null && (
           <span className="muted">
@@ -98,10 +98,11 @@ export function GameBar({ profile }: { profile: Profile | null }) {
           onClick={() => void run(() => window.tidepool.launchGame(profile!.id, 'modded'))}
           disabled={!direct}
           title={launch && !launch.canLaunch
-            ? 'Direct launch is Windows-only — use “Via Steam” here'
-            : 'Paddle out with this profile’s mods'}
+            ? 'Direct launch is not available here — use “Play through Steam”'
+            : 'Start the game with this profile’s mods'}
+          className="button--primary"
         >
-          Drop In
+          Play with mods
         </button>
 
         <button
@@ -110,7 +111,7 @@ export function GameBar({ profile }: { profile: Profile | null }) {
           disabled={!game || !profile}
           title="Hand off to Steam, keeping the overlay, playtime and cloud saves"
         >
-          Via Steam
+          Play through Steam
         </button>
 
         <button
@@ -119,7 +120,7 @@ export function GameBar({ profile }: { profile: Profile | null }) {
           disabled={!direct}
           title="Start unmodded — the quickest way to tell whether a mod caused a bug"
         >
-          Vanilla
+          Play without mods
         </button>
 
         <span className="gamebar__sep" aria-hidden="true" />
@@ -128,7 +129,7 @@ export function GameBar({ profile }: { profile: Profile | null }) {
           {copied ? 'Copied' : 'Copy Steam options'}
         </button>
         <button className="button--ghost" onClick={() => void locate()}>
-          {game ? 'Change folder' : 'Locate game…'}
+          {game ? 'Change folder' : 'Find the game…'}
         </button>
         {game?.source === 'manual' && (
           <button className="button--ghost" onClick={() => void clear()}>Reset</button>
@@ -138,8 +139,8 @@ export function GameBar({ profile }: { profile: Profile | null }) {
       {note && <p className="gamebar__note error">{note}</p>}
       {launch && !launch.canLaunch && !note && (
         <p className="gamebar__note muted">
-          Direct launch needs Windows. “Via Steam” works here — paste the launch options into the
-          game’s Steam properties once, and Steam will apply them.
+          TidePool cannot start the game directly here. “Play through Steam” works — paste the
+          launch options into the game’s Steam properties once, and Steam will apply them.
         </p>
       )}
     </div>

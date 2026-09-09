@@ -56,9 +56,9 @@ export function Welcome({
     },
     {
       done: false,
-      title: 'Drop in',
+      title: 'Play with mods',
       body: gameOut
-        ? 'Starts the game with this profile’s mods. Or use “Via Steam” to keep the overlay and playtime.'
+        ? 'Starts the game with this profile’s mods. Or use “Play through Steam” to keep the overlay and playtime.'
         : 'Once the game is out, this starts it with your mods loaded.',
     },
   ]

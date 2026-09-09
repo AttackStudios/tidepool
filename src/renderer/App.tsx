@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { relativeDate } from './format'
 import { GameBar } from './GameBar'
 import { InstalledPanel } from './InstalledPanel'
+import { SettingsPanel } from './SettingsPanel'
 import { LogPanel } from './LogPanel'
 import { BeachPanel } from './BeachPanel'
 import { ModBrowser } from './ModBrowser'
@@ -31,7 +32,7 @@ const COMMUNITIES = __TIDEPOOL_DEV__
 export function App() {
   const [community, setCommunity] = useState(HOME_COMMUNITY.slug)
   const [refreshing, setRefreshing] = useState(false)
-  const [tab, setTab] = useState<'browse' | 'installed' | 'beaches' | 'logs'>('browse')
+  const [tab, setTab] = useState<'browse' | 'installed' | 'beaches' | 'logs' | 'settings'>('browse')
   const [status, setStatus] = useState<{ packages: number; fetchedAt: number; stale: boolean } | null>(null)
   const [showWelcome, setShowWelcome] = useState(false)
   const [game, setGame] = useState<GameInstall | null | undefined>(undefined)
@@ -104,7 +105,7 @@ export function App() {
             </span>
           )}
           <button className="button--ghost" onClick={() => void refreshCatalog()} disabled={refreshing}>
-            {refreshing ? 'Reading swell…' : 'Refresh'}
+            {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
         </div>
       </header>
@@ -146,6 +147,14 @@ export function App() {
         >
           Logs
         </button>
+        <button
+          role="tab"
+          aria-selected={tab === 'settings'}
+          className={tab === 'settings' ? 'tab tab--on' : 'tab'}
+          onClick={() => setTab('settings')}
+        >
+          Settings
+        </button>
       </nav>
 
       {showWelcome && (
@@ -164,6 +173,7 @@ export function App() {
       )}
       {tab === 'beaches' && <BeachPanel />}
       {tab === 'logs' && <LogPanel profile={current} />}
+      {tab === 'settings' && <SettingsPanel gamePath={game?.root ?? null} />}
 
       <PrereleaseBadge />
     </div>
